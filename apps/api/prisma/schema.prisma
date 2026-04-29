@@ -459,6 +459,17 @@ model Bookmark {
   folder     BookmarkFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
 }
 
+model McpServer {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  command   String
+  args      String[]
+  env       Json?
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model model_registry {
   id              String   @id
   createdAt       DateTime @default(now())

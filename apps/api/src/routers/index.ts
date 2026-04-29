@@ -26,6 +26,7 @@ import { voiceRouter } from './voice.router.js';
 import { basetoolRouter } from './basetool.router.js';
 import { providerModelRouter } from './providerModel.router.js';
 import { bookmarkRouter } from './bookmark.router.js';
+import { skillRouter } from './skill.router.js';
 
 
 
