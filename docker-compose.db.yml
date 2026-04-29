@@ -4,6 +4,10 @@ services:
   postgres:
     image: docker.io/library/postgres:15-alpine
     env_file: .env
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
     ports:
       - "5432:5432"
     volumes:

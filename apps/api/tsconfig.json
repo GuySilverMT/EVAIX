@@ -4,6 +4,7 @@
   "compilerOptions": {
     "target": "es2022",
     "module": "NodeNext", // Added for dynamic import support
+    "types": ["node"],
     "outDir": "dist",
     "declaration": false, // Add this to generate .d.ts files
     "declarationMap": false, // Good for debugging types

@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const prisma = new PrismaClient();kdjf
+const prisma = new PrismaClient();
 
 async function main() {
   const agentsToSeed = [
@@ -37,7 +37,7 @@ async function main() {
         select: { name: true }
     });
     
-    const connectableTools = existingTools.map(t => ({ name: t.name }));
+    const connectableTools = existingTools.map((t: { name: string }) => ({ name: t.name }));
 
     if (connectableTools.length < agent.tools.length) {
         console.warn(`⚠️ Warning: Some tools for ${agent.name} are missing from the DB and won't be bound.`);
@@ -48,10 +48,10 @@ async function main() {
       where: { name: agent.name },
       update: {
         description: agent.description,
-        systemPrompt: systemPrompt, 
+        basePrompt: systemPrompt, 
         tools: {
             deleteMany: {}, // Wipe existing tool connections to ensure a clean state
-            create: connectableTools.map(t => ({
+            create: connectableTools.map((t: { name: string }) => ({
                 tool: { connect: { name: t.name } }
             }))
         }
@@ -59,9 +59,9 @@ async function main() {
       create: {
         name: agent.name,
         description: agent.description,
-        systemPrompt: systemPrompt,
+        basePrompt: systemPrompt,
         tools: {
-            create: connectableTools.map(t => ({
+            create: connectableTools.map((t: { name: string }) => ({
                 tool: { connect: { name: t.name } }
             }))
         }
