@@ -1,0 +1,36 @@
+{
+  "name": "mono-repo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "pnpm --parallel --stream --filter=!@repo/voice-input run dev",
+    "desktop": "turbo run desktop",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:push": "prisma db push --schema=apps/api/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=apps/api/prisma/schema.prisma",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "husky": "^9.1.7",
+    "knip": "^5.73.3",
+    "prettier": "^2.8.8",
+    "prisma": "5.19.1",
+    "turbo": "latest",
+    "typescript": "^5.4.5"
+  },
+  "packageManager": "pnpm@10.22.0",
+  "dependencies": {
+    "@prisma/client": "5.19.1",
+    "ignore": "^7.0.5",
+    "zod": "^3.23.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
+  }
+}

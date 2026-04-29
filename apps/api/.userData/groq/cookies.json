@@ -1,0 +1,98 @@
+[
+  {
+    "name": "_ga",
+    "value": "GA1.1.1330407550.1777219317",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "datagrail_consent_id",
+    "value": "5c97b958-d08f-45f4-80ae-cd87dc60c30d.7fe98fe0-5ca7-4fd0-b0f2-a56ccb65c75a",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "datagrail_consent_id_s",
+    "value": "5c97b958-d08f-45f4-80ae-cd87dc60c30d.a73ed7a3-0c26-4d0f-97f1-dd1b8c95db98",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "datagrail_consent_version_s",
+    "value": "e513ff79-00fc-410f-8f49-9cc2d9ce0770",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "__stripe_mid",
+    "value": "aed74204-91e7-4ee6-a184-e2ad302f6dc74af40d",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_twpid",
+    "value": "tw.1777219317978.191668173409868624",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_fbp",
+    "value": "fb.1.1777219318026.987492917236095746",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "__stripe_sid",
+    "value": "1ac037c9-6aef-4916-aaea-62e549ffc4c695fa0e",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_rdt_uuid",
+    "value": "1777219317578.30a70331-48cd-4d1e-a5d6-e744972044f6",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "stytch_session",
+    "value": "M-yDifuubmukz2w8s-2BR5wQYkDPgSayrZUypXMPsvht",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "stytch_session_jwt",
+    "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6Imp3ay1saXZlLTEyM2JmMDM1LTA4OGEtNDU4Zi1iZmQ1LWY3Yjk5Y2I5MWQyMCIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsicHJvamVjdC1saXZlLTVjYjM4ODBlLTc3NGUtNDNlYS1hYjkwLWY0ZDMyMzRlMzZkZCJdLCJleHAiOjE3NzcyMjk3ODksImh0dHBzOi8vZ3JvcS5jb20vb3JnYW5pemF0aW9uIjp7ImlkIjoib3JnXzAxazJ6eGNzamtmaHFzdHNoa2gzdjg4cDJlIn0sImh0dHBzOi8vc3R5dGNoLmNvbS9vcmdhbml6YXRpb24iOnsib3JnYW5pemF0aW9uX2lkIjoib3JnYW5pemF0aW9uLWxpdmUtNzJkOTgxZjEtMzliOC00YmM5LWI1NjAtMGNlNGRjZGJlMDg0Iiwic2x1ZyI6Im9yZ18wMWsyenhjc2prZmhxc3RzaGtoM3Y4OHAyZSJ9LCJodHRwczovL3N0eXRjaC5jb20vc2Vzc2lvbiI6eyJpZCI6Im1lbWJlci1zZXNzaW9uLWxpdmUtNWMxZWMyYzAtNWYwZC00MjBjLWFlYWEtMDlmMGViZjkyZjcxIiwic3RhcnRlZF9hdCI6IjIwMjYtMDQtMjZUMTg6NTE6MjlaIiwibGFzdF9hY2Nlc3NlZF9hdCI6IjIwMjYtMDQtMjZUMTg6NTE6MjlaIiwiZXhwaXJlc19hdCI6IjIwMjYtMDUtMjZUMTg6NTE6MjlaIiwiYXR0cmlidXRlcyI6eyJ1c2VyX2FnZW50IjoiIiwiaXBfYWRkcmVzcyI6IiJ9LCJhdXRoZW50aWNhdGlvbl9mYWN0b3JzIjpbeyJ0eXBlIjoib2F1dGgiLCJkZWxpdmVyeV9tZXRob2QiOiJvYXV0aF9nb29nbGUiLCJsYXN0X2F1dGhlbnRpY2F0ZWRfYXQiOiIyMDI2LTA0LTI2VDE4OjUxOjI3WiIsImdvb2dsZV9vYXV0aF9mYWN0b3IiOnsiaWQiOiJvYXV0aC1yZWdpc3RyYXRpb24tbGl2ZS01NjU5YWZjYi02MTUwLTQ5N2MtYjA3Mi1lN2E4NmNkMmY5YzkiLCJlbWFpbF9pZCI6Im1lbWJlci1lbWFpbC1saXZlLTJmYTc1ZTkwLTI2MGItNGYxYi05NGYzLTA4MmUwNWZlYjUxNyIsInByb3ZpZGVyX3N1YmplY3QiOiIxMTMxMzg5NDkxNjc2MzAwNTE3MjMifX1dLCJyb2xlcyI6WyJzdHl0Y2hfbWVtYmVyIiwib3duZXIiXX0sImlhdCI6MTc3NzIyOTQ4OSwiaXNzIjoiaHR0cHM6Ly9hcGkuc3R5dGNoYjJiLmdyb3EuY29tIiwibmJmIjoxNzc3MjI5NDg5LCJzdWIiOiJtZW1iZXItbGl2ZS02NzgwNDc2OC1hMzdmLTQ2YjQtOWViNy1iODE3MDMwMzYwMGEifQ.S1YsuZz9X68qkuQ2KZ8ZGDZS6TkDqR5twpAaZksrL_J3_8o20vJSuu-kV64amTvf1c9eO-vTDUujoRw9TpS00fphQeTx2N5yT_doxyp5dWfrFssSVLh2ZMSNtNx7hbdwSD-dgn4JEY270PN-S3DkC2tOIY7I4ipILf_ocavJXRtqfTvdI4Oo4zVXuTETzxTyulewn-G21yseLIOu_7aCNyYERq848qdSZ3QorXU5ZbecruGSu2Yr5y5GaR0XFP4ZGm7nFm2WTJ8IhV93GZlNs-vdiw56gu2GloHpgMBpzGkO3IjLPkup1teD_WuxLilAWt_mpJV2aA5FOL8Nk8K0iw",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "user-preferences",
+    "value": "{\"current-org\":\"org_01k2zxcsjkfhqstshkh3v88p2e\",\"current-project\":\"project_01k2zxcsjmfhqtxmknywd4xdk2\"}",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "intercom-session-zf3h6ufr",
+    "value": "MjI1N2RGM1ZWQkdIaUVtUVdZeXcvTlh2RmxOaDJJZzYxeGNBeHhaQTRRa1JoMkJDQVh6M1k4dWdTWkN6WU9SVnNHb2V1MzNkbEUrMXl5K2d6R0I0MkZqM0lSTHF5Q2xZa0drWGdwYlB5ZFMwaUlFSzl3UXZqV0dTY0R4aTdhTHpTbXZGWGxCbFV0enpDWmZ3Tkdoak5RM3QvN1dpZ2hPak1pTzZra2hab1hRSWtNeEpSM0s1VHd5cmRhVWpDRkh0cG1FWUE4Q1BnU3hESFl5ZWQ0aDdZZz09LS02Tks4ZnFTQ2JmaEdPWVNweHYwTzJ3PT0=--3991cfffb79e11f9154d105bbdecbd908ac4c4ff",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "intercom-device-id-zf3h6ufr",
+    "value": "57dae0ac-a1d8-43a2-bf8a-7d2fee02b4f5",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "_ga_CQ9K0VPEEQ",
+    "value": "GS2.1.s1777229476$o2$g1$t1777229529$j7$l0$h0",
+    "domain": "console.groq.com",
+    "path": "/"
+  },
+  {
+    "name": "ph_phc_MrAAAWfjIrmzC8OHWp4uJWpv6lHCc4U2Hu8NDgyxCrl_posthog",
+    "value": "%7B%22distinct_id%22%3A%22member-live-67804768-a37f-46b4-9eb7-b8170303600a%22%2C%22%24sesid%22%3A%5B1777229553463%2C%22019dcb21-b286-7fda-aedc-3c7b9f1e47bf%22%2C1777229476486%5D%2C%22%24epp%22%3Atrue%2C%22%24initial_person_info%22%3A%7B%22r%22%3A%22%24direct%22%2C%22u%22%3A%22https%3A%2F%2Fconsole.groq.com%2Fhome%22%7D%7D",
+    "domain": "console.groq.com",
+    "path": "/"
+  }
+]

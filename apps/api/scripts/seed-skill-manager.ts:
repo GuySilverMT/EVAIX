@@ -1,0 +1,90 @@
+import { PrismaClient } from '@prisma/client';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('Starting autonomous role seeding...');
+
+  // 1. Define the Agents and bind their specific toolsets
+  const agentsToSeed = [
+    {
+      name: 'Skill Finder',
+      description: 'Discovers, installs, and autonomously seeds new Agent roles based on MCP skills.',
+      promptFileName: 'skill-lookup.md', // Ensure this file exists in data/agents/
+      tools: [
+        'search_skills', 
+        'get_skill', 
+        'filesystem',
+        'role_architect_mutate' // Replace with your exact Role Creator tool name
+      ] 
+    },
+    {
+      name: 'Coding Orchestrator',
+      description: 'Manages isolated coding environments and parallel workflows via PTY.',
+      promptFileName: 'coding-agent.md', // Ensure this file exists in data/agents/
+      tools: [
+        'terminal', 
+        'filesystem',
+        'git'
+      ] 
+    }
+  ];
+
+  for (const agent of agentsToSeed) {
+    const promptPath = join(process.cwd(), 'data', 'agents', agent.promptFileName);
+    
+    let environmentStrategy;
+    try {
+        environmentStrategy = readFileSync(promptPath, 'utf-8');
+    } catch (error) {
+        console.error(`⚠️ Failed to read prompt file for ${agent.name} at ${promptPath}`);
+        continue; // Skip this agent if the markdown file is missing
+    }
+
+    // 2. Ensure the tools actually exist in the DB before connecting them
+    // This prevents foreign key errors if the MCP Sync hasn't run yet
+    const existingTools = await prisma.tool.findMany({
+        where: { name: { in: agent.tools } },
+        select: { name: true }
+    });
+    
+    const connectableTools = existingTools.map(t => ({ name: t.name }));
+
+    if (connectableTools.length < agent.tools.length) {
+        console.warn(`⚠️ Warning: Some tools for ${agent.name} are missing from the DB and won't be bound.`);
+    }
+
+    // 3. Upsert the Role, injecting the Markdown into the core prompt/knowledge field
+    await prisma.role.upsert({
+      where: { name: agent.name },
+      update: {
+        description: agent.description,
+        systemPrompt: environmentStrategy, // Maps to your Environment Strategy & Knowledge
+        tools: {
+            connect: connectableTools
+        }
+      },
+      create: {
+        name: agent.name,
+        description: agent.description,
+        systemPrompt: environmentStrategy, // Maps to your Environment Strategy & Knowledge
+        tools: {
+            connect: connectableTools
+        }
+      }
+    });
+    
+    console.log(`✅ Successfully seeded: ${agent.name} with ${connectableTools.length} tools attached.`);
+  }
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

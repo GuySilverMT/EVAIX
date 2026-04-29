@@ -1,0 +1,52 @@
+{
+  "type": "form",
+  "title": "Create User",
+  "description": "Add a new user to the system",
+  "table": "users",
+  "fields": [
+    {
+      "name": "email",
+      "label": "Email Address",
+      "type": "email",
+      "required": true,
+      "placeholder": "user@example.com",
+      "validation": {
+        "pattern": "^[^@]+@[^@]+\\.[^@]+$",
+        "message": "Please enter a valid email address"
+      }
+    },
+    {
+      "name": "name",
+      "label": "Full Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "John Doe"
+    },
+    {
+      "name": "role",
+      "label": "Role",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "label": "Admin", "value": "admin" },
+        { "label": "User", "value": "user" },
+        { "label": "Guest", "value": "guest" }
+      ]
+    },
+    {
+      "name": "isActive",
+      "label": "Active",
+      "type": "boolean",
+      "defaultValue": true
+    },
+    {
+      "name": "bio",
+      "label": "Biography",
+      "type": "textarea",
+      "placeholder": "Tell us about yourself..."
+    }
+  ],
+  "submitLabel": "Create User",
+  "cancelLabel": "Cancel",
+  "mode": "create"
+}

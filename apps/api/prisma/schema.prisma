@@ -1,0 +1,493 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model ProviderConfig {
+  id                  String           @id
+  type                String
+  isEnabled           Boolean          @default(true)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  apiKey              String?
+  apiKeyEnvVar        String?
+  baseUrl             String?
+  billingDashboardUrl String?
+  billingRiskLevel    BillingRiskLevel @default(ZERO_RISK)
+  currentScrapedSpend Float?
+  enforceFreeOnly     Boolean          @default(true)
+  isCreditCardLinked  Boolean          @default(false)
+  lastError           String?
+  lastScrapeTime      DateTime?
+  monthlyBudget       Float?
+  name                String
+  pricingUrl          String?
+  promoMonthlyLimit   Float?
+  providerClass       ProviderClass    @default(FOUNDATIONAL)
+  serviceCategories   String[]         @default([])
+  sessionValid        Boolean?         @default(false)
+  status              String           @default("ACTIVE")
+  Model               Model[]
+  providerModels      ProviderModel[]
+}
+
+model ProviderModel {
+  id                      String         @id @default(cuid())
+  providerId              String
+  apiString               String
+  displayName             String
+  contextWindowOverride   Int?
+  inputCostPer1kOverride  Float?
+  outputCostPer1kOverride Float?
+  isFreeTier              Boolean        @default(false)
+  capabilityOverrides     Json?          @default("{}")
+  isEnabled               Boolean        @default(true)
+  lastFetchedAt           DateTime?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  provider                ProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, apiString])
+  @@index([providerId])
+}
+
+model Workspace {
+  id           String          @id @default(cuid())
+  name         String
+  rootPath     String
+  systemPrompt String?
+  codeRules    String?
+  glossary     Json?           @default("{}")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  cards        WorkOrderCard[]
+}
+
+model Model {
+  id                 String             @id
+  providerId         String
+  name               String
+  providerData       Json               @default("{}")
+  aiData             Json               @default("{}")
+  isActive           Boolean            @default(true)
+  costPer1k          Float?
+  firstSeenAt        DateTime           @default(now())
+  lastSeenAt         DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  underlyingProvider String?
+  provider           ProviderConfig     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  modelUsage         ModelUsage[]
+  knowledgeVectors   KnowledgeVector[]
+  capabilities       ModelCapabilities?
+  chatModel          ChatModel?
+  embeddingModel     EmbeddingModel?
+  visionModel        VisionModel?
+  audioModel         AudioModel?
+  imageModel         ImageModel?
+  complianceModel    ComplianceModel?
+  rewardModel        RewardModel?
+  unknownModel       UnknownModel?
+
+  @@unique([providerId, name])
+}
+
+model RoleVariant {
+  id               String           @id @default(cuid())
+  roleId           String
+  identityConfig   Json             @default("{}")
+  cortexConfig     Json             @default("{}")
+  contextConfig    Json             @default("{}")
+  governanceConfig Json             @default("{}")
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  behaviorConfig   Json             @default("{}")
+  role             Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assessments      RoleAssessment[]
+}
+
+model RoleAssessment {
+  id        String      @id @default(cuid())
+  variantId String
+  taskId    String
+  metric    String
+  score     Float
+  feedback  String?
+  createdAt DateTime    @default(now())
+  variant   RoleVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model ModelCapabilities {
+  id                      String   @id @default(cuid())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @default(now()) @updatedAt
+  modelId                 String?  @unique
+  modelName               String?
+  contextWindow           Int?
+  maxOutput               Int?
+  hasVision               Boolean?
+  hasAudioInput           Boolean?
+  hasAudioOutput          Boolean?
+  isMultimodal            Boolean?
+  supportsFunctionCalling Boolean?
+  supportsJsonMode        Boolean?
+  tokenizer               String?
+  paramCount              String?
+  requestsPerMinute       String?
+  tokensPerMinute         String?
+  hasImageGen             Boolean?
+  hasTTS                  Boolean?
+  hasReasoning            Boolean?
+  hasEmbedding            Boolean?
+  hasOCR                  Boolean?
+  hasReward               Boolean?
+  hasModeration           Boolean?
+  confidence              String?
+  source                  String?
+  specs                   Json?    @default("{}")
+  primaryTask             String?
+  isLocal                 Boolean? @default(false)
+  failureCount            Int?     @default(0)
+  latencyAvg              Float?   @default(0)
+  modalityTags            String[] @default([])
+  successCount            Int?     @default(0)
+  successRate             Float?   @default(0)
+  utilityScore            Float?   @default(0)
+  model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@map("modelcapabilities")
+}
+
+model ChatModel {
+  id            String  @id @default(cuid())
+  modelId       String  @unique
+  contextWindow Int?
+  supportsTools Boolean @default(true)
+  supportsJson  Boolean @default(true)
+  model         Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model EmbeddingModel {
+  id         String @id @default(cuid())
+  modelId    String @unique
+  dimensions Int?
+  maxContext Int?
+  model      Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model VisionModel {
+  id            String  @id @default(cuid())
+  modelId       String  @unique
+  maxResolution String?
+  supportsVideo Boolean @default(false)
+  model         Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model AudioModel {
+  id          String @id @default(cuid())
+  modelId     String @unique
+  voices      Json?  @default("[]")
+  sampleRates Json?  @default("[]")
+  model       Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model ImageModel {
+  id          String @id @default(cuid())
+  modelId     String @unique
+  resolutions Json?  @default("[]")
+  styles      Json?  @default("[]")
+  model       Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model ComplianceModel {
+  id         String @id @default(cuid())
+  modelId    String @unique
+  categories Json?  @default("[]")
+  model      Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model RewardModel {
+  id        String  @id @default(cuid())
+  modelId   String  @unique
+  scoreType String?
+  model     Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model UnknownModel {
+  id      String  @id @default(cuid())
+  modelId String  @unique
+  reason  String? @default("uncategorized")
+  model   Model   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model ModelUsage {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  modelId            String
+  roleId             String
+  promptTokens       Int?
+  completionTokens   Int?
+  cost               Float    @default(0)
+  usageMetrics       Json?    @default("{}")
+  responseHeaders    Json?
+  metadata           Json?
+  providerId         String?
+  underlyingProvider String?
+  model              Model    @relation(fields: [modelId], references: [id])
+  role               Role     @relation(fields: [roleId], references: [id])
+}
+
+model Role {
+  id                String             @id @default(cuid())
+  name              String             @unique
+  description       String?
+  basePrompt        String
+  categoryId        String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  metadata          Json?              @default("{}")
+  jobs              Job[]
+  modelUsage        ModelUsage[]
+  promptRefinements PromptRefinement[]
+  category          RoleCategory?      @relation(fields: [categoryId], references: [id])
+  tools             RoleTool[]
+  variants          RoleVariant[]
+}
+
+model RoleCategory {
+  id          String         @id @default(cuid())
+  name        String         @unique
+  order       Int            @default(0)
+  color       String?
+  createdAt   DateTime       @default(now())
+  description String?
+  icon        String?
+  isSystem    Boolean        @default(false)
+  parentId    String?
+  updatedAt   DateTime       @default(now()) @updatedAt
+  roles       Role[]
+  parent      RoleCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children    RoleCategory[] @relation("CategoryHierarchy")
+}
+
+model Tool {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String
+  instruction String
+  schema      String
+  isEnabled   Boolean    @default(true)
+  serverId    String?
+  roles       RoleTool[]
+}
+
+model RoleTool {
+  roleId String
+  toolId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tool   Tool   @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, toolId])
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  type        String
+  status      String    @default("pending")
+  priority    String    @default("medium")
+  description String?
+  roleId      String?
+  input       Json?     @default("{}")
+  output      Json?
+  logs        Json?     @default("[]")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+  role        Role?     @relation(fields: [roleId], references: [id])
+}
+
+model KnowledgeVector {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  content    String
+  modelId    String
+  vector     Float[]
+  dimensions Int
+  createdAt  DateTime @default(now())
+  model      Model    @relation(fields: [modelId], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model VectorEmbedding {
+  id        String   @id
+  vector    Float[]
+  content   String
+  filePath  String
+  metadata  Json
+  createdAt DateTime @default(now())
+
+  @@index([filePath])
+}
+
+model FileIndex {
+  filePath    String   @id
+  contentHash String
+  updatedAt   DateTime @updatedAt
+}
+
+model WorkOrderCard {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  workspaceId  String
+  contextStats Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+model PromptRefinement {
+  id             String   @id @default(cuid())
+  roleId         String
+  originalPrompt String
+  critique       String
+  refinedPrompt  String?
+  createdAt      DateTime @default(now())
+  role           Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model ModelFailure {
+  id           String   @id @default(cuid())
+  providerId   String
+  modelId      String
+  failures     Int      @default(0)
+  lastFailedAt DateTime @updatedAt
+
+  @@unique([providerId, modelId])
+}
+
+model CardConfig {
+  cardId         String          @id
+  componentRoles ComponentRole[]
+  customButtons  CustomButton[]
+}
+
+model CustomButton {
+  id         String     @id @default(cuid())
+  cardId     String
+  label      String
+  action     String
+  actionData String
+  icon       String?
+  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+}
+
+model ComponentRole {
+  id         String     @id @default(cuid())
+  cardId     String
+  component  String
+  roleId     String?
+  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+}
+
+model VoiceEngine {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  provider  String
+  isEnabled Boolean  @default(true)
+  config    Json     @default("{}")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VoiceRole {
+  id               String   @id @default(cuid())
+  name             String
+  description      String
+  personality      String
+  systemPrompt     String
+  contextModifiers Json?
+  responseStyle    Json?
+  voiceSettings    Json?
+  isActive         Boolean  @default(true)
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Orchestration {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String?
+  cells       Json
+  gridSize    Json
+  isPublic    Boolean  @default(false)
+  tags        String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BookmarkFolder {
+  id        String           @id @default(cuid())
+  name      String
+  parentId  String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  parent    BookmarkFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children  BookmarkFolder[] @relation("FolderHierarchy")
+  bookmarks Bookmark[]
+}
+
+model Bookmark {
+  id         String          @id @default(cuid())
+  title      String
+  url        String
+  faviconUrl String?
+  folderId   String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  folder     BookmarkFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+}
+
+model model_registry {
+  id              String   @id
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+  provider_id     String?
+  model_id        String?
+  model_name      String?
+  provider_data   Json?
+  ai_data         Json?
+  specs           Json?
+  is_free         Boolean?
+  cost_per_1k     String?
+  updated_at      String?
+  capability_tags Json?
+  first_seen_at   String?
+  is_active       Boolean?
+  last_seen_at    String?
+  source          String?
+}
+
+enum BillingRiskLevel {
+  ZERO_RISK
+  PROMO_BURN
+  CC_ON_FILE
+}
+
+enum ProviderClass {
+  FOUNDATIONAL
+  AGGREGATOR
+  INFERENCE_ENGINE
+  LOCAL
+}

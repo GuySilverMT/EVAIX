@@ -1,0 +1,269 @@
+{
+  "rootId": "workbench-root",
+  "nodes": {
+    "workbench-root": {
+      "id": "workbench-root",
+      "type": "Component",
+      "componentName": "AgentWorkbench",
+      "props": {
+        "flex": 1 
+      },
+      "className": "flex-1 w-full h-full overflow-hidden",
+      "style": {
+        "minHeight": "100vh"
+      }
+    },
+    "6_5lbPgtYmlLTIyKb8eo4": {
+      "id": "6_5lbPgtYmlLTIyKb8eo4",
+      "type": "Component",
+      "props": {},
+      "bindings": [],
+      "style": {
+        "width": "w-4",
+        "height": "h-4",
+        "color": "text-[var(--color-primary)]"
+      },
+      "layout": {},
+      "children": [],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "RIJ2jTUtRhE_1rimwIrIC": {
+      "id": "RIJ2jTUtRhE_1rimwIrIC",
+      "type": "Text",
+      "props": {
+        "content": "{{data.step.label}}"
+      },
+      "style": {},
+      "children": [],
+      "bindings": [
+        {
+          "propName": "content",
+          "sourcePath": "data.step.label"
+        }
+      ]
+    },
+    "uC4m6Zrf7mjB-Td7U0bGU": {
+      "id": "uC4m6Zrf7mjB-Td7U0bGU",
+      "type": "Text",
+      "props": {},
+      "bindings": [],
+      "style": {
+        "color": "text-sm"
+      },
+      "layout": {},
+      "children": [
+        "RIJ2jTUtRhE_1rimwIrIC"
+      ],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "L0ShPHH2WwR0Db8y1i7-9": {
+      "id": "L0ShPHH2WwR0Db8y1i7-9",
+      "type": "Box",
+      "props": {},
+      "bindings": [],
+      "style": {
+        "padding": " px-4 py-2",
+        "border": "border-[var(--color-border)]",
+        "background": "bg-[var(--color-background)]",
+        "radius": "rounded-t-lg"
+      },
+      "layout": {
+        "mode": "flex",
+        "align": "center"
+      },
+      "children": [
+        "6_5lbPgtYmlLTIyKb8eo4",
+        "uC4m6Zrf7mjB-Td7U0bGU"
+      ],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "6fm9VGctloY_ML4m8dBqA": {
+      "id": "6fm9VGctloY_ML4m8dBqA",
+      "type": "Text",
+      "props": {
+        "content": "Assigned Role"
+      },
+      "style": {},
+      "children": []
+    },
+    "L6z9d9JE4TTZS0rVrqYHi": {
+      "id": "L6z9d9JE4TTZS0rVrqYHi",
+      "type": "Box",
+      "props": {},
+      "bindings": [],
+      "style": {
+        "color": "text-[var(--color-text-secondary)]"
+      },
+      "layout": {},
+      "children": [
+        "6fm9VGctloY_ML4m8dBqA"
+      ],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "l98gxuDOcTfYR9_F95xsI": {
+      "id": "l98gxuDOcTfYR9_F95xsI",
+      "type": "Text",
+      "props": {
+        "content": "{assignedRole ? assignedRole.name : 'U...}",
+        "className": "text-[10px] text-blue-400 font-mono bg-blue-500/5 px-1 rounded"
+      },
+      "style": {},
+      "children": []
+    },
+    "b6Ws_MS-nH9qtp6qhid8A": {
+      "id": "b6Ws_MS-nH9qtp6qhid8A",
+      "type": "Box",
+      "props": {},
+      "bindings": [],
+      "style": {
+        "color": "text-[var(--color-text)]"
+      },
+      "layout": {},
+      "children": [
+        "l98gxuDOcTfYR9_F95xsI"
+      ],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "PvyQEHkA7UyA6ZwN7zXLG": {
+      "id": "PvyQEHkA7UyA6ZwN7zXLG",
+      "type": "Text",
+      "props": {
+        "content": "{...}",
+        "className": "text-[10px] text-blue-400 font-mono bg-blue-500/5 px-1 rounded"
+      },
+      "style": {},
+      "children": []
+    },
+    "B9slsuRAAf4BFU-_tdFnX": {
+      "id": "B9slsuRAAf4BFU-_tdFnX",
+      "type": "Text",
+      "props": {
+        "content": "{assignedRole && (\n          <div class...}",
+        "className": "text-[10px] text-blue-400 font-mono bg-blue-500/5 px-1 rounded"
+      },
+      "style": {},
+      "children": []
+    },
+    "LEii4Fs9DUvItUon3VQqQ": {
+      "id": "LEii4Fs9DUvItUon3VQqQ",
+      "type": "Text",
+      "props": {
+        "content": "{...}",
+        "className": "text-[10px] text-blue-400 font-mono bg-blue-500/5 px-1 rounded"
+      },
+      "style": {},
+      "children": []
+    },
+    "JQ4OrjTwjZ57UsU8yrFyk": {
+      "id": "JQ4OrjTwjZ57UsU8yrFyk",
+      "type": "Text",
+      "props": {
+        "content": "{Object.keys(data.step.inputMapping).l...}",
+        "className": "text-[10px] text-blue-400 font-mono bg-blue-500/5 px-1 rounded"
+      },
+      "style": {},
+      "children": []
+    },
+    "MRf8g4ZwW0_18rVS588aH": {
+      "id": "MRf8g4ZwW0_18rVS588aH",
+      "type": "Box",
+      "props": {},
+      "bindings": [],
+      "style": {
+        "padding": " p-4"
+      },
+      "layout": {},
+      "children": [
+        "L6z9d9JE4TTZS0rVrqYHi",
+        "b6Ws_MS-nH9qtp6qhid8A",
+        "PvyQEHkA7UyA6ZwN7zXLG",
+        "B9slsuRAAf4BFU-_tdFnX",
+        "LEii4Fs9DUvItUon3VQqQ",
+        "JQ4OrjTwjZ57UsU8yrFyk"
+      ],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "9rSfMQMorUMb9eHtCpXPM": {
+      "id": "9rSfMQMorUMb9eHtCpXPM",
+      "type": "Component",
+      "props": {
+        "type": "target"
+      },
+      "bindings": [
+        {
+          "propName": "position",
+          "sourcePath": "Position.Top"
+        }
+      ],
+      "style": {},
+      "layout": {},
+      "children": [],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "VPHATRyW6vB32BYEsSUgl": {
+      "id": "VPHATRyW6vB32BYEsSUgl",
+      "type": "Component",
+      "props": {
+        "type": "source"
+      },
+      "bindings": [
+        {
+          "propName": "position",
+          "sourcePath": "Position.Bottom"
+        }
+      ],
+      "style": {},
+      "layout": {},
+      "children": [],
+      "meta": {
+        "source": "imported"
+      }
+    },
+    "BwfPab3Frc52YOvQHC3oY": {
+      "id": "BwfPab3Frc52YOvQHC3oY",
+      "type": "Box",
+      "props": {},
+      "bindings": [],
+      "style": {
+        "shadow": "shadow-lg",
+        "radius": "rounded-lg",
+        "border": "border-2",
+        "background": "bg-[var(--color-background-secondary)]"
+      },
+      "layout": {},
+      "children": [
+        "L0ShPHH2WwR0Db8y1i7-9",
+        "MRf8g4ZwW0_18rVS588aH",
+        "9rSfMQMorUMb9eHtCpXPM",
+        "VPHATRyW6vB32BYEsSUgl"
+      ],
+      "meta": {
+        "source": "imported"
+      }
+    }
+  },
+  "imports": [
+    "import React, { memo } from 'react';",
+    "import { Handle, Position } from 'reactflow';",
+    "import type { NodeProps } from 'reactflow';",
+    "import { Bot, Scale, AlertCircle, CheckCircle2 } from 'lucide-react';",
+    "import type { OrchestrationStep, RoleConfig } from './types.js';",
+    "import SuperNode from './nodes/SuperNode.js';"
+  ],
+  "exports": [],
+  "version": 1
+}

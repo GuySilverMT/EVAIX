@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "API",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "NodeNext", // Added for dynamic import support
+    "outDir": "dist",
+    "declaration": false, // Add this to generate .d.ts files
+    "declarationMap": false, // Good for debugging types
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true, // <--- It's already here.
+    "allowImportingTsExtensions": false,
+    "composite": false
+  },
+  "include": ["src/**/*", "*.ts"],
+  "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"],
+  "references": [
+    { "path": "../../packages/api-contract" },
+    { "path": "../../packages/mcp-server-vfs" }
+  ]
+}

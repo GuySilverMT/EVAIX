@@ -1,0 +1,201 @@
+﻿The Architectural Convergence of Agentic Workflows: A Comprehensive Evaluation of the Developer Tools Category on MCPMarket for Multi-Agent IDEs
+1. Introduction: The Paradigm Shift from Copilots to Autonomous Development Environments
+The software development lifecycle is currently undergoing its most significant transformation since the advent of the Integrated Development Environment (IDE). For decades, the fundamental interaction model between developer and tool has been passive: the developer initiates an action, and the tool executes it. Even with the introduction of "GenAI Copilots," this dynamic remained largely unchanged; the AI suggested code, but the human developer remained the sole orchestrator, responsible for context management, file manipulation, and system integration. The emergence of the Model Context Protocol (MCP) marks a definitive departure from this paradigm, enabling the transition to Multi-Agent IDEs—environments where autonomous agents do not merely suggest text but actively perceive, reason, architect, and modify software systems through standardized interfaces.
+This report presents an exhaustive analysis of the "Developer Tools" category within the MCP ecosystem, specifically utilizing data from MCPMarket.com and associated GitHub repositories. Our objective is to architect a robust, enterprise-grade server stack capable of supporting a fully autonomous multi-agent development team. Unlike traditional tool evaluations that focus on individual utility, this analysis prioritizes interoperability, context persistence, and architectural coherence. We examine how disparate MCP servers—ranging from filesystem interfaces to high-level orchestration engines—can be woven into a unified fabric that replicates the cognitive and operational diversity of a human engineering team.
+The urgency of this analysis stems from the "Context Gap." Large Language Models (LLMs) possess general reasoning capabilities but lack grounding in the specific, evolving reality of a local codebase. Without MCP, an agent is a brain in a jar; it can think about code but cannot see the file structure, read the latest git diff, or run a test suite. The Model Context Protocol provides the sensory and motor cortex for these agents, treating tools not as proprietary API integrations but as interchangeable modular components. This report evaluates over 300 server implementations to identify the "best-in-class" components that define the current state of the art in agentic software engineering.
+2. The Infrastructure of Agency: Foundational I/O Layers
+At the base of any multi-agent IDE lies the infrastructure layer—the "hands and eyes" of the digital workforce. An autonomous agent's efficacy is strictly bounded by its ability to perceive the environment (the codebase) and effect change (file editing). Our analysis of the MCPMarket "Developer Tools" category reveals a crowded landscape of filesystem and version control implementations, yet deeper inspection uncovers significant divergence in capability, security, and determinism.
+2.1 Filesystem Interactions: The Deterministic Imperative
+The filesystem server is the primary interface between the agent and the project reality. While the official reference implementation from the Model Context Protocol organization provides basic read and write capabilities, our analysis suggests it is insufficient for complex, multi-turn architectural tasks. The reference implementation treats file operations as atomic, isolated events, lacking the nuance required for refactoring large-scale applications where context preservation is paramount.
+We identify cyanheads/filesystem-mcp-server as the superior implementation for production-grade multi-agent systems.1 This server distinguishes itself not through novelty, but through a rigorous adherence to deterministic file manipulation. Unlike basic servers that force agents to rewrite entire files to change a single line—a process prone to "context truncation" and hallucination due to token limits—the cyanheads implementation introduces specialized tools for granular manipulation.
+Table 1: Comparative Analysis of Filesystem MCP Architectures
+Feature
+	Standard Reference Implementation
+	cyanheads/filesystem-mcp-server
+	mcp-filesystem-smart
+	Architectural Implication
+	Edit Granularity
+	Full file overwrite only.
+	Targeted update_file (search/replace).
+	Chunked reading only.
+	Granular edits reduce token costs and risk of regression.
+	Path Resolution
+	Absolute paths required.
+	set_filesystem_default for relative paths.
+	Standard.
+	Relative paths mimic human developer workflows, reducing agent confusion.
+	Safety
+	Basic allowlist.
+	Robust path sanitization & sandboxing.
+	Basic.
+	Essential for preventing agents from modifying system files (e.g., .ssh/).
+	Large Files
+	Prone to token overflow.
+	Supported via patching.
+	Intelligent Pagination.
+	Smart excels at reading/analysis; Cyanheads excels at editing/writing.
+	The update_file tool provided by the cyanheads server is architecturally significant.2 It enables agents to perform surgical edits using unique string matching, a pattern that mimics how human developers use "Find and Replace." This capability is essential for "Refactoring Agents" that must rename a variable across fifty files without loading the entire content of every file into the LLM's context window. Furthermore, the set_filesystem_default tool 2 allows the agent to establish a "mental anchor" in the directory structure, resolving relative paths automatically. This reduces the cognitive load on the agent, allowing the prompt context to focus on logic rather than verbose absolute path management.
+Conversely, mcp-filesystem-smart 3 addresses a different but equally critical problem: Perception of Scale. When an agent needs to understand a legacy codebase, reading a 10,000-line monolithic file is impossible within standard context windows. The mcp-filesystem-smart server implements "Intelligent File Pagination," automatically chunking large files into digestible segments.3 For a robust IDE architecture, we recommend a hybrid approach: utilizing mcp-filesystem-smart for the "Architect/Researcher" agent responsible for system understanding, and cyanheads/filesystem-mcp-server for the "Engineer" agent responsible for implementation.
+2.2 Version Control as Operational Memory: The Git Interface
+In a manual workflow, Git serves as a storage mechanism. In an agentic workflow, Git serves as operational memory. Agents, lacking long-term episodic memory, rely on the repository's history to understand why the code exists in its current state. The mcp-server-git (specifically the cyanheads or idosal variants) transforms the repository from a passive store into an active queryable resource.4
+The critical capabilities provided by these servers—git_diff, git_log, and git_status—enable agents to perform self-correction. Before an agent marks a task as complete, it can execute git_diff to verify that its actual changes match its intended logic. This creates a "feedback loop" within the agent's reasoning process, a fundamental requirement for autonomous operation.
+Deep Insight: The analysis of mcp-server-git highlights a crucial integration pattern: The "Blame" heuristic for Context Retrieval. When an agent encounters a bug, simply reading the current code is often insufficient. By utilizing git_blame tools provided by these servers, an agent can identify the commit message associated with the buggy line.4 This commit message often contains the "intent" of the original author, effectively giving the agent access to the historical reasoning of the human developer. This transforms Git from a version control system into a temporal documentation engine, significantly enhancing the agent's ability to propose fixes that align with the project's historical design patterns.
+Furthermore, the integration of GitHub specific MCP servers 6 extends this capability beyond the local repository to the collaborative layer. The mcp-github-projects server enables agents to read issues and pull requests.6 This allows for a workflow where an agent can read a bug report on GitHub, checkout a branch via mcp-server-git, implement a fix via cyanheads/filesystem, and push the changes back to GitHub, all while referencing the discussion in the original issue to ensure the fix meets user expectations.
+3. The Cognitive Layer: Bridging Text and Semantics
+A profound limitation of first-generation coding agents is their treatment of code as unstructured text. They perceive a software project as a collection of ASCII characters rather than a graph of logical dependencies. To build a true Multi-Agent IDE, we must bridge this semantic gap. The research identifies the Language Server Protocol (LSP) integration as the single most important component for elevating agents from "text predictors" to "software engineers."
+3.1 The Semantic Bridge: isaacphi/mcp-language-server
+The isaacphi/mcp-language-server 7 represents a breakthrough in agentic capability. It acts as a proxy, translating the high-level intent of the LLM into the precise, structured queries of the Language Server Protocol—the same protocol that powers IntelliSense in VS Code.
+Table 2: The Cognitive Shift - Textual vs. Semantic Interaction
+Operation
+	Textual Interaction (Standard Agent)
+	Semantic Interaction (mcp-language-server)
+	Result
+	Symbol Discovery
+	Regex search for "function calculateTax".
+	definition("calculateTax")
+	100% accuracy; handles overloading and scope correctly.
+	Refactoring
+	Search/Replace across all files.
+	rename_symbol("oldName", "newName")
+	Safe refactoring that respects scope and ignores comments.
+	Usage Analysis
+	Grep for string matches.
+	references("UserInterface")
+	Identifies actual dependencies, ignoring unrelated strings.
+	Error Checking
+	"Does this look right?" (Visual inspection).
+	diagnostics(file_path)
+	Deterministic validation using the compiler/linter.
+	The architectural implication of this server is profound. It allows the agent to validate its own work deterministically. Instead of writing code and hoping it runs, an agent equipped with mcp-language-server can write a function, immediately query diagnostics for that file, and receive a list of type errors or syntax violations.8 The agent can then iterate on the code before involving the human or running the test suite. This "internal loop" drastically reduces the noise in the development process and mimics the workflow of a competent human developer who relies on red squiggly lines to correct errors in real-time.
+Furthermore, the server supports workspace/applyEdit.9 This allows the underlying LSP server (like tsserver for TypeScript or gopls for Go) to calculate complex edits—such as automatically adding imports or formatting code—and apply them via the MCP interface. This offloads the cognitive burden of syntax minutiae from the LLM to the deterministic language server, optimizing token usage for high-level logic rather than boilerplate management.
+3.2 specialized Coding Toolkits: Serena
+While isaacphi/mcp-language-server provides a general bridge to LSP, Serena 10 offers a higher-level abstraction designed specifically for agentic coding. Categorized as a "coding agent toolkit," Serena transforms the LLM into a coding agent capable of operating directly on the codebase.10
+Our analysis reveals that Serena utilizes semantic code retrieval at the symbol level, exploiting the relational structure of the code.10 Unlike a generic filesystem search, Serena understands the graph of the software. If an agent is tasked with "modifying the User authentication flow," Serena can identify not just the Auth class, but the specific controllers, interfaces, and database models that depend on it. This "relational awareness" is critical for architectural tasks where changing one component necessitates cascading changes across the system. For a Multi-Agent IDE, Serena acts as the "Senior Engineer's Intuition," rapidly identifying the "blast radius" of a proposed change.
+3.3 Spec-Driven Development: OpenSpec
+A critical component of high-reliability software engineering is the separation of specification and implementation. OpenSpec 11 facilitates Spec-Driven Development (SDD) for AI agents. It ensures alignment between human intent and AI execution before any code is written.
+In our proposed architecture, the "Architect Agent" utilizes OpenSpec to define the rigorous requirements of a feature. The "Engineer Agent" then consumes these specs to guide its implementation. This decoupling allows for a verification step where the human can approve the plan (the Spec) without needing to review thousands of lines of generated code immediately. This aligns with the "best practices" of reliable agent orchestration, where ambiguity is resolved at the planning stage to prevent costly hallucinations during execution.11
+4. The Orchestration Layer: Coordination and "Meta-Agency"
+A collection of tools, no matter how powerful, does not constitute a team. The defining characteristic of a Multi-Agent IDE is Orchestration—the ability to manage distinct agents, route tasks, and maintain a cohesive project state. Our research identifies a new class of "Meta-MCP" servers that sit above the tool layer, managing the agents themselves.
+4.1 The Collaborative Meta-Server: askbudi/roundtable
+askbudi/roundtable 12 emerges as the premier solution for coordinating multiple specialized AI models. It addresses the fragmentation of the current AI landscape, where a developer might want to use Claude 3.5 Sonnet for architecture, OpenAI o1 for complex reasoning, and Gemini 1.5 Pro for massive-context analysis.
+Roundtable acts as a unified gateway, aggregating these distinct coding assistants behind a standardized MCP interface.13 Its Intelligent Auto-Discovery feature eliminates the configuration overhead typically associated with multi-model setups. Crucially, Roundtable supports Parallel Execution.14 In a standard linear workflow, an agent writes code, then tests it. With Roundtable, the IDE can spawn a "Reviewer Swarm": one agent reviewing for security vulnerabilities, another for performance optimization, and a third for adherence to style guides—all simultaneously. The Roundtable server then aggregates these disparate feedback streams into a unified report for the primary "Coder" agent.
+Deep Insight: The ability of roundtable to bundle context ensures that all sub-agents operate on the same "ground truth." In multi-agent systems, "state drift" is a common failure mode where Agent A modifies a file that Agent B is currently analyzing. Roundtable's orchestration ensures that context bundles are synchronized, preventing race conditions in the agents' reasoning processes.13
+4.2 Optimizing Cognitive Load: portel-dev/ncp
+As the number of tools in an IDE grows, so does the complexity of the system prompt. Feeding the schemas of 50 different tools (Git, Filesystem, Jira, Sentry, Postgres, etc.) into an LLM's context window creates "Context Bloat," which degrades reasoning performance and increases latency/cost.
+portel-dev/ncp (Natural Context Provider) 15 introduces Semantic Tool Discovery to solve this. Instead of listing every available tool in the prompt, the agent is given a single meta-tool: find_tool. When the agent forms an intent (e.g., "I need to check the database schema"), it queries ncp. The server uses vector search to identify the most relevant tools from the registry and dynamically loads their schemas into the agent's context.15
+This mechanism mimics the human brain's ability to "recall" skills only when needed. It allows the Multi-Agent IDE to scale to hundreds of capabilities without overwhelming the active agent. Our analysis indicates that this approach can reduce token overhead by up to 97% 15, a decisive efficiency gain for enterprise-grade systems where token costs are non-trivial.
+4.3 Workflow Engines: Mastra and LangGraph
+While roundtable manages the models, frameworks like Mastra 16 and LangGraph 17 manage the process.
+* Mastra employs a graph-based workflow engine that enforces explicit control flow.18 This is essential for compliance-heavy environments where agents cannot be given total autonomy. For example, a "Production Deployment" workflow can be defined in Mastra where the agent must pass a sequence of checks (Lint -> Test -> Security Scan -> Human Approval) before the deploy tool is even made available. The Human-in-the-Loop (HITL) capabilities of Mastra, specifically its suspend() and resume() functions 18, are critical for safety. They allow the system to pause execution indefinitely, waiting for a human developer to authorize a high-risk action, while maintaining the full state of the operation in durable storage.
+* LangGraph offers stateful, multi-actor orchestration with deep MCP integration.17 Using langchain-mcp-adapters 19, LangGraph agents can consume any MCP tool. This allows developers to design complex "Agentic Graphs" where different nodes in the graph represent different MCP-enabled agents (e.g., a "Researcher Node" with access to Context7 and a "Coder Node" with access to filesystem).
+5. Knowledge Management: The Shared Mental Model
+For a team of agents to collaborate effectively, they must share a "mental model" of the project that persists beyond the immediate context window.
+5.1 Documentation Grounding: Context7
+Context7 20 addresses the "Knowledge Cutoff" problem. In the fast-moving world of software libraries, an LLM's training data is often obsolete. Context7 serves as a dynamic RAG layer, fetching up-to-date documentation and code examples directly from the source.21
+In our proposed architecture, Context7 is the primary tool for the "Architect Agent." Before designing a component, the agent queries Context7 for the latest API patterns of the frameworks being used. This prevents the generation of "hallucinated code" that relies on deprecated methods, significantly increasing the "First-Time Acceptance Rate" of the generated code.
+5.2 Persistent Memory: mcp-server-memory and Graphiti
+Standard "chat history" is insufficient for long-term projects. mcp-server-memory (specifically the Knowledge Graph implementation) 22 enables agents to store structured information about the project.
+* Structured Storage: Instead of a text log, the server stores entities and relationships: (UserAuthService) --[depends_on]--> (SupabaseClient).
+* Retrieval: When a new agent joins the session to fix a bug, it queries the Knowledge Graph to understand the system architecture, rather than reading 500 pages of chat logs.
+Graphiti 24 advances this further by introducing Temporally-Aware Knowledge Graphs. It tracks how relationships change over time. This is invaluable for understanding the evolution of the codebase ("Why did we switch from Redux to Zustand?"), effectively creating an automated architectural decision record (ADR).
+6. Execution and Verification: The Feedback Loop
+The ability to write code is useless without the ability to verify it. The "Developer Tools" category includes powerful servers for execution and visual verification.
+6.1 Visual Verification: mcp-server-playwright
+For web development, the code must be rendered to be verified. automatalabs/mcp-server-playwright 25 provides browser automation capabilities.
+* Visual Regression: The agent can modify a CSS file, spin up the local server, navigate to the page, and take a screenshot.26
+* Multimodal Feedback: By feeding this screenshot back into a multimodal model (like GPT-4o or Claude 3.5 Sonnet), the agent can "see" that the button is misaligned and correct the CSS. This closes the loop on UI development, a domain previously inaccessible to text-only agents.
+6.2 The Feedback Loop: mcp-server-sentry
+mcp-server-sentry 27 integrates error tracking into the IDE.
+* Proactive Debugging: If an agent's code throws an error in the development environment, Sentry captures the stack trace. The mcp-server-sentry allows a "Debugger Agent" to retrieve this stack trace, analyze the specific variables involved, and utilize mcp-language-server to jump to the exact line of code causing the crash. This creates an autonomous "Self-Healing" loop within the IDE.
+6.3 Secure Execution: mcp-server-docker
+Allowing agents to execute shell commands is necessary but dangerous. mcp-server-docker 28 provides the solution: Ephemeral Sandboxes.
+* Mechanism: Instead of running npm install on the host machine, the agent executes it inside a Docker container.
+* Isolation: This ensures that malicious packages or destructive commands (like rm -rf) are contained within a disposable environment, enabling "Safe Autonomy."
+7. Data and Integration: The Ecosystem Connection
+Modern applications rarely exist in isolation. They connect to databases, cloud services, and project management tools.
+* MindsDB 20: Connects AI to enterprise data, allowing agents to "learn" from the actual business data they are building software for.
+* PostgreSQL MCP 29: Enables agents to inspect database schemas, run queries, and optimize performance (via crystaldba 30), effectively acting as a DBA.
+* Linear & Jira MCP 31: Connects the code to the business requirements. An agent can read a Linear ticket, implement the feature, and update the ticket status, closing the administrative loop.
+8. Strategic Recommendation: The Reference Architecture
+Based on this exhaustive analysis, we propose the following Reference Architecture for a Multi-Agent IDE. This stack maximizes capability while mitigating risks through robust orchestration and security layers.
+Table 3: Recommended Multi-Agent IDE Server Stack
+Layer
+	Recommended Server
+	Primary Function
+	Strategic Justification
+	Orchestration
+	askbudi/roundtable
+	Coordination
+	Unifies distinct models for parallel execution; manages context bundling.
+	Discovery
+	portel-dev/ncp
+	Tool Management
+	Enables scalable tool access via semantic search; reduces token cost by 97%.
+	Cognition
+	isaacphi/mcp-language-server
+	Code Intelligence
+	Provides deterministic LSP access (Definitions, References, Diagnostics).
+	Perception
+	cyanheads/filesystem-mcp-server
+	Filesystem I/O
+	Granular update_file tool enables surgical edits; strict security sandboxing.
+	Memory
+	mcp-server-memory (Graph)
+	Shared Context
+	Persists architectural decisions as a Knowledge Graph.
+	Grounding
+	Context7
+	Documentation
+	Prevents hallucinations by fetching real-time documentation and examples.
+	Version Control
+	mcp-server-git (cyanheads)
+	Operational History
+	Enables self-correction via git_diff and intent understanding via git_blame.
+	Verification
+	automatalabs/mcp-server-playwright
+	UI Testing
+	Enables visual verification of frontend code via screenshots.
+	Execution
+	mcp-server-docker
+	Sandboxing
+	Provides a safe, ephemeral environment for shell execution.
+	Workflow
+	Mastra
+	Process Control
+	Enforces HITL approvals and standard operating procedures.
+	9. Conclusion
+The "Developer Tools" category on MCPMarket is not merely a collection of utilities; it is a catalog of components for a new digital organism. We are moving away from the era of the "Tool User"—where the developer manually wields the compiler and the editor—to the era of the "Tool Manager," where the developer orchestrates a team of autonomous agents equipped with these MCP servers.
+The integration of isaacphi/mcp-language-server provides the brain, cyanheads/filesystem the hands, mcp-server-git the memory, and roundtable the nervous system. Together, they form a cohesive, self-correcting development environment. The organizations that adopt this architecture will move beyond the constraints of human-speed coding, unlocking a new velocity of software delivery driven by the infinite scalability of agentic labor. This is not just an upgrade to the IDE; it is the redefinition of the developer.
+Works cited
+1. cyanheads/filesystem-mcp-server: A Model Context ... - GitHub, accessed December 18, 2025, https://github.com/cyanheads/filesystem-mcp-server
+2. The cyanheads/filesystem-mcp-server: An AI Engineer's Deep Dive - Skywork.ai, accessed December 18, 2025, https://skywork.ai/skypage/en/cyanheads-filesystem-mcp-server-ai-engineer/1979075564510236672
+3. lofcz/mcp-filesystem-smart: MCP filesystem server optimized for Agentic usage. - GitHub, accessed December 18, 2025, https://github.com/lofcz/mcp-filesystem-smart
+4. cyanheads/git-mcp-server: An MCP (Model Context Protocol) server enabling LLMs and AI agents to interact with Git repositories. Provides tools for comprehensive Git operations including clone, commit, branch, diff, log, status, push, pull, merge, rebase, worktree, tag management, and more - GitHub, accessed December 18, 2025, https://github.com/cyanheads/git-mcp-server
+5. idosal/git-mcp: Put an end to code hallucinations! GitMCP is a free, open-source, remote MCP server for any GitHub project, accessed December 18, 2025, https://github.com/idosal/git-mcp
+6. GitHub Projects MCP Server - Glama, accessed December 18, 2025, https://glama.ai/mcp/servers/@taylor-lindores-reeves/mcp-github-projects
+7. isaacphi/mcp-language-server - GitHub, accessed December 18, 2025, https://github.com/isaacphi/mcp-language-server
+8. Phil Isaac's MCP Language Server: The Definitive Guide - Skywork.ai, accessed December 18, 2025, https://skywork.ai/skypage/en/mcp-language-server-guide/1978667662314164224
+9. MCP-Mirror/isaacphi_mcp-language-server: Mirror of https://github.com/isaacphi/mcp-language-server - GitHub, accessed December 18, 2025, https://github.com/MCP-Mirror/isaacphi_mcp-language-server
+10. Serena: AI Coding Agent for Your Codebase - MCP Market, accessed December 18, 2025, https://mcpmarket.com/server/serena
+11. List of Top MCP Servers for November 10, 2025, accessed December 18, 2025, https://mcpmarket.com/daily/top-mcp-server-list-november-10-2025
+12. punkpeye/awesome-mcp-servers: A collection of MCP servers. - GitHub, accessed December 18, 2025, https://github.com/punkpeye/awesome-mcp-servers
+13. askbudi/roundtable: Zero-configuration MCP server that ... - GitHub, accessed December 18, 2025, https://github.com/askbudi/roundtable
+14. past - All | Search powered by Algolia, accessed December 18, 2025, https://hn.algolia.com/?query=What%20makes%205%25%20of%20AI%20agents%20work%20in%20production%3F&type=story&dateRange=all&sort=byDate&storyText=false&prefix&page=0
+15. portel-dev/ncp: Natural Context Provider (NCP). Your MCPs ... - GitHub, accessed December 18, 2025, https://github.com/portel-dev/ncp
+16. AI agent using mastra.ai with Apify MCP Server. Runs queries via OpenAI models, taps Apify Actors for web data, and outputs to datasets. 🛠️ - GitHub, accessed December 18, 2025, https://github.com/apify/actor-mastra-mcp-agent
+17. MCP endpoint in Agent Server - Docs by LangChain, accessed December 18, 2025, https://docs.langchain.com/langsmith/server-mcp
+18. mastra-ai/mastra: The TypeScript AI agent framework ... - GitHub, accessed December 18, 2025, https://github.com/mastra-ai/mastra
+19. LangGraph MCP Client Setup Made Easy [2025 Guide] - Generect, accessed December 18, 2025, https://generect.com/blog/langgraph-mcp/
+20. Top 100 MCP Servers Leaderboard, accessed December 18, 2025, https://mcpmarket.com/leaderboards
+21. 3 MCP servers you should be using (safely) - Red Hat Developer, accessed December 18, 2025, https://developers.redhat.com/articles/2025/11/04/3-mcp-servers-you-should-be-using
+22. okooo5km/memory-mcp-server: A Model Context Protocol server that provides knowledge graph management capabilities. - GitHub, accessed December 18, 2025, https://github.com/okooo5km/memory-mcp-server
+23. g0t4/mcp-server-memory-file - GitHub, accessed December 18, 2025, https://github.com/g0t4/mcp-server-memory-file
+24. Developer Tools MCP Servers, accessed December 18, 2025, https://mcpmarket.com/categories/developer-tools
+25. automatalabs-mcp-server-playwright MCP - Model Context Protocol Integration for Cursor IDE | MCPCursor, accessed December 18, 2025, https://mcpcursor.com/server/automatalabs-mcp-server-playwright
+26. Puppeteer | Awesome MCP Servers, accessed December 18, 2025, https://mcpservers.org/servers/code-craka/puppeteer-mcp
+27. mcp sentry for typescript sdk - GitHub, accessed December 18, 2025, https://github.com/Zzzccs123/mcp-sentry
+28. 0xshariq/docker-mcp-server: A comprehensive Model Context Protocol (MCP) server that provides advanced Docker operations through a unified interface. This server combines 16 powerful Docker MCP tools with 25+ convenient CLI aliases to create a complete Docker workflow solution for developers, DevOps engineers, and system administrators. - GitHub, accessed December 18, 2025, https://github.com/0xshariq/docker-mcp-server
+29. A Powerful PostgreSQL MCP server with 14 consolidated database management tools for AI assistants. - GitHub, accessed December 18, 2025, https://github.com/HenkDz/postgresql-mcp-server
+30. Postgres MCP Pro provides configurable read/write access and performance analysis for you and your AI agents. - GitHub, accessed December 18, 2025, https://github.com/crystaldba/postgres-mcp
+31. a (working!) MCP server for accessing Linear with multiple workspaces support - GitHub, accessed December 18, 2025, https://github.com/dvcrn/mcp-server-linear
+32. sespinosa/jira-mcp-server - GitHub, accessed December 18, 2025, https://github.com/sespinosa/jira-mcp-server

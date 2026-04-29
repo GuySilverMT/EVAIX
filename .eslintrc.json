@@ -1,0 +1,6 @@
+{
+  // ...your existing ESLint rules...
+  "root": true,
+  "ignorePatterns": ["**/node_modules", "dist", ".turbo", "apps/api/data/agents/en/*.md", "agents/*.md"]
+  // ...
+}

@@ -1,0 +1,284 @@
+﻿The Architectural Convergence of Design Intelligence and Agentic Protocols: A Comprehensive Analysis of the Design Tools Category in the Model Context Protocol Ecosystem
+1. Executive Summary
+The technological landscape of software development is undergoing a paradigm shift, characterized by the migration from human-centric toolchains to agent-centric protocols. At the forefront of this transformation is the Model Context Protocol (MCP), a standardized interface designed to bridge the chasm between Large Language Models (LLMs) and external systems. While much attention has been paid to developer tools and data infrastructure, a critical and rapidly maturing sector within this ecosystem is the Design Tools category. This report provides an exhaustive, expert-level analysis of the Design Tools category as cataloged on mcpmarket.com and its associated open-source repositories, dissecting the technical architectures, functional capabilities, and strategic implications of the 401 servers currently defining this space.1
+The research indicates that the Design Tools category, though smaller in volume (401 servers) compared to Developer Tools (12,121 servers) or API Development (8,647 servers) 1, represents a high-value vertical where the translation of abstract intent into executable code is most complex. The analysis reveals a bifurcation in the ecosystem: on one side, Extraction Engines (primarily focused on Figma and Storybook) that seek to turn static design files into semantic code context; and on the other, Generative Factories (Recraft, RunwayML, Flux) that utilize MCP to command the creation of net-new visual assets.
+Crucially, this report identifies a burgeoning "Wrapper Economy" where open-source servers act as gateways to proprietary APIs, introducing complex monetization models—ranging from per-call API costs ($0.04/image for Recraft) to subscription-based component libraries ($4,995/mo for Aceternity UI custom components).2 Furthermore, technical analysis confirms a near-total dominance of TypeScript (90%+) as the implementation language 4, driven by the need for type-safe schema definitions via Zod, although Python retains a foothold in 3D and heavy ML integration (Blender, ArchiCAD).
+The following sections detail the specific clusters of innovation—from the "one-shot" coding capabilities of advanced Figma servers to the real-time scene manipulation of Spline—and offer a forward-looking assessment of how these tools are assembling into a "Context Engine" that promises to render traditional design hand-offs obsolete.
+________________
+2. The Contextual Landscape: Market Dynamics of Design MCP
+2.1 The Strategic Position of Design Tools
+The mcpmarket.com directory serves as the primary registry for this emerging ecosystem. As of early 2025, the platform lists a diverse array of categories, with "Design Tools" occupying a specialized niche. While the sheer volume of "Developer Tools" suggests a focus on code syntax and debugging, the "Design Tools" category addresses a more fundamental problem: context acquisition.
+For an AI agent to function as a competent frontend engineer, it cannot merely know how to write React code; it must know what to build. The Design Tools servers provide this "what." They are the sensory organs of the AI, allowing it to "see" a Figma canvas, "read" a Storybook prop definition, or "watch" a Spline 3D scene. The 401 servers in this category 1 are not just file readers; they are semantic bridges that translate visual data (pixels, vectors, nodes) into textual context (tokens, components, relationships) that an LLM can reason about.
+2.2 Taxonomy of the Design Ecosystem
+The research identifies five distinct functional clusters within the Design Tools category, each serving a specific phase of the product development lifecycle:
+1. Layout & System Extractors: Tools that parse 2D design files to extract hierarchy, layout, and styling. (e.g., Figma Context, Sunnyside Figma, Storybook MCP).
+2. Generative Asset Engines: Interfaces for AI models that create media. (e.g., Recraft, Flux, Midjourney, Kling, RunwayML).
+3. Component Registries: Supply chains for pre-written code blocks. (e.g., Aceternity UI, SupaUI, Magic UI).
+4. Spatial & Interactive Runtimes: Controllers for 3D and animation environments. (e.g., Spline, Rive, LottieFiles, Tripo).
+5. Domain-Specific CAD Integrations: Specialized bridges for architectural and industrial design. (e.g., ArchiCAD, Unreal Blender, Rhino/Grasshopper).
+This taxonomy reveals a sophisticated ecosystem where agents are not limited to a single mode of operation. An advanced agent might use a Figma MCP to read a layout, a Recraft MCP to generate the necessary icons, a SupaUI MCP to fetch a compliant login form, and a Spline MCP to embed an interactive 3D hero element—all within a single session.
+________________
+3. The Figma Singularity: From Pixel Extraction to Intelligent Handoff
+Figma remains the gravitational center of modern interface design, and its representation in the MCP ecosystem is both extensive and highly competitive. The research highlights a race to solve the "context window problem": how to feed a massive design file to an LLM without overwhelming it with irrelevant data.
+3.1 The "Context Curation" Challenge
+A raw JSON dump from the Figma API for a complex frame can easily exceed 100,000 tokens, containing verbose data about internal plugin states, absolute positioning coordinates, and render metadata. For an AI agent to be effective, the MCP server must act as a Sanitization Middleware, filtering this noise to present a clean, semantic representation of the design.
+3.2 Comparative Analysis of Figma Server Architectures
+The market currently offers several competing implementations, each with a distinct philosophy on how this sanitization should occur.
+3.2.1 The Lightweight Reader: GLips/Figma-Context-MCP
+This server represents the "pure utility" approach. It is designed primarily to provide layout information to AI coding agents like Cursor.6
+* Mechanism: It functions as a middleware that strips away extraneous data from the Figma API response. By recursively traversing the node tree and discarding invisible nodes or flattening unnecessary groups, it reduces the token load significantly.
+* Tools Exposed: The server exposes straightforward tools for fetching file context (get_file_context).7
+* Limitations: Research indicates that in its pursuit of efficiency, it sometimes over-prunes. Users have reported that critical data, specifically componentProperties, is sometimes excluded.6 This makes it difficult for agents to leverage complex design system variants (e.g., distinguishing between a "primary" and "secondary" button variant if the prop data is stripped).
+* Adoption: Despite these limitations, it remains a popular choice for developers who want a quick, open-source connection without complex setup.
+3.2.2 The Heavyweight Orchestrator: Sunnyside Figma MCP
+In contrast, the tercumantanumut/sunnysideFigma-Context-MCP positions itself as a comprehensive "Design Ops" platform rather than a simple reader.8
+* Architecture: This server employs a unique hybrid architecture. It requires a Custom Figma Plugin running inside the Figma desktop app, which communicates with a local HTTP server (port 3333), which is then wrapped by the MCP server.8
+* Why this matters: The Figma Web API has rate limits and cannot easily access local user states or generate binary exports (like SVGs) on the fly without heavy processing. By running a local plugin, Sunnyside bypasses these limits.
+* Tool Suite: It exposes 30 specialized tools, significantly more than its competitors. Key tools include:
+   * generate_component_from_figma: Creates production-ready React/Vue code.
+   * extract_design_tokens: Scans a page to find and catalog color/spacing tokens, even identifying conflicts (e.g., "This color is close to blue-500 but not exact").9
+   * check_figma_dev_connection: A health-check tool for the agent.
+   * get_UI_Screenshots: Provides visual context alongside code.
+* Agentic Capabilities: The server supports advanced workflows like "Impact Analysis" (checking how a design change affects the codebase) and "Migration Automation".9 This suggests a future where agents proactively monitor design files for changes and submit Pull Requests to update the code, effectively closing the loop on design drift.
+3.2.3 Official and "Talk to" Implementations
+The ecosystem also includes "Talk to Figma" servers 10, which are optimized for natural language queries (e.g., "What is the status of the checkout flow design?"). These are less about code extraction and more about project management context, allowing product managers to query design status via their AI assistants.
+3.3 The Design Token Revolution
+A critical subset of the Figma ecosystem focuses on Design Tokens—the atomic units of visual style (colors, spacing, typography).
+* The Problem: LLMs inherently tend to "hardcode" values. An agent observing a blue rectangle will write background-color: #3B82F6. In an enterprise system, this is technical debt; it should be background-color: var(--primary-500).
+* The Solution: Servers like yajihum/design-system-mcp and southleft/design-systems-mcp focus specifically on resolving these references.11 The southleft implementation is particularly notable for integrating vector search over W3C standards and major design systems (Material Design, Ant Design), effectively "grounding" the agent in industry best practices.
+* Tools: These servers expose tools like getTokens and getComponentProps, allowing the agent to query the system's dictionary before writing a single line of CSS.
+________________
+4. The Generative Asset Factories: Automating Media Creation
+While Figma servers handle structure, a separate class of servers handles the creation of content. The integration of generative AI models into MCP transforms coding agents into multimedia producers. These servers do not just retrieve assets; they manufacture them on demand.
+4.1 Vector and Raster Synthesis: The Recraft Server
+The recraft-ai/mcp-recraft-server is a pivotal tool for frontend development because it bridges the gap between raster generation (which is common) and vector generation (which is essential for web UI).2
+* Technical Capabilities: The server exposes tools for both raster and SVG generation. The distinction is critical: an SVG icon generated by Recraft is code-editable, scalable, and lightweight, whereas a PNG from Midjourney is a static blob.
+* Exposed Tools: The server provides a comprehensive suite:
+   * generate_image: The core creation tool.
+   * vectorize_image: Converts raster inputs to SVGs.
+   * remove_background and replace_background: Essential for product photography workflows.
+   * create_style: Allows the agent to define a visual consistency constraint.
+* Cost Dynamics: Unlike local tools, this server acts as a gateway to a paid API. The costs are granular: ~$0.04 for a raster image and ~$0.08 for a vector image.2 This introduces a new variable for AI agents: economic constraints. An agent in a loop generating 100 variations of an icon could incur significant costs rapidly. Future MCP specifications may need to include "budget awareness" in tool definitions.
+* Workflow: An agent building a landing page can now be instructed: "Generate a hero illustration in the style of our brand (Style ID: xyz) and insert it as an SVG." The agent calls create_style, then generate_image, and embeds the resulting code directly.
+4.2 High-Fidelity Visualization: Flux and Midjourney
+For scenarios requiring photorealism, the ecosystem offers wrappers for Flux and Midjourney.
+* Flux (Cloudflare/Replicate): The mcp-flux-schnell server 13 utilizes Cloudflare Workers, showcasing a "Serverless MCP" pattern. This is lightweight and scalable. The jmanhype/mcp-flux-studio 14 provides a more robust studio-like interface for controlling the generation parameters.
+* Midjourney (The Wrapper Challenge): Midjourney lacks an official API, leading to fragile community solutions like Lala-0x3f/mj-mcp.15 These servers often rely on third-party bridges (like PiAPI) or user emulation. They expose tools like generating_image(prompt, aspect_ratio), but their reliability is lower than official integrations.
+4.3 Moving Pictures: RunwayML and Kling
+The release of the RunwayML MCP Server (June 2025) 16 and the Kling AI MCP 17 marks the entry of video generation into the agentic workflow.
+* Asynchronous Architecture: Video generation is computationally expensive and slow. Unlike text or simple image generation, it cannot be synchronous. The Runway server implements a polling pattern using runway_getTask and runway_cancelTask.18
+* Tools:
+   * runway_generateVideo: Takes an image + prompt to create video.
+   * runway_editVideo: Modifies existing video content.
+   * runway_upscaleVideo: Enhances resolution.
+* Implications: This requires the host agent (e.g., Cursor) to handle long-running tasks. It teaches us that "Agentic IDEs" need better UI for background processes. A developer might ask for a video header, continue coding the CSS, and be notified by the agent when the video render is complete.
+________________
+5. The Supply Chain of Code: Component Libraries
+A fascinating sub-category involves servers that act as registries for pre-written code. Rather than asking an LLM to "invent" a button (which might be buggy or ugly), these servers allow the agent to "fetch" a verified, high-quality component.
+5.1 The "Fetch" Paradigm: Aceternity and SupaUI
+Servers like rudra016/aceternityui-mcp 19 and buoooou/mcp-ui-gen 20 fundamentally change code generation.
+* Mechanism: These servers connect to libraries (Aceternity UI, SupaUI) that host "shadcn-like" copy-paste components.
+* Tools Exposed:
+   * search_components: "Find me a glowing card."
+   * fetch_component / get_installation_info: "Get the code for the Glowing Card."
+   * list_categories: "Show me what navigation bars you have."
+* Quality Assurance: By fetching code from a curated library, the agent guarantees a certain level of visual fidelity and accessibility that it might not achieve via raw generation. It effectively gives the LLM a clipboard full of premium components.
+5.2 The Economics of Wrapper Servers
+These servers also highlight the monetization of the MCP ecosystem. While the servers themselves are often open-source (MIT License), they act as funnels for paid products.
+* Aceternity Pricing: The base components are free, but the site heavily promotes "Aceternity UI Pro" and "Custom Components" services priced at $4,995/month for dedicated development.3 The MCP server serves as a frictionless entry point to this ecosystem.
+* SupaUI/BuouUI Pricing: Similarly, BuouUI offers a "Basic Plan" at $9.90/month and a "Lifetime Plan" at $79.21 The existence of an MCP server (SupaUI MCP) is marketed as a value-add for these subscriptions, with "Unlimited use of SupaUI MCP" listed as a plan perk.22 This suggests that access to the agentic interface itself is becoming a chargeable feature.
+5.3 Storybook: The Internal Supply Chain
+For organizations with their own design systems, the Storybook MCP (stefanoamorelli/storybook-mcp-server) acts as a private supply chain.23
+* Function: It turns a deployed Storybook instance into a queryable API.
+* Tools:
+   * storybook_list_stories: Discovery of existing UI assets.
+   * storybook_get_component_props: Extracting the API contract of a component.
+   * storybook_capture_screenshot: Visual verification.
+* Strategic Value: This prevents "component duplication." An agent asked to "build a date picker" can first query Storybook, find an existing DatePicker component, check its props, and implement it, rather than writing a new one from scratch.
+________________
+6. Beyond Flatland: 3D, Spatial, and CAD Integration
+The capabilities of Design MCP servers extend beyond the browser's DOM into 3D space, interacting with engines that handle geometry, physics, and animation.
+6.1 Spline: Real-Time Scene Manipulation
+The aydinfer/spline-mcp-server 24 demonstrates deep runtime control.
+* Modes of Operation:
+   * MCP Mode: Standard request/response for an agent to modify a scene.
+   * Webhook Mode: A standalone server that listens for data and updates the 3D scene in real-time.
+* Tools: addPhysicsBody, applyMaterial, addDirectionalLight, configureAnimationAction.25
+* Use Case: An agent could be tasked: "Connect the stock market API to this 3D bar chart." The agent would write the glue code to feed live data into the Spline webhook, causing the 3D bars to scale dynamically.
+6.2 Rive and Lottie: The Animation Layer
+Animation logic is often state-dependent and complex.
+* Rive: The mcp-rive-docs and rive-mcp-server-core 26 focus on exposing the complex documentation of Rive's state machines to the agent. Rive's runtime requires precise control of inputs (booleans, triggers) to transition between animation states. The MCP server provides the "manual" so the agent can write correct control code.
+* LottieFiles: The junmer/mcp-server-lottiefiles 27 acts as a search engine. Tools like search_animations and get_animation_details allow agents to find JSON animations by keyword (e.g., "loading spinner") and embed them.28
+6.3 Specialized CAD: ArchiCAD and Rhino
+The ecosystem reaches into professional architecture with servers for ArchiCAD and Rhino/Grasshopper.29
+* The "Tapir" Dependency: The ArchiCAD server (lgradisar/archicad-mcp) relies on a specific add-on called Tapir.29 Tapir exposes ArchiCAD's command set via JSON, which the MCP server then wraps. This illustrates a common pattern in legacy software integration: a "Bridge to a Bridge." The MCP server cannot talk directly to the C++ core of ArchiCAD; it talks to a plugin (Tapir) that talks to the core.
+* Functionality: This allows agents to perform tasks like "Count all the windows on the second floor" or "List all walls with missing fire ratings," effectively turning the CAD model into a database.
+________________
+7. Technical Architecture and Implementation Patterns
+The homogeneity of the tech stack in this category is striking and informs the future direction of agentic tooling.
+7.1 The Dominance of TypeScript
+Analysis of the repositories reveals a near-total dominance of TypeScript.
+* Statistics: Figma servers (93.7% TS) 4, Recraft (98.1% TS) 5, and Storybook servers all rely heavily on the language.
+* Driver: The modelcontextprotocol/sdk for TypeScript is highly mature. More importantly, the use of Zod for schema validation is ubiquitous. Zod allows developers to define input schemas (e.g., z.object({ prompt: z.string() })) that are automatically converted to the JSON Schema required by the MCP protocol. This ensures type safety across the boundary between the LLM (which outputs JSON) and the server (which executes code).
+7.2 Transport Layers: Stdio vs. HTTP/SSE
+* Stdio (Standard Input/Output): This is the default for local, desktop-based agents like Cursor and Claude Desktop. It is secure (the process runs locally) and simple. Most Figma and file-system tools use this.
+* SSE (Server-Sent Events): Tools that require "push" updates or run in a distributed environment use SSE. The mcp-echarts server supports both, allowing flexibility.31 The Spline server uses a webhook model (effectively HTTP push) to handle real-time data flow.32
+7.3 Binary Data Handling
+Design tools deal in images, which complicates the text-based MCP protocol.
+* Base64 Encoding: Tools like the Playwright/Storybook screenshot utility encode images as Base64 strings to pass them inside JSON-RPC messages.33 This is simple but bandwidth-heavy.
+* Reference Passing: The RunwayML and Recraft servers prefer to pass URLs to assets hosted on their cloud. The agent receives https://api.runwayml.com/v1/tasks/123/output.mp4 rather than the video binary. This "Reference Pattern" is essential for scalability and prevents clogging the LLM's context window.18
+7.4 Authentication Patterns
+Security varies significantly between community and official tools.
+* Environment Variables: Most community servers (Recraft, Aceternity) rely on simple .env files storing API keys (RECRAFT_API_KEY). This is fragile and hard to manage in teams.
+* OAuth & Mediated Access: The official Figma integration and advanced community forks use OAuth flows to issue temporary access tokens.
+* DNS Rebinding: The research notes specific security warnings for local servers. Developers are advised to use createMcpExpressApp to prevent DNS rebinding attacks when running servers on localhost.34
+________________
+8. Strategic Implications and Future Outlook
+The data presented in this report paints a clear picture: The Design Tools category of the MCP ecosystem is not just about "connecting tools"; it is about automating the translation of intent.
+8.1 The "Context Engine" Theory
+The proliferation of these servers supports the theory of a "Context Engine".35 In the near future, an organization will run a suite of MCP servers (Figma, Jira, GitHub, Storybook) that collectively form a "digital twin" of the product development process. An agent queried about a new feature will cross-reference the Jira ticket, the Figma design, and the Storybook library to implement the feature with full context awareness, reducing the cognitive load on human developers.
+8.2 The "Wrapper" Economy and Monetization
+A significant number of servers on mcpmarket.com are thin wrappers around existing APIs. This suggests a new distribution channel for API vendors. Just as vendors built VS Code extensions in 2018 to reach developers, they must build MCP servers in 2025 to ensure their tools are visible to AI agents. If a tool doesn't have an MCP server, it is effectively "invisible" to the AI workforce.
+* Risk: The "Long Tail" of abandoned servers (repositories with 0 stars and no updates in 8 months, like the Lottie server 36) poses a reliability risk. The market will likely consolidate around "Official" or "Verified" servers.
+8.3 Conclusion
+The Design Tools category is a vibrant, rapidly expanding frontier. It is driving the standardization of how visual intent is communicated to machine intelligence. For developers and organizations, adopting these tools offers a path to significantly higher velocity and consistency. However, it requires careful management of API costs, security tokens, and the selection of high-quality, well-maintained server implementations over abandoned experiments. The winning tools will be those that not only "read" design but understand the semantic intent behind the pixels.
+________________
+Appendix: Structured Data & Comparisons
+Table 1: Comparative Capabilities of Major Design MCP Servers
+Server Name
+	Primary Function
+	"Read" Capability
+	"Write" Capability
+	Key Tools
+	Implementation Language
+	GLips/Figma-Context-MCP
+	Layout Extraction
+	High (Sanitized)
+	Low
+	get_file_context
+	TypeScript
+	Sunnyside Figma MCP
+	Full Design Ops
+	High (Tokens, Assets)
+	Medium (React Gen)
+	generate_component, extract_tokens
+	TypeScript
+	Recraft MCP
+	Asset Generation
+	None
+	High (Vector/Raster)
+	create_style, generate_image
+	TypeScript
+	RunwayML API MCP
+	Video Generation
+	None
+	High (Video)
+	generateVideo, editVideo
+	TypeScript
+	Spline MCP
+	3D Manipulation
+	Medium (Scene Data)
+	High (Runtime Control)
+	addPhysicsBody, applyMaterial
+	JavaScript/Node
+	Storybook MCP
+	Component Discovery
+	High (Props, Stories)
+	Low
+	list_stories, capture_screenshot
+	TypeScript
+	Aceternity UI MCP
+	Code Fetching
+	High (Library Search)
+	High (Code Retrieval)
+	fetch_component, search
+	TypeScript
+	Table 2: Cost Structures in the Design MCP Ecosystem
+
+
+Tool Ecosystem
+	Cost Model
+	Driver
+	Estimated Cost
+	Figma
+	Subscription
+	User Seats
+	Included in Figma Seat (Dev Mode may require extra)
+	Recraft
+	Usage-Based
+	API Calls
+	~$0.04 - $0.08 per image generated 2
+	RunwayML
+	Credit/Usage
+	Video Seconds
+	Credit-based system (varies by plan)
+	Aceternity UI
+	Freemium
+	Component Access
+	Free Core / ~$4,995/mo for Custom Components 3
+	SupaUI
+	Freemium
+	Component Access
+	Free Core / ~$9.90/mo for Basic Plan 22
+	Open Source
+	Free
+	Hosting/Compute
+	User pays for own API keys (e.g., OpenAI, Replicate)
+	Table 3: Technical Implementation Statistics (Sampled from 10 Key Repositories)
+
+
+Metric
+	Value
+	Insight
+	Dominant Language
+	TypeScript (>90%)
+	Strong preference for type safety in schema definitions.4
+	License Type
+	MIT (Dominant)
+	High open-source permeation; facilitates rapid forking/adaptation.
+	Transport Protocol
+	Stdio (Dominant for Local)
+	Security-first approach for desktop agents (Cursor, Claude).
+	Update Frequency
+	High (Weekly/Monthly)
+	Rapidly evolving APIs require constant maintenance.
+	Avg. Contributors
+	1-5
+	Most servers are maintained by individuals or small teams, posing a "Bus Factor" risk.
+	Works cited
+1. Categories - MCP Market, accessed December 15, 2025, https://mcpmarket.com/categories
+2. recraft-ai/mcp-recraft-server: MCP (modelcontextprotocol ... - GitHub, accessed December 15, 2025, https://github.com/recraft-ai/mcp-recraft-server
+3. Pricing | Aceternity UI, accessed December 15, 2025, https://ui.aceternity.com/pricing
+4. TimHolden/figma-mcp-server: Model Context Protocol ... - GitHub, accessed December 15, 2025, https://github.com/TimHolden/figma-mcp-server
+5. BartWaardenburg/recraft-mcp-server: MCP Server ... - GitHub, accessed December 15, 2025, https://github.com/BartWaardenburg/recraft-mcp-server
+6. Streamlining UI Coding from Figma with Cursor & MCP Server - DEV Community, accessed December 15, 2025, https://dev.to/noah-00/streamlining-ui-coding-from-figma-with-cursor-mcp-server-21oe
+7. GLips/Figma-Context-MCP: MCP server to provide Figma layout information to AI coding agents like Cursor - GitHub, accessed December 15, 2025, https://github.com/GLips/Figma-Context-MCP
+8. Figma Context MCP | MCP Servers - LobeHub, accessed December 15, 2025, https://lobehub.com/mcp/tercumantanumut-sunnysidefigma-context-mcp
+9. Most Comprehensive Figma MCP Toolset, Dev Mode Plugin -Design tracking Tool and agentic Workflows, %100 open-source. : r/FigmaDesign - Reddit, accessed December 15, 2025, https://www.reddit.com/r/FigmaDesign/comments/1licv0w/sunnyside_figma_mcp_most_comprehensive_figma_mcp/
+10. modelcontextprotocol/servers: Model Context Protocol Servers - GitHub, accessed December 15, 2025, https://github.com/modelcontextprotocol/servers
+11. yajihum/design-system-mcp - GitHub, accessed December 15, 2025, https://github.com/yajihum/design-system-mcp
+12. southleft/design-systems-mcp - GitHub, accessed December 15, 2025, https://github.com/southleft/design-systems-mcp
+13. mcp server for cloudflare flux schnell worker api. - GitHub, accessed December 15, 2025, https://github.com/bytefer/mcp-flux-schnell
+14. jmanhype/mcp-flux-studio: A Model Context Protocol server ... - GitHub, accessed December 15, 2025, https://github.com/jmanhype/mcp-flux-studio
+15. Lala-0x3f/mj-mcp: Midjourney mcp server - GitHub, accessed December 15, 2025, https://github.com/Lala-0x3f/mj-mcp
+16. API Changelog & Updates - Runway API, accessed December 15, 2025, https://docs.dev.runwayml.com/api-details/api_changelog/
+17. 199-mcp/mcp-kling: The FIRST MCP server for Kling AI video generation! Generate stunning AI videos directly from Claude. - GitHub, accessed December 15, 2025, https://github.com/199-mcp/mcp-kling
+18. runwayml/runway-api-mcp-server - GitHub, accessed December 15, 2025, https://github.com/runwayml/runway-api-mcp-server
+19. rudra016/aceternityui-mcp: A Model Context Protocol (MCP ... - GitHub, accessed December 15, 2025, https://github.com/rudra016/aceternityui-mcp
+20. buoooou/mcp-ui-gen - GitHub, accessed December 15, 2025, https://github.com/buoooou/mcp-ui-gen
+21. 75% OFF Buouui Coupon Codes - December 2025 Promo Codes, accessed December 15, 2025, https://buouui.tenereteam.com/coupons
+22. BuouUI, accessed December 15, 2025, https://buouui.com/
+23. stefanoamorelli/storybook-mcp-server: MCP server for ... - GitHub, accessed December 15, 2025, https://github.com/stefanoamorelli/storybook-mcp-server
+24. Spline MCP Server: An AI Engineer's Deep Dive - Skywork.ai, accessed December 15, 2025, https://skywork.ai/skypage/en/spline-mcp-server-ai-engineer/1981611316404613120
+25. Spline MCP Server by aydinfer - Glama, accessed December 15, 2025, https://glama.ai/mcp/servers/@aydinfer/spline-mcp-server
+26. rive-mcp/server-core - NPM, accessed December 15, 2025, https://www.npmjs.com/package/@rive-mcp/server-core
+27. Bridging AI and Animation: A Deep Dive into the LottieFiles MCP Server - Skywork.ai, accessed December 15, 2025, https://skywork.ai/skypage/en/ai-animation-lottiefiles/1981641491397799936
+28. junmer/mcp-server-lottiefiles - GitHub, accessed December 15, 2025, https://github.com/junmer/mcp-server-lottiefiles
+29. Archicad MCP server implementation - GitHub, accessed December 15, 2025, https://github.com/lgradisar/archicad-mcp
+30. Design Tools MCP Servers - Page 5, accessed December 15, 2025, https://mcpmarket.com/categories/design-tools?page=5
+31. hustcc/mcp-echarts: Generate visual charts using ECharts with AI MCP dynamically, used for chart generation and data analysis. - GitHub, accessed December 15, 2025, https://github.com/hustcc/mcp-echarts
+32. aydinfer/spline-mcp-server: An MCP server for working with ... - GitHub, accessed December 15, 2025, https://github.com/aydinfer/spline-mcp-server
+33. Exploring the Model Context Protocol with Deno 2 and Playwright - Shruggingface, accessed December 15, 2025, https://www.shruggingface.com/microblog/2024/12/02/exploring-the-model-context-protocol-with-deno-2-and-playwright
+34. server.md - modelcontextprotocol/typescript-sdk - GitHub, accessed December 15, 2025, https://github.com/modelcontextprotocol/typescript-sdk/blob/main/docs/server.md
+35. Design Systems for AI: Introducing the Context Engine | by Diana Wolosin, accessed December 15, 2025, https://www.designsystemscollective.com/design-systems-for-ai-introducing-the-context-engine-777726da6a01
+36. LottieFiles MCP Server - GitHub, accessed December 15, 2025, https://github.com/MCP-Mirror/junmer_mcp-server-lottiefiles

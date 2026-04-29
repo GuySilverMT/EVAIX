@@ -1,0 +1,70 @@
+services:
+  # --- Application Services ---
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    networks:
+      - app-network
+    environment:
+      LOOTBOX_URL: 'http://lootbox:3000'
+
+  ui:
+    build:
+      context: .
+      dockerfile: apps/ui/Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:4000/trpc
+        - VITE_WS_URL=ws://localhost:4000
+    ports:
+      - "3000:80" # Expose Nginx on port 3000 on the host
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+  lootbox:
+    image: jx-codes/lootbox
+    networks:
+      - app-network
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Backend Dependencies ---
+
+  postgres:
+    image: docker.io/pgvector/pgvector:pg15
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

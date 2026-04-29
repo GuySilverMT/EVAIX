@@ -1,0 +1,41 @@
+model AudioModel {
+model CardConfig {
+model ChatModel {
+model ComplianceModel {
+model ComponentRole {
+model CustomButton {
+model EmbeddingModel {
+model FileIndex {
+model google_models_example {
+model ImageModel {
+model Job {
+model KnowledgeVector {
+model Model {
+model ModelCapabilities {
+model ModelFailure {
+model ModelRegistry {
+  model            Model    @relation(fields: [modelId], references: [id])
+  model      Model    @relation(fields: [modelId], references: [id])
+  model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model            Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model           Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+model ModelUsage {
+model PromptRefinement {
+model ProviderConfig {
+model RewardModel {
+model Role {
+model RoleAssessment {
+model RoleCategory {
+model RoleTool {
+model RoleVariant {
+model Tool {
+model UnknownModel {
+model VisionModel {
+model WorkOrderCard {
+model Workspace {

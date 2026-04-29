@@ -1,0 +1,68 @@
+{
+  "type": "table",
+  "title": "Users",
+  "description": "Manage system users",
+  "table": "users",
+  "columns": [
+    {
+      "name": "id",
+      "label": "ID",
+      "type": "text",
+      "width": "100px"
+    },
+    {
+      "name": "email",
+      "label": "Email",
+      "type": "email",
+      "sortable": true,
+      "filterable": true
+    },
+    {
+      "name": "name",
+      "label": "Name",
+      "type": "text",
+      "sortable": true,
+      "filterable": true
+    },
+    {
+      "name": "role",
+      "label": "Role",
+      "type": "text",
+      "sortable": true,
+      "filterable": true,
+      "render": "badge"
+    },
+    {
+      "name": "isActive",
+      "label": "Status",
+      "type": "boolean",
+      "render": "boolean"
+    },
+    {
+      "name": "createdAt",
+      "label": "Created",
+      "type": "datetime",
+      "sortable": true,
+      "render": "date"
+    }
+  ],
+  "actions": {
+    "create": true,
+    "edit": true,
+    "delete": true,
+    "view": true
+  },
+  "pagination": {
+    "enabled": true,
+    "pageSize": 20
+  },
+  "filters": {
+    "enabled": true,
+    "fields": ["email", "name", "role"]
+  },
+  "sorting": {
+    "enabled": true,
+    "defaultField": "createdAt",
+    "defaultDirection": "desc"
+  }
+}

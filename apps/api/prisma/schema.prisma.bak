@@ -1,0 +1,402 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model ProviderConfig {
+  id        String   @id
+  label     String
+  type      String
+  baseURL   String?
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Model     Model[]
+}
+
+model Workspace {
+  id           String          @id @default(cuid())
+  name         String
+  rootPath     String
+  systemPrompt String?
+  codeRules    String?
+  glossary     Json?           @default("{}")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  cards        WorkOrderCard[]
+}
+
+model ModelRegistry {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+  providerId      String?  @map("provider_id")
+  model_id        String?
+  name            String?  @map("model_name")
+  providerData    Json?    @map("provider_data")
+  aiData          Json?    @map("ai_data")
+  specs           Json?
+  isFree          Boolean? @map("is_free")
+  cost_per_1k     String?
+  updated_at      String?
+  capability_tags Json?
+  first_seen_at   String?
+  isActive        Boolean? @map("is_active")
+  last_seen_at    String?
+  source          String?
+
+  @@map("model_registry")
+}
+
+model Model {
+  id               String             @id // [READABLE] Manual ID: providerId:modelName
+  providerId       String
+  name             String
+  providerData     Json               @default("{}")
+  aiData           Json               @default("{}")
+  isActive         Boolean            @default(true)
+  costPer1k        Float?
+  firstSeenAt      DateTime           @default(now())
+  lastSeenAt       DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  provider         ProviderConfig     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  modelUsage       ModelUsage[]
+  knowledgeVectors KnowledgeVector[]
+  capabilities     ModelCapabilities?
+  
+  // Specialized Relations (One-to-One)
+  chatModel        ChatModel?
+  embeddingModel   EmbeddingModel?
+  visionModel      VisionModel?
+  audioModel       AudioModel?
+  imageModel       ImageModel?
+  complianceModel  ComplianceModel?
+  rewardModel      RewardModel?
+  unknownModel     UnknownModel?
+
+  @@unique([providerId, name])
+}
+
+model RoleVariant {
+  id               String           @id @default(cuid())
+  roleId           String
+  identityConfig   Json             @default("{}")
+  cortexConfig     Json             @default("{}")
+  contextConfig    Json             @default("{}")
+  governanceConfig Json             @default("{}")
+  behaviorConfig   Json             @default("{}")
+
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  role             Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assessments      RoleAssessment[]
+}
+
+model RoleAssessment {
+  id        String      @id @default(cuid())
+  variantId String
+  taskId    String
+  metric    String
+  score     Float
+  feedback  String?
+  createdAt DateTime    @default(now())
+  variant   RoleVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model ModelCapabilities {
+  id                      String   @id @default(cuid())
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @default(now()) @updatedAt
+  modelId                 String?  @unique
+  modelName               String?
+  contextWindow           Int?
+  maxOutput               Int?
+  hasVision               Boolean?
+  hasAudioInput           Boolean?
+  hasAudioOutput          Boolean?
+  isMultimodal            Boolean?
+  supportsFunctionCalling Boolean?
+  supportsJsonMode        Boolean?
+  tokenizer               String?
+  paramCount              String?
+  requestsPerMinute       String?
+  tokensPerMinute         String?
+  hasImageGen             Boolean?
+  hasTTS                  Boolean?
+  hasReasoning            Boolean?
+  hasEmbedding            Boolean?
+  hasOCR                  Boolean?
+  hasReward               Boolean?
+  hasModeration           Boolean?
+  confidence              String?
+  source                  String?
+  specs                   Json?    @default("{}")
+  primaryTask             String?  // [NEW] e.g. "chat", "embedding", "tts", "image_gen"
+  isLocal                 Boolean? @default(false) // [NEW] True for Ollama/local models (fallback only)
+  model                   Model?   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@map("modelcapabilities")
+}
+
+// --- SPECIALIZED MODEL TABLES ---
+
+model ChatModel {
+  id               String   @id @default(cuid())
+  modelId          String   @unique
+  contextWindow    Int?
+  supportsTools    Boolean  @default(true)
+  supportsJson     Boolean  @default(true)
+  model            Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model EmbeddingModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  dimensions  Int?
+  maxContext  Int?
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model VisionModel {
+  id              String   @id @default(cuid())
+  modelId         String   @unique
+  maxResolution   String?
+  supportsVideo   Boolean  @default(false)
+  model           Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model AudioModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  voices      Json?    @default("[]") // Supported voice IDs
+  sampleRates Json?    @default("[]") // Supported Hz
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model ImageModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  resolutions Json?    @default("[]") // ["1024x1024", "512x512"]
+  styles      Json?    @default("[]") // ["vivid", "natural"]
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model ComplianceModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  categories  Json?    @default("[]") // ["hate", "sexual", "violence"]
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model RewardModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  scoreType   String?  // e.g. " Bradley-Terry"
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model UnknownModel {
+  id          String   @id @default(cuid())
+  modelId     String   @unique
+  reason      String?  @default("uncategorized")
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+}
+
+model ModelUsage {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  modelId          String
+  roleId           String
+  promptTokens     Int?
+  completionTokens Int?
+  cost             Float    @default(0)
+  usageMetrics     Json?    @default("{}")
+  responseHeaders  Json?
+  metadata         Json?
+  model            Model    @relation(fields: [modelId], references: [id])
+  role             Role     @relation(fields: [roleId], references: [id])
+}
+
+model Role {
+  id                String             @id @default(cuid())
+  name              String             @unique
+  description       String?
+  basePrompt        String
+  categoryId        String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  metadata          Json?              @default("{}")
+  jobs              Job[]
+  modelUsage        ModelUsage[]
+  promptRefinements PromptRefinement[]
+  category          RoleCategory?      @relation(fields: [categoryId], references: [id])
+  tools             RoleTool[]
+  variants          RoleVariant[]
+}
+
+model RoleCategory {
+  id    String @id @default(cuid())
+  name  String @unique
+  order Int    @default(0)
+  roles Role[]
+}
+
+model Tool {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String
+  instruction String
+  schema      String
+  isEnabled   Boolean    @default(true)
+  serverId    String?
+  roles       RoleTool[]
+}
+
+model RoleTool {
+  roleId String
+  toolId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tool   Tool   @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, toolId])
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  type        String
+  status      String    @default("pending")
+  priority    String    @default("medium")
+  description String?
+  roleId      String?
+  input       Json?     @default("{}")
+  output      Json?
+  logs        Json?     @default("[]")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+  role        Role?     @relation(fields: [roleId], references: [id])
+}
+
+model KnowledgeVector {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  content    String
+  modelId    String
+  vector     Float[]
+  dimensions Int
+  createdAt  DateTime @default(now())
+  model      Model    @relation(fields: [modelId], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model FileIndex {
+  filePath    String   @id
+  contentHash String
+  updatedAt   DateTime @updatedAt
+}
+
+model WorkOrderCard {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  workspaceId  String
+  contextStats Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+model PromptRefinement {
+  id             String   @id @default(cuid())
+  roleId         String
+  originalPrompt String
+  critique       String
+  refinedPrompt  String?
+  createdAt      DateTime @default(now())
+  role           Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+}
+
+model ModelFailure {
+  id           String   @id @default(cuid())
+  providerId   String
+  modelId      String
+  failures     Int      @default(0)
+  lastFailedAt DateTime @updatedAt
+
+  @@unique([providerId, modelId])
+}
+
+model CardConfig {
+  cardId         String          @id
+  componentRoles ComponentRole[]
+  customButtons  CustomButton[]
+}
+
+model CustomButton {
+  id         String     @id @default(cuid())
+  cardId     String
+  label      String
+  action     String
+  actionData String
+  icon       String?
+  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+}
+
+model ComponentRole {
+  id         String     @id @default(cuid())
+  cardId     String
+  component  String
+  roleId     String?
+  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+}
+
+model google_models_example {
+  id                         String   @id
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @default(now())
+  name                       String?
+  displayName                String?
+  description                String?
+  inputTokenLimit            Int?
+  outputTokenLimit           Int?
+  supportedGenerationMethods Json?
+  temperature                Int?
+  topP                       Float?
+  topK                       Int?
+  maxTemperature             Int?
+}
+
+model VoiceEngine {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // 'STT' | 'TTS' | 'KEYWORD_LISTENER' | 'REMOTE_INPUT'
+  provider  String   // e.g., 'whisper', 'vosk', 'google', 'coqui', 'picovoice'
+  isEnabled Boolean  @default(true)
+  config    Json     @default("{}")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VoiceRole {
+  id               String   @id @default(cuid())
+  name             String
+  description      String
+  personality      String
+  systemPrompt     String   @db.Text
+  contextModifiers Json?
+  responseStyle    Json?
+  voiceSettings    Json?
+  isActive         Boolean  @default(true)
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

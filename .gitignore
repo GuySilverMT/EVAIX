@@ -1,0 +1,75 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+### Dependencies ###
+**/node_modules/
+.pnpm-store/
+
+### Build & Cache ###
+dist/
+build/
+.turbo/
+out/
+.next/
+.out/
+*.tsbuildinfo
+.cache/
+.npm/
+.flat-cache/
+
+### Logs ###
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Runtime Data
+*.timestamp-*.mjs
+
+### Environment Variables ###
+# Never commit .env files! They contain secrets.
+# Provide a .env.example file instead for other developers.
+.env
+.env.local
+.env.*
+!*.env.example
+
+### OS & Editor Specific ###
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+*.suo
+*.sw?
+
+### Test Reports ###
+coverage/
+.nyc_output/
+
+### Project-Specific Ignores ###
+
+# Secrets
+apps/api/token.json
+apps/api/src/scripts/antigravity.ts
+
+# Large files, backups, and archives
+*.zip
+*.tar.gz
+apps/api/backups/
+mcp/extracted/
+opencodetmp/
+**/archive/
+
+# Generated data (models, tables, etc.)
+*_models_*.json
+apps/api/list_tables.*
+!/apps/api/list_tables.ts
+latest_models/
+
+# Ignored content
+apps/api/data/agents/en/*.md
+agents/*.md
+debug_bashrc.txt
+test.txt

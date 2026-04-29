@@ -1,0 +1,152 @@
+{
+  "rootId": "root",
+  "nodes": {
+    "root": {
+      "id": "root",
+      "type": "Component",
+      "componentName": "Card",
+      "className": "w-full h-full max-w-2xl mx-auto shadow-none border-0 bg-transparent",
+      "children": ["header", "content"]
+    },
+    "header": {
+      "id": "header",
+      "type": "Component",
+      "componentName": "CardHeader",
+      "children": ["title", "desc"]
+    },
+    "title": {
+      "id": "title",
+      "type": "Component",
+      "componentName": "CardTitle",
+      "props": { "className": "text-lg font-bold" },
+      "children": ["title_text"]
+    },
+    "title_text": {
+      "id": "title_text",
+      "type": "Text",
+      "props": { "content": "Role Creator (Factory 4.0)" }
+    },
+    "desc": {
+      "id": "desc",
+      "type": "Text",
+      "props": { "content": "Design a new synthetic intelligence.", "className": "text-xs text-muted-foreground" }
+    },
+    "content": {
+      "id": "content",
+      "type": "Component",
+      "componentName": "CardContent",
+      "className": "space-y-4",
+      "children": ["identity_section", "cortex_section", "submit_btn"]
+    },
+    "identity_section": {
+      "id": "identity_section",
+      "type": "Component",
+      "componentName": "Grid",
+      "className": "grid grid-cols-2 gap-4",
+      "children": ["field_name", "field_domain", "field_desc"]
+    },
+    "field_name": {
+      "id": "field_name",
+      "type": "Component",
+      "componentName": "Box",
+      "className": "space-y-1",
+      "children": ["label_name", "input_name"]
+    },
+    "label_name": {
+      "id": "label_name",
+      "type": "Component",
+      "componentName": "Label",
+      "props": { "children": "Role Name", "className": "text-xs font-semibold" }
+    },
+    "input_name": {
+      "id": "input_name",
+      "type": "Component",
+      "componentName": "Input",
+      "props": { "placeholder": "e.g., 'Sentinel-9'", "name": "name", "data-binding": "name" }
+    },
+    "field_domain": {
+      "id": "field_domain",
+      "type": "Component",
+      "componentName": "Box",
+      "className": "space-y-1",
+      "children": ["label_domain", "input_domain"]
+    },
+    "label_domain": {
+      "id": "label_domain",
+      "type": "Component",
+      "componentName": "Label",
+      "props": { "children": "Domain", "className": "text-xs font-semibold" }
+    },
+    "input_domain": {
+      "id": "input_domain",
+      "type": "Component",
+      "componentName": "Input",
+      "props": { "placeholder": "Frontend, Backend, Design...", "name": "domain", "data-binding": "domain" }
+    },
+    "field_desc": {
+      "id": "field_desc",
+      "type": "Component",
+      "componentName": "Box",
+      "className": "col-span-2 space-y-1",
+      "children": ["label_desc", "input_desc"]
+    },
+    "label_desc": {
+      "id": "label_desc",
+      "type": "Component",
+      "componentName": "Label",
+      "props": { "children": "Description & Intent", "className": "text-xs font-semibold" }
+    },
+    "input_desc": {
+      "id": "input_desc",
+      "type": "Component",
+      "componentName": "Textarea",
+      "props": { "placeholder": "Describe the role's purpose and expertise...", "name": "description", "data-binding": "description", "className": "min-h-[80px]" }
+    },
+    "cortex_section": {
+      "id": "cortex_section",
+      "type": "Component",
+      "componentName": "Box",
+      "className": "pt-2",
+      "children": ["model_context_card"]
+    },
+    "model_context_card": {
+      "id": "model_context_card",
+      "type": "Component",
+      "componentName": "Card",
+      "props": { "className": "bg-transparent border border-none" },
+      "children": ["model_context_title", "context_selector"]
+    },
+    "model_context_title": {
+      "id": "model_context_title",
+      "type": "Component",
+      "componentName": "Label",
+      "props": {
+        "content": "Cortex DNA",
+        "className": "text-xs font-bold text-[var(--color-primary)] mb-2 block"
+      }
+    },
+    "context_selector": {
+      "id": "context_selector",
+      "type": "Component",
+      "componentName": "ModelContextSelector",
+      "props": {
+        "data-binding": "capabilities",
+        "className": "w-full"
+      }
+    },
+    "submit_btn": {
+      "id": "submit_btn",
+      "type": "Component",
+      "componentName": "Button",
+      "props": { "children": "Initialize Neural Link", "className": "w-full font-bold tracking-widest bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-[var(--color-background)]", "data-action": "submit" }
+    },
+    "model_override": {
+      "id": "model_override",
+      "type": "RoleModelOverride",
+      "props": {
+        "className": "mt-4",
+         "data-binding": "role" 
+      }
+    }
+  }
+}

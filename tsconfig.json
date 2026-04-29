@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "composite": true,
+    "outDir": "dist"
+  },
+  "files": [],
+  "references": [
+    { "path": "./apps/api" },
+    { "path": "./apps/ui" },
+    { "path": "./apps/voice-input" },
+    { "path": "./packages/agents" },
+    { "path": "./packages/api-contract" },
+    { "path": "./packages/common" },
+    { "path": "./packages/mcp-server-vfs" },
+    { "path": "./packages/nebula" }
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".turbo",
+    "out",
+    "patches",
+    "frontend"
+  ]
+}

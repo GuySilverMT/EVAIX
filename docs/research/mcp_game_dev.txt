@@ -1,0 +1,242 @@
+﻿The Architecture of Infinite Play: An Exhaustive Analysis of Model Context Protocol (MCP) Implementations in Game Development Engines
+1. Introduction: The Synchronization of State and Semantics
+The integration of Generative Artificial Intelligence into game development has historically been a fragmented endeavor, characterized by ad-hoc plugins, isolated Python scripts, and proprietary chatbots that lack deep awareness of the development environment. The recent emergence of the Model Context Protocol (MCP) represents a pivotal shift in this landscape, offering a standardized mechanism by which Large Language Models (LLMs) can perceive, analyze, and manipulate the complex state machines of modern game engines. This report provides an exhaustive, technical analysis of the current MCP landscape for Unity, Unreal Engine, Godot, and Blender, with a specific mandate to identify unique toolsets ("special tools") and evaluate "no-cost" operational tiers.
+Game engines are fundamentally distinct from the text-based environments where LLMs typically thrive. They are real-time, event-driven systems governed by a rigid "Game Loop" (Update, FixedUpdate, Tick) that maintains a mutable, highly interdependent state. In contrast, LLMs are stateless, request-response systems. The challenge of MCP in this domain is not merely communication, but synchronization. The server must act as a translation layer, converting semantic intent (e.g., "make the car faster") into specific API calls (e.g., vehicleController.maxTorque += 50), all while respecting the thread-safety constraints of the engine.
+Our research identifies a divergent ecosystem. In Unity, the competition is between highly extensible, reflection-based open-source servers and polished, product-led solutions. In Unreal Engine, the focus shifts to "macro-architectural" tools that abstract away the complexity of C++. Godot and Blender, leveraging their open architectures, offer transparent integrations that minimize the barrier between the AI and the internal data structures. Crucially, this report outlines a viable "Zero-Marginal-Cost" stack, demonstrating how developers can leverage specific open-source MCP servers and free-tier inference APIs to build automated pipelines without incurring significant licensing fees.
+________________
+2. The Unity Ecosystem: A Divergence of Philosophies
+Unity, being the most widely used engine for indie and mobile development, possesses the most mature and varied ecosystem of MCP servers. Our analysis of the available repositories—specifically IvanMurzak/Unity-MCP, CoderGamester/mcp-unity, nurture-tech/unity-mcp-server (Union), and codemaestroai/advanced-unity-mcp—reveals four distinct architectural philosophies. Each server offers a unique set of "special tools" that the others lack, catering to different developer personas ranging from the systems architect to the level designer.
+2.1 The Reflector Philosophy: IvanMurzak/Unity-MCP
+The server implemented by IvanMurzak represents the "white-box" approach to AI integration. Unlike other servers that treat the Unity Editor as a fixed set of capabilities, this implementation is designed to expose the developer's own codebase to the AI. It is the only server in our research set that utilizes a dynamic attribute-based system to define tools, making it the premier choice for programmers who wish to build custom agents.
+2.1.1 Special Tool: The `` Attribute System
+The defining feature of the IvanMurzak implementation, which is entirely absent in CoderGamester and Union, is the `` attribute system.1 In a standard MCP server, the tools are hardcoded by the server maintainer. If the developer wants the AI to interact with a custom InventoryManager script, they would typically have to fork the MCP server and write new C# code to wrap that script.
+The IvanMurzak server inverts this dependency. It scans the project's assemblies at runtime using C# Reflection to identify any method tagged with ``. This effectively turns the LLM into a runtime invoker of the game's internal logic. For example, a developer can write a method public void KillAllEnemies() within their game logic, tag it with the attribute, and the AI immediately gains the capability to execute this command. This "special tool" is not a single function, but a meta-tool that allows for infinite extensibility.
+The implications of this are profound for "No Cost" development. It eliminates the need to buy expensive "AI wrapper" assets. A developer can expose their entire API to a local LLM simply by decorating their code. The server also supports the attribute for class-level definition and attributes to provide semantic context to the LLM, ensuring that the model understands not just how to call the function, but why.2
+2.1.2 Main Thread Dispatching
+Another critical, albeit less visible, feature is the explicit handling of Unity's threading model. The server utilizes a MainThread.Instance.Run pattern.2 While all working Unity MCP servers must solve this, IvanMurzak exposes this mechanism to the custom tools, ensuring that user-created extensions do not crash the editor by attempting to access the UnityEngine API from a background thread. This stability is a "hidden feature" that distinguishes it from simpler, hackier implementations.
+2.1.3 Default Toolset Analysis
+Beyond the custom attribute system, the default toolset is robust but standard. It includes create_script and create_component.2 However, its reliance on the user to define complex behaviors makes it less "plug-and-play" for non-programmers compared to other solutions.
+2.2 The Operator Philosophy: CoderGamester/mcp-unity
+If IvanMurzak is for the programmer, CoderGamester/mcp-unity is for the Technical Artist and the QA Engineer. Its "special tools" focus on manipulating the Unity Editor's interface and state rather than just the scene graph.
+2.2.1 Special Tool: execute_menu_item
+The standout feature of this server is the execute_menu_item tool.3 This tool allows the AI to trigger any functionality that is exposed via Unity's MenuItem system (e.g., "Assets/Create/Material", "Window/Analysis/Profiler").
+This is a capability that no other server in this research set explicitly advertises with such granularity. Its significance lies in its ability to bridge the AI with third-party assets. If a developer is using a paid asset like "Odin Inspector" or a "Procedural Level Generator" that has a menu button to "Generate World," this MCP server allows the AI to "click" that button. The AI does not need to know the underlying API of the third-party asset; it only needs to know the menu path. This unlocks a massive amount of functionality "for free" (assuming the user owns the assets) that would otherwise require complex API integration.
+To support this, the server also provides a unique resource: unity://menu-items.3 This resource lists all available menu paths, effectively giving the AI a map of the editor's capabilities. A user can ask, "What tools do I have installed for lighting?" and the AI can query this resource to find menu items related to lighting.
+2.2.2 Special Tool: run_tests
+Another unique tool is run_tests.3 This explicitly hooks into the Unity Test Runner. While other servers might allow you to write a script to run tests, CoderGamester treats testing as a first-class citizen. This positions the server as a uniquely powerful component in a Zero-Cost CI/CD Pipeline. A developer could set up a local LLM to monitor the codebase, and upon a commit, use this tool to run tests and summarize the results, all without paying for expensive cloud-based build verification services.
+2.3 The Asset Manager Philosophy: Union (nurture-tech)
+The nurture-tech/unity-mcp-server, branded as "Union," takes a different approach. Its "special tools" are focused on the Asset Database and Visual Feedback.
+2.3.1 Special Tool: get_asset_importer
+Union includes a highly specific tool called get_asset_importer.4 This tool allows the AI to inspect and modify the import settings of assets (textures, models, audio). This is a critical feature for optimization. A user can instruct the AI to "Find all textures larger than 2048px and set their max size to 1024 to save memory." Neither IvanMurzak nor CoderGamester offer a dedicated tool for interacting with the AssetImporter API. This makes Union the superior choice for Technical Art workflows where asset optimization is a primary concern.
+2.3.2 Special Tool: Vision (screenshot, focus_game_object)
+Union is the only server in the Unity set that explicitly lists Vision tools.4 The screenshot tool allows the AI to retrieve a visual preview of the scene view, and focus_game_object allows it to direct the camera.
+This capability is transformative when paired with multimodal models (like Claude 3.5 Sonnet or GPT-4o). It creates a closed feedback loop:
+1. Action: The AI places an object.
+2. Observation: The AI takes a screenshot to see if the placement looks correct (e.g., is it clipping through the floor?).
+3. Correction: The AI adjusts the position based on the visual input.
+Without this "special tool," the AI is flying blind, relying solely on coordinate numbers which often fail to capture visual context (like lighting artifacts or occlusion).
+2.4 The Product Philosophy: Code Maestro
+codemaestroai/advanced-unity-mcp represents the commercial side of the spectrum. While the server code is available, it is designed to funnel users into the "Code Maestro Desktop App."
+2.4.1 Special Tool: Profiler and ADB Integration
+Code Maestro advertises tools for Performance Analysis (controlling the Unity Profiler) and Android Debug Bridge (ADB) operations.5 These are high-value, specialized tools that are absent in the open-source community versions. The ability for an AI to "check the console for errors" is common, but the ability to "analyze performance bottlenecks" via the Profiler is unique to this offering.
+2.4.2 The "No Cost" Trap and Workaround
+The Code Maestro Desktop App operates on a credit system, with a Free Trial of 3000 credits.6 For a "no cost" user, this is a severe limitation. However, the documentation reveals a critical workaround: the server supports a "Relay Server" mode for "Other Clients" like Cursor or Claude Desktop.5
+A savvy developer can theoretically install the advanced-unity-mcp package but connect it to a local client (like a local MCP CLI) instead of the Code Maestro Desktop App. If the specialized Profiler tools are exposed via the standard MCP protocol (and not locked behind the desktop app's proprietary logic), this would allow access to these premium features for free. However, users should be aware that "Direct Connection" optimization is reserved for the paid app.5
+2.5 Comparative Tool Matrix: Unity
+Feature / Tool
+	IvanMurzak
+	CoderGamester
+	Union (Nurture-tech)
+	Code Maestro
+	Custom Tool Definition
+	`` Attribute (Unique)
+	Static / Hardcoded
+	Static / Hardcoded
+	Static / Hardcoded
+	UI Automation
+	N/A
+	execute_menu_item (Unique)
+	N/A
+	Menu Item Execution
+	Asset Pipeline
+	Generic
+	Generic
+	get_asset_importer (Unique)
+	Generic
+	Visual/Vision
+	N/A
+	N/A
+	screenshot (Unique)
+	N/A
+	Testing
+	Manual Scripting
+	run_tests (Unique)
+	test_active_scene
+	N/A
+	Performance/Mobile
+	N/A
+	N/A
+	N/A
+	Profiler / ADB (Unique)
+	Cost Model
+	100% Free (Open Source)
+	100% Free (Open Source)
+	100% Free (Open Source)
+	Free Trial / Paid App
+	________________
+3. The Unreal Engine Ecosystem: Macro-Commands and Abstraction
+The Unreal Engine (UE) MCP landscape differs significantly from Unity's due to the complexity of C++ and the engine's architecture. Direct memory manipulation via reflection is harder to achieve safely from an external process. Consequently, the servers here focus on high-level abstractions ("Macro-Commands") and bridging the gap between the AI and the Blueprint system.
+3.1 The World Builder: Flopperam/unreal-engine-mcp
+This server, flopperam/unreal-engine-mcp, stands out as the most opinionated and "high-level" implementation in our research. It does not merely expose the API; it wraps complex procedural logic into single tools.
+3.1.1 Special Tools: Epic Structures and Town Generation
+While other servers might offer a tool to spawn_actor, Flopperam's server offers tools to create_town, create_castle_fortress, create_maze, and create_aqueduct.7 These are "Macro-Commands."
+The distinction is critical. To build a castle using primitive spawn_actor commands, an LLM would need to make hundreds of API calls, managing the position of every wall and tower. This would consume a massive amount of context tokens and is prone to error (the "drifting wall" problem). By encapsulating this logic into a create_castle_fortress tool (likely backed by a complex Python script or Blueprint logic), the server allows the AI to act as a Lead Level Designer rather than a manual laborer.
+3.1.2 Special Tools: Physics & Materials
+The server also includes specific tools for Physics (spawn_physics_blueprint_actor, set_physics_properties) and Materials (apply_material_to_actor).7 This focus on the physical properties of the world—mass, friction, collision—suggests a focus on simulation rather than just visuals.
+3.1.3 Zero-Cost Usage
+This server is open-source and relies on the standard Python Editor Script Plugin.8 It is entirely free to use. The "cost" here is setup complexity: it requires enabling specific plugins and configuring the Python environment.
+3.2 The Blueprint Architect: Chongdashu/unreal-mcp
+The chongdashu/unreal-mcp server attempts to tackle the most difficult part of Unreal automation: The Blueprint Visual Scripting System.
+3.2.1 Special Tools: Node Graph Manipulation
+This server features tools to "Add event nodes," "Create function call nodes," and "Connect nodes".9 Manipulating a visual graph via text commands is an immense challenge. The AI must understand the concept of "pins," "connections," and "execution flow."
+This capability is a "special tool" that fundamentally differentiates it from Flopperam's server, which focuses on placing actors in the viewport. chongdashu allows the AI to write logic. For example, a user could ask, "Create a Blueprint that turns on a light when the player enters a trigger volume," and the MCP server would theoretically place the BeginOverlap node, the ToggleLight node, and wire them together.
+3.3 The Static Analyzer: Ayeletstudioindia/unreal-analyzer-mcp
+This server serves a completely different function: Source Code Analysis.10 It does not appear to manipulate the editor state but rather indexes the C++ codebase.
+3.3.1 Special Tool: Deep Understanding
+Its unique value proposition is acting as a RAG (Retrieval-Augmented Generation) system for the project's source code. Unreal C++ is notoriously complex, with heavy use of macros (UPROPERTY, UFUNCTION). This server likely provides tools to "Find all references to this Actor class" or "Explain the inheritance hierarchy of this component." For a developer joining a large project, this is an invaluable "no cost" tool for onboarding, essentially providing an AI-powered documentation search.
+________________
+4. Godot and Blender: Open Source Synergies
+Godot and Blender, being open-source software with Python-friendly architectures (GDScript is Pythonic; Blender uses Python directly), offer the most seamless and transparent MCP integrations.
+4.1 Godot: The Scene Tree Surgeon (ee0pdt/Godot-MCP)
+Godot's architecture is based on a hierarchy of Nodes. The ee0pdt server exploits this with a set of tools that provide deep visibility into this structure.
+4.1.1 Special Tool: get-scene-tree and godot://script/current
+The get-scene-tree tool 11 dumps the hierarchy of the current scene. Because Godot scene files (.tscn) are text-based, this data is highly legible to an LLM. Unlike Unity, where the scene format is YAML-based but often cluttered with GUIDs, Godot's structure maps clean semantic relationships (Parent -> Child).
+The godot://script/current resource is a unique convenience feature. It automatically provides the context of the currently open script. This enables a "pair programming" workflow where the AI always sees what the user is editing without manual copy-pasting.
+4.1.2 Special Tool: run-project / debug
+Servers like Coding-Solo and Bradypp include tools to run the project and capture debug output.11 This closes the loop: Code -> Run -> Error -> Fix. For a "No Cost" workflow, this is powerful because it allows a local LLM to iterate on bugs without human intervention, reading the error log directly from the engine's stdio.
+4.2 Blender: The Ultimate Procedural Engine (ahujasid/blender-mcp)
+Blender is unique because its entire UI is built on top of its Python API (bpy). Every button click in Blender corresponds to a Python command.
+4.2.1 Special Tool: Arbitrary Python Execution (run_python)
+The ahujasid server leverages this by offering a tool that essentially says "Run this Python code".13 This is the ultimate "Special Tool." It encompasses every feature of Blender. If Blender can do it, the MCP server can do it.
+* Example: "Create a donut, apply a subsurface modifier, and render it." The LLM translates this into the corresponding bpy calls.
+* Implication: This turns Blender into a "Text-to-3D" engine that produces editable geometry, unlike Generative AI (Tripo/Meshy) which produces static meshes. This is a crucial distinction for "No Cost" workflows—you get a clean, topological model that you can edit, for free, rather than a messy AI blob that costs credits.
+________________
+5. The Economics of Intelligence: Achieving Zero Marginal Cost
+The original request explicitly asks to "Focus on no cost use." While the MCP servers themselves are mostly open-source (free), they require an "Intelligence Provider" (an LLM) to function. The cost of this intelligence is the bottleneck. We analyze the free tiers of the primary providers relevant to these tools.
+5.1 The Hugging Face Inference API: A Delicate Balance
+The Game Asset Generator server (MubarakHAlketbi) relies on Hugging Face Spaces.14
+* The Free Tier: Hugging Face offers a free tier for its Inference API. However, recent changes have tightened limits. Anonymous usage is highly rate-limited, and even free authenticated accounts face concurrency limits.15
+* The "Pro" Trap: Many desirable models (e.g., specific flavors of Flux or high-end 3D generators) may be gated behind the "Pro" subscription ($9/mo) or require a "Warm" instance which costs hourly rates ($0.60/hr+ for A10G).16
+* The No-Cost Strategy: To use this for free, users must configure the MCP server to point to "CPU-friendly" models or models that are currently featured and thus free-to-use. Alternatively, the "Inference Endpoints" can be bypassed if the user runs the model locally (using ollama or LocalAI) and points the MCP server to localhost. This requires a powerful GPU but incurs no marginal cost.
+5.2 Tripo AI: The Limits of "Free"
+The tripo-mcp server 17 connects to Tripo AI for 3D generation.
+* Free Tier Reality: The "Basic" plan offers 300 credits/month.18
+* Cost Analysis: Creating a model typically consumes credits. 300 credits is a very low ceiling—likely enough for 10-20 generations.
+* Verdict: This is not a viable "production" pipeline for free. It is a "sampling" tier. For a truly no-cost 3D pipeline, the Blender MCP (ahujasid) is infinitely superior because it uses the user's local compute to generate procedural assets via Python, rather than paying credits for neural rendering.
+5.3 Code Maestro: The Free Trial
+* The Limit: 3000 credits.6
+* The Strategy: Use this strictly for the Profiler capabilities. Do not waste credits on chat or code generation (which can be done by IvanMurzak + Local LLM). Connect, run the profiler analysis, fix the bottleneck, and disconnect.
+5.4 The "Local Stack": The True Zero-Cost Solution
+The only way to achieve a robust, high-volume workflow for $0 is to decouple the MCP server from paid cloud APIs entirely.
+* The Stack:
+   1. Engine: Unity (IvanMurzak) or Blender (ahujasid).
+   2. Transport: Standard Stdio / WebSocket.
+   3. Intelligence: Ollama running Llama-3-8B-Instruct or Qwen-2.5-Coder (which excels at programming tasks).
+   4. Client: Claude Desktop (configured with a relay to local models) or a VS Code extension like Cline.
+In this architecture, the IvanMurzak server exposes the `` capabilities to Llama-3. The user prompts Llama-3 locally. Llama-3 sends the JSON-RPC command to Unity. Unity executes it. No data leaves the machine, and no credit card is charged.
+________________
+6. Operational Workflows and Future Outlook
+The current state of MCP in game development is a transition from "Chatting with Code" to "Agentic Development." The most powerful workflows identified in this research utilize the "Special Tools" to bypass manual labor.
+6.1 Workflow: The Procedural Architect (Unreal + Flopperam)
+A Level Designer can use flopperam/unreal-engine-mcp to rapid-prototype.
+* Command: "Create_Town with 50 houses, a central fountain, and a surrounding wall."
+* Mechanism: The server triggers the create_town macro.
+* Result: A layout is generated in seconds.
+* Cost: $0.
+6.2 Workflow: The Optimization Agent (Unity + Union)
+A Technical Artist uses nurture-tech/unity-mcp-server.
+* Command: "Find all materials using the 'Standard' shader and switch them to 'Mobile/Diffuse'. Then check the get_asset_importer settings for all textures and ensure they are compressed."
+* Mechanism: The server queries the Asset Database and iterates through the results, applying changes via the Asset Importer API.
+* Result: The project is optimized for mobile.
+* Cost: $0.
+6.3 Workflow: The Infinite Sandbox (Unity + IvanMurzak)
+A Gameplay Programmer uses IvanMurzak/Unity-MCP.
+* Setup: The programmer tags their SpawnEnemyWave() and ResetLevel() methods with ``.
+* Command: "Spawn 3 waves of enemies, then reset the level if the player dies."
+* Mechanism: The LLM directly invokes the runtime methods.
+* Result: The AI plays the game, testing the loop.
+* Cost: $0.
+6.4 Conclusion
+For the developer seeking the deepest integration with the lowest cost, the IvanMurzak/Unity-MCP server is the premier choice for Unity due to its unmatched extensibility via Reflection. For Unreal, Flopperam offers the best high-level abstraction for world building. For asset generation, Blender MCP offers a truly free procedural alternative to the credit-constrained generative AI services like Tripo.
+The "Special Tools" identified in this report—from execute_menu_item to ``—demonstrate that the true power of MCP lies not in the generic ability to "write scripts," but in the specific, hard-coded capabilities that bridge the semantic gap between the AI's intent and the engine's rigid internal logic. As these servers mature, we can expect the "No Cost" local stack to become the standard for indie development, democratizing the power of AI-assisted creation.
+________________
+Data Summary Tables
+Table 1: Pricing & Tiers for Intelligence Providers
+Provider
+	Service
+	Free Tier Limits
+	"No Cost" Viability
+	Hugging Face
+	Inference API
+	Rate-limited (approx. $0.10/day equivalent for free users)
+	Medium. Good for low volume 2D assets.
+	Tripo AI
+	3D Generation
+	300 Credits/Mo (approx. 10-20 models)
+	Low. Strictly for sampling.
+	Code Maestro
+	Desktop App
+	3000 Credits (One-time trial)
+	Low. Use for specific tasks only.
+	Ollama / Local
+	Local Inference
+	Unlimited (Hardware dependent)
+	High. The only true production-ready free option.
+	Table 2: Server Specialization Matrix
+Ecosystem
+	Server
+	Primary Persona
+	Unique Capability ("Special Tool")
+	Unity
+	IvanMurzak
+	Gameplay Programmer
+	`` (Reflection-based extensibility)
+	Unity
+	CoderGamester
+	Tech Artist / QA
+	execute_menu_item, run_tests
+	Unity
+	Union
+	Asset Manager
+	get_asset_importer, screenshot
+	Unreal
+	Flopperam
+	Level Designer
+	Macro-Commands (create_town, create_castle)
+	Unreal
+	Chongdashu
+	Blueprint Dev
+	Node Graph Manipulation
+	Blender
+	Ahujasid
+	3D Modeler
+	run_python (Full API Access)
+	Works cited
+1. Game development showcase with Unity-MCP : r/GithubCopilot - Reddit, accessed December 16, 2025, https://www.reddit.com/r/GithubCopilot/comments/1nj7qz8/game_development_showcase_with_unitymcp/
+2. IvanMurzak/Unity-MCP: AI-powered bridge connecting LLMs and advanced AI agents to the Unity Editor via the Model Context Protocol (MCP). Chat with AI to generate code, debug errors, and automate game development tasks directly within your project. - GitHub, accessed December 16, 2025, https://github.com/IvanMurzak/Unity-MCP
+3. CoderGamester/mcp-unity: Model Context Protocol (MCP ... - GitHub, accessed December 16, 2025, https://github.com/CoderGamester/mcp-unity
+4. nurture-tech/unity-mcp-server: Union ♾️ - The Unity MCP ... - GitHub, accessed December 16, 2025, https://github.com/nurture-tech/unity-mcp-server
+5. codemaestroai/advanced-unity-mcp: Public repository for ... - GitHub, accessed December 16, 2025, https://github.com/codemaestroai/advanced-unity-mcp
+6. Code Maestro - The Most Advanced AI Copilot for Game Development, accessed December 16, 2025, https://www.code-maestro.com/
+7. flopperam/unreal-engine-mcp: Control Unreal Engine 5.5+ ... - GitHub, accessed December 16, 2025, https://github.com/flopperam/unreal-engine-mcp
+8. runreal/unreal-mcp: MCP server for Unreal Engine that uses Unreal Python Remote Execution - GitHub, accessed December 16, 2025, https://github.com/runreal/unreal-mcp
+9. chongdashu/unreal-mcp: Enable AI assistant clients like Cursor, Windsurf and Claude Desktop to control Unreal Engine through natural language using the Model Context Protocol (MCP). - GitHub, accessed December 16, 2025, https://github.com/chongdashu/unreal-mcp
+10. ayeletstudioindia/unreal-analyzer-mcp: MCP server for Unreal Engine 5 - GitHub, accessed December 16, 2025, https://github.com/ayeletstudioindia/unreal-analyzer-mcp
+11. ee0pdt/Godot-MCP: An MCP for Godot that lets you create ... - GitHub, accessed December 16, 2025, https://github.com/ee0pdt/Godot-MCP
+12. Coding-Solo/godot-mcp: MCP server for interfacing with Godot game engine. Provides tools for launching the editor, running projects, and capturing debug output. - GitHub, accessed December 16, 2025, https://github.com/Coding-Solo/godot-mcp
+13. ahujasid/blender-mcp - GitHub, accessed December 16, 2025, https://github.com/ahujasid/blender-mcp
+14. An MCP server for creating 2D/3D game assets from text using Hugging Face AI models. - GitHub, accessed December 16, 2025, https://github.com/MubarakHAlketbi/game-asset-mcp
+15. Hub Rate limits - Hugging Face, accessed December 16, 2025, https://huggingface.co/docs/hub/rate-limits
+16. Pricing - Hugging Face, accessed December 16, 2025, https://huggingface.co/pricing
+17. VAST-AI-Research/tripo-mcp: Official MCP server for Tripo - GitHub, accessed December 16, 2025, https://github.com/VAST-AI-Research/tripo-mcp
+18. Tripo Pricing | Flexible Plans for AI 3D Modeling Solutions, accessed December 16, 2025, https://www.tripo3d.ai/pricing

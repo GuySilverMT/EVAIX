@@ -1,0 +1,28 @@
+### Get all providers
+GET http://localhost:4000/llm/configurations
+
+### Create a new OpenRouter Provider
+# @name createOpenRouter
+POST http://localhost:4000/llm/configurations
+Content-Type: application/json
+
+{
+  "displayName": "My OpenRouter",
+  "providerType": "openai",
+  "config": {
+    "apiKey": "YOUR_OPENROUTER_API_KEY",
+    "baseURL": "https://openrouter.ai/api/v1"
+  }
+}
+
+### Get the new provider's details
+# Note: Replace the ID with the one returned from the create request
+GET http://localhost:4000/llm/configurations/1d504f40-e955-4af9-8e8b-2f1552ab7a8f
+
+### Get the raw models for the new provider (for debugging)
+# Note: Replace the ID with the one returned from the create request
+GET http://localhost:4000/llm/configurations/1d504f40-e955-4af9-8e8b-2f1552ab7a8f/debug-models
+
+### Delete a provider
+# Note: Replace the ID with the one you want to delete
+DELETE http://localhost:4000/llm/configurations/1d504f40-e955-4af9-8e8b-2f1552ab7a8f
