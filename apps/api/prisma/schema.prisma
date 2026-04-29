@@ -465,7 +465,7 @@ model McpServer {
   command   String
   args      String[]
   env       Json?
-  isEnabled Boolean  @default(true)
+  status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

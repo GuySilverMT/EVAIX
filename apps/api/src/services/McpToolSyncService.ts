@@ -15,79 +15,91 @@ interface McpToolSchema {
 export class McpToolSyncService {
   private static registry = new RegistryClient();
 
+  static async syncServer(serverName: string) {
+    let client: Client | null = null;
+    let syncedToolsCount = 0;
+    const syncedTools: { name: string; description: string }[] = [];
+
+    try {
+      const config = await this.registry.getServerConfig(serverName);
+
+      const transport = new StdioClientTransport({
+        command: config.command,
+        args: config.args,
+        env: { ...process.env, ...(config.env || {}) } as Record<string, string>,
+      });
+
+      transport.onerror = (err) => {
+        console.warn(`[McpSync] Transport error for ${serverName}:`, err.message);
+      };
+
+      client = new Client(
+        { name: "domoreai-sync", version: "1.0.0" },
+        { capabilities: {} }
+      );
+
+      // Set a timeout for connection to avoid hanging the boot process
+      const connectPromise = client.connect(transport);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000));
+
+      await Promise.race([connectPromise, timeoutPromise]);
+
+      const { tools } = await client.listTools();
+
+      for (const tool of tools) {
+        const safeName = `${serverName}_${tool.name}`.replace(/-/g, '_');
+        const tsDefinition = this.generateToolInterface(tool.name, tool.description || '', tool.inputSchema as unknown as McpToolSchema);
+
+        await prisma.tool.upsert({
+          where: { name: safeName },
+          update: {
+            description: `[MCP: ${serverName}] ${tool.description}`,
+            instruction: tsDefinition,
+            schema: JSON.stringify(tool.inputSchema),
+            isEnabled: true,
+            serverId: serverName
+          },
+          create: {
+            name: safeName,
+            description: `[MCP: ${serverName}] ${tool.description}`,
+            instruction: tsDefinition,
+            schema: JSON.stringify(tool.inputSchema),
+            isEnabled: true,
+            serverId: serverName
+          }
+        });
+        syncedToolsCount++;
+        syncedTools.push({ name: safeName, description: tool.description || '' });
+      }
+      console.log(`[McpSync] ✅ Synced ${tools.length} tools from ${serverName}`);
+      return { success: true, count: syncedToolsCount, tools: syncedTools };
+
+    } catch (err) {
+      console.warn(`[McpSync] ⚠️ Failed to sync ${serverName}:`, err instanceof Error ? err.message : err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    } finally {
+      if (client) {
+          try {
+            // Give it a tiny moment for any trailing data to flush before killing the process
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await client.close();
+          } catch {}
+      }
+    }
+  }
+
   static async syncAllTools() {
     console.log('[McpSync] 🔄 Starting automatic tool synchronization...');
     const servers = await this.registry.listServers();
     const stats = { servers: 0, tools: 0, errors: 0 };
 
     for (const serverDef of servers) {
-      const serverName = serverDef.name;
-      let client: Client | null = null;
-
-      try {
-        const config = await this.registry.getServerConfig(serverName);
-
-        const transport = new StdioClientTransport({
-          command: config.command,
-          args: config.args,
-          env: { ...process.env, ...(config.env || {}) } as Record<string, string>,
-        });
-
-        transport.onerror = (err) => {
-          console.warn(`[McpSync] Transport error for ${serverName}:`, err.message);
-        };
-
-        client = new Client(
-          { name: "domoreai-sync", version: "1.0.0" },
-          { capabilities: {} }
-        );
-
-        // Set a timeout for connection to avoid hanging the boot process
-        const connectPromise = client.connect(transport);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 30000));
-        
-        await Promise.race([connectPromise, timeoutPromise]);
-
-        const { tools } = await client.listTools();
-        
-        for (const tool of tools) {
-          const safeName = `${serverName}_${tool.name}`.replace(/-/g, '_');
-          const tsDefinition = this.generateToolInterface(tool.name, tool.description || '', tool.inputSchema as unknown as McpToolSchema);
-
-          await prisma.tool.upsert({
-            where: { name: safeName },
-            update: {
-              description: `[MCP: ${serverName}] ${tool.description}`,
-              instruction: tsDefinition,
-              schema: JSON.stringify(tool.inputSchema),
-              isEnabled: true,
-              serverId: serverName
-            },
-            create: {
-              name: safeName,
-              description: `[MCP: ${serverName}] ${tool.description}`,
-              instruction: tsDefinition,
-              schema: JSON.stringify(tool.inputSchema),
-              isEnabled: true,
-              serverId: serverName
-            }
-          });
-          stats.tools++;
-        }
-        stats.servers++;
-        console.log(`[McpSync] ✅ Synced ${tools.length} tools from ${serverName}`);
-
-      } catch (err) {
-        console.warn(`[McpSync] ⚠️ Failed to sync ${serverName}:`, err instanceof Error ? err.message : err);
-        stats.errors++;
-      } finally {
-        if (client) {
-            try { 
-              // Give it a tiny moment for any trailing data to flush before killing the process
-              await new Promise(resolve => setTimeout(resolve, 100));
-              await client.close(); 
-            } catch {}
-        }
+      const result = await this.syncServer(serverDef.name);
+      if (result.success) {
+          stats.servers++;
+          stats.tools += result.count || 0;
+      } else {
+          stats.errors++;
       }
     }
     return stats;
