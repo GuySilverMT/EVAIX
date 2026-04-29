@@ -76,6 +76,9 @@ model Model {
   aiData             Json               @default("{}")
   isActive           Boolean            @default(true)
   costPer1k          Float?
+  isCalibrated       Boolean          @default(false)
+  trialsCode         Int              @default(0)
+  shadowScore        Float            @default(0)
   firstSeenAt        DateTime           @default(now())
   lastSeenAt         DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
