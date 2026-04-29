@@ -24,11 +24,12 @@ Last Updated: 2026-01-17
 
 ### 2. Model & Provider System
 **File:** `MODEL_PROVIDER_GUIDE.md`
+arbitrage we use only free ai use we manage rate limits and token limits by categorizing models into types we try to maximize free labour and consider wasted free intelligence a net loss. bandits intended to be evolving as we learn and data that is necessary but not available is sought out for more efficient selection
 
 **What it covers:**
 - NO hardcoded models principle
 - Dynamic model selection (LLMSelector)
-- Context ranges vs specific models
+- Context ranges vs specific models (more complex then just context range now bandit selection with context as a factor)
 - Provider infrastructure
 - Surveyor service overview
 
