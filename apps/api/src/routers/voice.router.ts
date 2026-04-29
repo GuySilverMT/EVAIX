@@ -176,7 +176,7 @@ export const voiceRouter = createTRPCRouter({
   listRoles: publicProcedure
     .query(async () => {
       const manager = getAIRoleManager();
-      return manager.getAllRoles();
+      return await manager.getAllRoles();
     }),
   
   getRole: publicProcedure
@@ -185,13 +185,13 @@ export const voiceRouter = createTRPCRouter({
     }))
     .query(async ({ input }) => {
       const manager = getAIRoleManager();
-      return manager.getRole(input.roleId);
+      return await manager.getRole(input.roleId);
     }),
   
   getActiveRole: publicProcedure
     .query(async () => {
       const manager = getAIRoleManager();
-      return manager.getActiveRole();
+      return await manager.getActiveRole();
     }),
   
   setActiveRole: publicProcedure
@@ -200,7 +200,7 @@ export const voiceRouter = createTRPCRouter({
     }))
     .mutation(async ({ input }) => {
       const manager = getAIRoleManager();
-      manager.setActiveRole(input.roleId);
+      await manager.setActiveRole(input.roleId);
       
       return { success: true };
     }),
@@ -233,7 +233,7 @@ export const voiceRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const manager = getAIRoleManager();
       
-      manager.registerRole({
+      await manager.registerRole({
         ...input,
         isActive: input.isActive ?? true,
       });
@@ -270,7 +270,7 @@ export const voiceRouter = createTRPCRouter({
     }))
     .mutation(async ({ input }) => {
       const manager = getAIRoleManager();
-      const updated = manager.updateRole(input.roleId, input.updates);
+      const updated = await manager.updateRole(input.roleId, input.updates);
       
       return updated;
     }),
@@ -281,7 +281,7 @@ export const voiceRouter = createTRPCRouter({
     }))
     .mutation(async ({ input }) => {
       const manager = getAIRoleManager();
-      manager.deleteRole(input.roleId);
+      await manager.deleteRole(input.roleId);
       
       return { success: true };
     }),

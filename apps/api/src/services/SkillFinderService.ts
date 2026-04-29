@@ -1,6 +1,10 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import yaml from 'js-yaml';
+import * as child_process from 'child_process';
+import { promisify } from 'util';
+
+const exec = promisify(child_process.exec);
 
 export interface SkillInfo {
     id: string;
@@ -87,6 +91,73 @@ export class SkillFinderService {
         } catch (error) {
             console.error(`Failed to get skill ${id}:`, error);
             return null;
+        }
+    }
+
+    async downloadAndInstallSkill(urlOrId: string, customSlug?: string): Promise<{ slug: string; destinationPath: string }> {
+        const generateSlugFromUrl = (url: string) => {
+            const parts = url.split('/');
+            let lastPart = parts[parts.length - 1];
+            if (lastPart.endsWith('.zip')) {
+                lastPart = lastPart.slice(0, -4);
+            }
+            return lastPart.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase() || 'unknown-skill';
+        };
+
+        const slug = customSlug || generateSlugFromUrl(urlOrId);
+        const destinationPath = path.join(this.skillsDir, slug);
+
+        try {
+            await fs.mkdir(destinationPath, { recursive: true });
+
+            const tmpZipPath = path.join(process.cwd(), `${slug}-temp.zip`);
+
+            // Download
+            const curlProcess = child_process.spawnSync('curl', ['-L', '-o', tmpZipPath, urlOrId]);
+            if (curlProcess.status !== 0) {
+                throw new Error(`Failed to download skill from ${urlOrId}: ${curlProcess.stderr?.toString()}`);
+            }
+
+            // Extract
+            const unzipProcess = child_process.spawnSync('unzip', ['-o', tmpZipPath, '-d', destinationPath]);
+            if (unzipProcess.status !== 0) {
+                throw new Error(`Failed to extract skill from ${tmpZipPath}: ${unzipProcess.stderr?.toString()}`);
+            }
+
+            // Clean up zip
+            await fs.unlink(tmpZipPath).catch(() => {});
+
+            // If the zip contains a single directory, move its contents up
+            const files = await fs.readdir(destinationPath);
+            if (files.length === 1) {
+                const singleItemPath = path.join(destinationPath, files[0]);
+                const stat = await fs.stat(singleItemPath);
+                if (stat.isDirectory()) {
+                    const innerFiles = await fs.readdir(singleItemPath);
+                    for (const innerFile of innerFiles) {
+                        await fs.rename(
+                            path.join(singleItemPath, innerFile),
+                            path.join(destinationPath, innerFile)
+                        );
+                    }
+                    await fs.rm(singleItemPath, { recursive: true, force: true });
+                }
+            }
+
+            // Install dependencies if package.json exists
+            const packageJsonPath = path.join(destinationPath, 'package.json');
+            try {
+                await fs.access(packageJsonPath);
+                console.log(`Installing dependencies for skill: ${slug}`);
+                child_process.execSync('npm install --production', { cwd: destinationPath, stdio: 'inherit' });
+            } catch (e) {
+                // No package.json, skip install
+            }
+
+            return { slug, destinationPath };
+        } catch (error) {
+            console.error(`Failed to download and install skill from ${urlOrId}:`, error);
+            throw error;
         }
     }
 }

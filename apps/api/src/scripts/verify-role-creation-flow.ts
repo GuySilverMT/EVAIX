@@ -1,5 +1,7 @@
 
-import { RoleFactoryService, RoleIntent, IdentityConfig, CortexConfig } from '../services/RoleFactoryService.js';
+import { RoleFactoryService, RoleIntent } from '../services/RoleFactoryService.js';
+import { IdentityConfig } from '../services/IdentityArchitect.js';
+import { CortexConfig } from '../services/CortexArchitect.js';
 import { ProviderManager } from '../services/ProviderManager.js';
 
 async function main() {

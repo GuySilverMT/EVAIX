@@ -104,6 +104,7 @@ model RoleVariant {
   contextConfig    Json             @default("{}")
   governanceConfig Json             @default("{}")
   isActive         Boolean          @default(true)
+  voiceSettings    Json?            @default("{}")
   createdAt        DateTime         @default(now())
   behaviorConfig   Json             @default("{}")
   role             Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -409,20 +410,6 @@ model VoiceEngine {
   updatedAt DateTime @updatedAt
 }
 
-model VoiceRole {
-  id               String   @id @default(cuid())
-  name             String
-  description      String
-  personality      String
-  systemPrompt     String
-  contextModifiers Json?
-  responseStyle    Json?
-  voiceSettings    Json?
-  isActive         Boolean  @default(true)
-  metadata         Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-}
 
 model Orchestration {
   id          String   @id @default(cuid())
@@ -465,7 +452,7 @@ model McpServer {
   command   String
   args      String[]
   env       Json?
-  isEnabled Boolean  @default(true)
+  status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

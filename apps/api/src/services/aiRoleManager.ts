@@ -5,6 +5,9 @@
  * Each role modifies LLM prompts/context/response style
  */
 
+import { prisma } from '../db.js';
+import { Prisma } from '@prisma/client';
+
 export interface AIRole {
   id: string;
   name: string;
@@ -28,7 +31,7 @@ export interface AIRole {
     pitch?: number;
   };
   isActive: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface RoleContext {
@@ -38,123 +41,297 @@ export interface RoleContext {
     content: string;
     timestamp: Date;
   }>;
-  sessionMetadata?: Record<string, any>;
+  sessionMetadata?: Record<string, unknown>;
+}
+
+/**
+ * Maps a Prisma Role + active RoleVariant to an AIRole
+ */
+function mapDBRoleToAIRole(dbRole: any): AIRole {
+  const activeVariant = dbRole.variants?.[0]; // Assuming we fetch with { where: { isActive: true }, take: 1 }
+
+  // Fallback defaults if no active variant
+  let cortexConfig: Record<string, any> = {};
+  let identityConfig: Record<string, any> = {};
+  let behaviorConfig: Record<string, any> = {};
+  let voiceSettings: Record<string, any> = {};
+  let isActive = true;
+
+  if (activeVariant) {
+    cortexConfig = (activeVariant.cortexConfig as Record<string, any>) || {};
+    identityConfig = (activeVariant.identityConfig as Record<string, any>) || {};
+    behaviorConfig = (activeVariant.behaviorConfig as Record<string, any>) || {};
+    voiceSettings = (activeVariant.voiceSettings as Record<string, any>) || {};
+    isActive = activeVariant.isActive;
+  }
+
+  return {
+    id: dbRole.id,
+    name: dbRole.name,
+    description: dbRole.description || '',
+    personality: identityConfig.personaName || 'assistant',
+    systemPrompt: identityConfig.systemPromptDraft || dbRole.basePrompt,
+    contextModifiers: {
+      temperature: cortexConfig.temperature,
+      topP: cortexConfig.topP,
+      maxTokens: cortexConfig.maxOutputTokens,
+      stopSequences: cortexConfig.stopSequences,
+    },
+    responseStyle: {
+      verbosity: behaviorConfig.verbosity,
+      tone: behaviorConfig.tone,
+      formatting: behaviorConfig.formatting,
+    },
+    voiceSettings: {
+      preferredVoice: voiceSettings.preferredVoice,
+      speed: voiceSettings.speed,
+      pitch: voiceSettings.pitch,
+    },
+    isActive: isActive,
+    metadata: dbRole.metadata as Record<string, unknown>,
+  };
 }
 
 /**
  * Manages AI roles and personalities for voice interactions
  */
 export class AIRoleManager {
-  private roles: Map<string, AIRole> = new Map();
-  private activeRoleId: string | null = null;
   
   /**
    * Register a new role
    */
-  registerRole(role: AIRole): void {
-    if (this.roles.has(role.id)) {
-      throw new Error(`Role with id ${role.id} already exists`);
+  async registerRole(role: AIRole): Promise<void> {
+    const existing = await prisma.role.findFirst({
+        where: { OR: [{ id: role.id }, { name: role.name }] }
+    });
+
+    if (existing) {
+        throw new Error(`Role with id ${role.id} or name ${role.name} already exists`);
     }
-    
-    this.roles.set(role.id, role);
-    
-    // Set as active if it's the first role
-    if (!this.activeRoleId) {
-      this.activeRoleId = role.id;
-    }
+
+    const createdRole = await prisma.role.create({
+        data: {
+            id: role.id,
+            name: role.name,
+            description: role.description,
+            basePrompt: role.systemPrompt,
+            metadata: (role.metadata as Prisma.JsonObject) || {},
+        }
+    });
+
+    await prisma.roleVariant.create({
+        data: {
+            roleId: createdRole.id,
+            isActive: role.isActive,
+            identityConfig: {
+                personaName: role.personality,
+                systemPromptDraft: role.systemPrompt
+            },
+            cortexConfig: {
+                temperature: role.contextModifiers?.temperature,
+                topP: role.contextModifiers?.topP,
+                maxOutputTokens: role.contextModifiers?.maxTokens,
+                stopSequences: role.contextModifiers?.stopSequences,
+            },
+            behaviorConfig: {
+                verbosity: role.responseStyle?.verbosity,
+                tone: role.responseStyle?.tone,
+                formatting: role.responseStyle?.formatting,
+            },
+            voiceSettings: role.voiceSettings || {}
+        }
+    });
   }
   
   /**
    * Update an existing role
    */
-  updateRole(roleId: string, updates: Partial<AIRole>): AIRole {
-    const role = this.roles.get(roleId);
+  async updateRole(roleId: string, updates: Partial<AIRole>): Promise<AIRole> {
+    const role = await prisma.role.findUnique({
+        where: { id: roleId },
+        include: { variants: { where: { isActive: true }, take: 1 } }
+    });
+
     if (!role) {
       throw new Error(`Role ${roleId} not found`);
     }
-    
-    const updatedRole = { ...role, ...updates, id: roleId };
-    this.roles.set(roleId, updatedRole);
-    
-    return updatedRole;
+
+    // Update Role base fields if present
+    const roleData: any = {};
+    if (updates.name !== undefined) roleData.name = updates.name;
+    if (updates.description !== undefined) roleData.description = updates.description;
+    if (updates.systemPrompt !== undefined) roleData.basePrompt = updates.systemPrompt;
+    if (updates.metadata !== undefined) roleData.metadata = updates.metadata;
+
+    if (Object.keys(roleData).length > 0) {
+        await prisma.role.update({
+            where: { id: roleId },
+            data: roleData
+        });
+    }
+
+    // Update Variant fields if we have a variant
+    if (role.variants.length > 0) {
+        const variantId = role.variants[0].id;
+        const variantData: any = {};
+
+        if (updates.isActive !== undefined) variantData.isActive = updates.isActive;
+
+        if (updates.personality !== undefined || updates.systemPrompt !== undefined) {
+            const idConfig = (role.variants[0].identityConfig as any) || {};
+            if (updates.personality !== undefined) idConfig.personaName = updates.personality;
+            if (updates.systemPrompt !== undefined) idConfig.systemPromptDraft = updates.systemPrompt;
+            variantData.identityConfig = idConfig;
+        }
+
+        if (updates.contextModifiers !== undefined) {
+             const cxConfig = (role.variants[0].cortexConfig as any) || {};
+             if (updates.contextModifiers.temperature !== undefined) cxConfig.temperature = updates.contextModifiers.temperature;
+             if (updates.contextModifiers.topP !== undefined) cxConfig.topP = updates.contextModifiers.topP;
+             if (updates.contextModifiers.maxTokens !== undefined) cxConfig.maxOutputTokens = updates.contextModifiers.maxTokens;
+             if (updates.contextModifiers.stopSequences !== undefined) cxConfig.stopSequences = updates.contextModifiers.stopSequences;
+             variantData.cortexConfig = cxConfig;
+        }
+
+        if (updates.responseStyle !== undefined) {
+            const bhConfig = (role.variants[0].behaviorConfig as any) || {};
+            if (updates.responseStyle.verbosity !== undefined) bhConfig.verbosity = updates.responseStyle.verbosity;
+            if (updates.responseStyle.tone !== undefined) bhConfig.tone = updates.responseStyle.tone;
+            if (updates.responseStyle.formatting !== undefined) bhConfig.formatting = updates.responseStyle.formatting;
+            variantData.behaviorConfig = bhConfig;
+        }
+
+        if (updates.voiceSettings !== undefined) {
+             const vConfig = (role.variants[0].voiceSettings as any) || {};
+             if (updates.voiceSettings.preferredVoice !== undefined) vConfig.preferredVoice = updates.voiceSettings.preferredVoice;
+             if (updates.voiceSettings.speed !== undefined) vConfig.speed = updates.voiceSettings.speed;
+             if (updates.voiceSettings.pitch !== undefined) vConfig.pitch = updates.voiceSettings.pitch;
+             variantData.voiceSettings = vConfig;
+        }
+
+        if (Object.keys(variantData).length > 0) {
+            await prisma.roleVariant.update({
+                where: { id: variantId },
+                data: variantData
+            });
+        }
+    }
+
+    const updatedRole = await prisma.role.findUnique({
+         where: { id: roleId },
+         include: { variants: { where: { isActive: true }, take: 1 } }
+    });
+
+    return mapDBRoleToAIRole(updatedRole);
   }
   
   /**
    * Delete a role
    */
-  deleteRole(roleId: string): void {
-    if (!this.roles.has(roleId)) {
+  async deleteRole(roleId: string): Promise<void> {
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
+    if (!role) {
       throw new Error(`Role ${roleId} not found`);
     }
     
-    this.roles.delete(roleId);
-    
-    // Clear active if this was the active role
-    if (this.activeRoleId === roleId) {
-      // Set to first available role or null
-      const firstRole = Array.from(this.roles.values())[0];
-      this.activeRoleId = firstRole ? firstRole.id : null;
-    }
+    await prisma.role.delete({ where: { id: roleId } });
   }
   
   /**
    * Get a role by ID
    */
-  getRole(roleId: string): AIRole | null {
-    return this.roles.get(roleId) || null;
+  async getRole(roleId: string): Promise<AIRole | null> {
+    const dbRole = await prisma.role.findUnique({
+        where: { id: roleId },
+        include: { variants: { where: { isActive: true }, take: 1 } }
+    });
+
+    if (!dbRole) return null;
+    return mapDBRoleToAIRole(dbRole);
   }
   
   /**
    * Get all roles
    */
-  getAllRoles(): AIRole[] {
-    return Array.from(this.roles.values());
+  async getAllRoles(): Promise<AIRole[]> {
+    const dbRoles = await prisma.role.findMany({
+        include: { variants: { where: { isActive: true }, take: 1 } }
+    });
+    return dbRoles.map(mapDBRoleToAIRole);
   }
   
   /**
    * Get active roles
    */
-  getActiveRoles(): AIRole[] {
-    return Array.from(this.roles.values()).filter(role => role.isActive);
+  async getActiveRoles(): Promise<AIRole[]> {
+    const dbRoles = await prisma.role.findMany({
+        where: {
+            variants: {
+                some: { isActive: true }
+            }
+        },
+        include: { variants: { where: { isActive: true }, take: 1 } }
+    });
+    return dbRoles.map(mapDBRoleToAIRole);
   }
   
   /**
    * Set active role
    */
-  setActiveRole(roleId: string): void {
-    const role = this.roles.get(roleId);
+  async setActiveRole(roleId: string): Promise<void> {
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
     if (!role) {
       throw new Error(`Role ${roleId} not found`);
     }
     
-    this.activeRoleId = roleId;
+    // Deactivate all roles variants
+    await prisma.roleVariant.updateMany({
+        data: { isActive: false }
+    });
+
+    // Activate the first variant for this role, or create one
+    const variants = await prisma.roleVariant.findMany({
+        where: { roleId }
+    });
+
+    if (variants.length > 0) {
+        await prisma.roleVariant.update({
+            where: { id: variants[0].id },
+            data: { isActive: true }
+        });
+    } else {
+         await prisma.roleVariant.create({
+            data: {
+                roleId: role.id,
+                isActive: true
+            }
+        });
+    }
   }
   
   /**
    * Get the active role
    */
-  getActiveRole(): AIRole | null {
-    if (!this.activeRoleId) {
-      return null;
-    }
-    
-    return this.roles.get(this.activeRoleId) || null;
+  async getActiveRole(): Promise<AIRole | null> {
+    const activeRoles = await this.getActiveRoles();
+    if (activeRoles.length === 0) return null;
+    return activeRoles[0]; // Assuming only one active role across the system, or just return first
   }
   
   /**
    * Build LLM context with role personality
    */
-  buildLLMContext(
+  async buildLLMContext(
     userInput: string,
     roleId?: string,
     conversationHistory?: RoleContext['conversationHistory']
-  ): {
+  ): Promise<{
     systemPrompt: string;
     messages: Array<{ role: string; content: string }>;
-    settings: any;
-  } {
+    settings: Record<string, unknown>;
+  }> {
     // Get role
-    const role = roleId ? this.getRole(roleId) : this.getActiveRole();
+    const role = roleId ? await this.getRole(roleId) : await this.getActiveRole();
     
     if (!role) {
       throw new Error('No role available');
@@ -180,7 +357,7 @@ export class AIRoleManager {
     });
     
     // Build settings with context modifiers
-    const settings = {
+    const settings: Record<string, unknown> = {
       temperature: role.contextModifiers?.temperature,
       topP: role.contextModifiers?.topP,
       maxTokens: role.contextModifiers?.maxTokens,
@@ -197,8 +374,8 @@ export class AIRoleManager {
   /**
    * Format response according to role style
    */
-  formatResponse(response: string, roleId?: string): string {
-    const role = roleId ? this.getRole(roleId) : this.getActiveRole();
+  async formatResponse(response: string, roleId?: string): Promise<string> {
+    const role = roleId ? await this.getRole(roleId) : await this.getActiveRole();
     
     if (!role || !role.responseStyle) {
       return response;
@@ -222,8 +399,8 @@ export class AIRoleManager {
   /**
    * Get voice settings for a role
    */
-  getVoiceSettings(roleId?: string): AIRole['voiceSettings'] | undefined {
-    const role = roleId ? this.getRole(roleId) : this.getActiveRole();
+  async getVoiceSettings(roleId?: string): Promise<AIRole['voiceSettings'] | undefined> {
+    const role = roleId ? await this.getRole(roleId) : await this.getActiveRole();
     return role?.voiceSettings;
   }
 }
@@ -237,16 +414,6 @@ let managerInstance: AIRoleManager | null = null;
 export function getAIRoleManager(): AIRoleManager {
   if (!managerInstance) {
     managerInstance = new AIRoleManager();
-    
-    // Register default roles - REMOVED: Rely on database instead
-    /*
-    managerInstance.registerRole({
-      id: 'friendly_helper',
-      name: 'Friendly Helper',
-      ...
-    });
-    */
-
   }
   
   return managerInstance;

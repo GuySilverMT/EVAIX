@@ -139,6 +139,12 @@ export async function ingestAgentLibrary(
         });
 
         if (existing) {
+          const existingMetadata = (existing.metadata as Record<string, any>) || {};
+          if (existingMetadata.isEvolved === true || existingMetadata.sourceOfTruth === 'DB') {
+             console.log(`⏭️ Skipping ingestion for evolved role: ${agentData.name}`);
+             continue; // Skip the destructive update
+          }
+
           await prismaClient.role.update({
             where: { id: existing.id },
             data: {
@@ -151,6 +157,7 @@ export async function ingestAgentLibrary(
               categoryId: category.id,
               metadata: {
                 needsReasoning: needsReasoning,
+                sourceOfTruth: 'MARKDOWN',
               } as Prisma.JsonObject,
             },
           });
@@ -219,7 +226,8 @@ async function getTopFiles(dirPath: string, limit: number = 20): Promise<string[
             .filter(e => e.isFile() && !e.name.startsWith('.'))
             .map(e => e.name)
             .slice(0, limit);
-    } catch {
+    } catch (err) {
+        console.warn(`[RoleIngestionService] Failed to read dir for top files: ${dirPath}`, err);
         return [];
     }
 }

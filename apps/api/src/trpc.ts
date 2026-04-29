@@ -10,8 +10,7 @@ import { vfsSessionService } from './services/vfsSession.service.js';
 export const createTRPCContext = () => {
   return {
     prisma,
-    // ✅ FIX: explicit null instead of 'as any'
-    session: null, 
+    session: null,
     vfsSession: vfsSessionService,
     auth: undefined as { userId: string } | undefined,
   };
