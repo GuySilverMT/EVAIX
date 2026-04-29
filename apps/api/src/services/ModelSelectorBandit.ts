@@ -32,10 +32,29 @@ export class ModelSelectorBandit {
     const veterans = models.filter((m: Model) => (m[trialsField] as number) >= this.CALIBRATION_THRESHOLD);
     const rookies = models.filter((m: Model) => (m[trialsField] as number) < this.CALIBRATION_THRESHOLD);
 
-    // Sort rookies by fewest trials first
-    rookies.sort((a: Model, b: Model) => (a[trialsField] as number) - (b[trialsField] as number));
-    // Sort veterans by highest score first
-    veterans.sort((a: Model, b: Model) => (b[scoreField] as number) - (a[scoreField] as number));
+    // Helper to score billing risk (lower is better for sorting priority)
+    const getRiskScore = (riskLevel: string) => {
+      switch (riskLevel) {
+        case 'ZERO_RISK': return 0;
+        case 'PROMO_BURN': return 1;
+        case 'CC_ON_FILE': return 2;
+        default: return 3;
+      }
+    };
+
+    // Sort rookies by lowest risk first, then by fewest trials
+    rookies.sort((a: any, b: any) => {
+      const riskDiff = getRiskScore(a.provider?.billingRiskLevel) - getRiskScore(b.provider?.billingRiskLevel);
+      if (riskDiff !== 0) return riskDiff;
+      return (a[trialsField] as number) - (b[trialsField] as number);
+    });
+
+    // Sort veterans by lowest risk first, then by highest score
+    veterans.sort((a: any, b: any) => {
+      const riskDiff = getRiskScore(a.provider?.billingRiskLevel) - getRiskScore(b.provider?.billingRiskLevel);
+      if (riskDiff !== 0) return riskDiff;
+      return (b[scoreField] as number) - (a[scoreField] as number);
+    });
 
     if (count === 1) {
       // Epsilon-Greedy Logic: 20% chance for a rookie, 80% for a veteran

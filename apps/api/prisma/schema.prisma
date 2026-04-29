@@ -29,7 +29,6 @@ model ProviderConfig {
   pricingUrl          String?
   promoMonthlyLimit   Float?
   providerClass       ProviderClass    @default(FOUNDATIONAL)
-  providerTier        String           @default("FREE_UNLIMITED")
   serviceCategories   String[]         @default([])
   sessionValid        Boolean?         @default(false)
   status              String           @default("ACTIVE")
