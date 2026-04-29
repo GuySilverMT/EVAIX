@@ -586,10 +586,7 @@ Please create a clear, structured system prompt that:
 Return ONLY the system prompt, no additional commentary.`;
 
       try {
-        // const { createVolcanoAgent } = await import('../services/AgentFactory.js');
-        // DISABLED for now
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await
-        const createVolcanoAgent = async (_: any) => ({ generate: async (__prompt: any) => "Mocked Response" });
+        const { createVolcanoAgent } = await import('../services/VolcanoAgent.js');
 
         const agent = await createVolcanoAgent({
           roleId: promptImproverRole.id,
@@ -603,7 +600,8 @@ Return ONLY the system prompt, no additional commentary.`;
         const fullRequest = `${promptImproverRole.basePrompt}\n\n---\n\n${request}`;
 
         console.log('[PromptGen] 🤖 Calling LLM...');
-        const generatedPrompt = await agent.generate(fullRequest);
+        const response = await agent.generate(fullRequest);
+        const generatedPrompt = typeof response === 'string' ? response : response.text;
         console.log('[PromptGen] ✅ AI-generated prompt created successfully');
 
         return generatedPrompt;
