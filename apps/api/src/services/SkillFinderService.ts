@@ -149,7 +149,7 @@ export class SkillFinderService {
             try {
                 await fs.access(packageJsonPath);
                 console.log(`Installing dependencies for skill: ${slug}`);
-                child_process.execSync('npm install --production', { cwd: destinationPath, stdio: 'inherit' });
+                child_process.spawnSync('npm', ['install', '--production'], { cwd: destinationPath, stdio: 'inherit' });
             } catch (e) {
                 // No package.json, skip install
             }

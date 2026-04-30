@@ -382,6 +382,76 @@ process.stdout.write(JSON.stringify(__result));
 
 
     /**
+     * JIT Role Assembly
+     */
+    async createDynamicRole(jobDescription: string, mcpServerName: string, syncedTools: { name: string; description: string }[]) {
+        const toolNames = syncedTools.map(t => t.name).join(', ');
+        const toolDescriptions = syncedTools.map(t => `- ${t.name}: ${t.description}`).join('\n');
+
+        const basePrompt = `You are a dynamic specialist role assembled just-in-time for the following job:
+${jobDescription}
+
+You have access to the following tools from the ${mcpServerName} MCP server:
+${toolDescriptions}
+
+Always use the prefixed tool names (${toolNames}) when calling these tools.`;
+
+        let cat = await prisma.roleCategory.findUnique({ where: { name: 'Skills' } });
+        if (!cat) {
+            cat = await prisma.roleCategory.create({ data: { name: 'Skills', order: 99 } });
+        }
+
+        const roleName = `Dynamic Specialist (${mcpServerName})`;
+
+        const role = await prisma.role.create({
+            data: {
+                name: roleName,
+                description: `A dynamic role equipped with tools from ${mcpServerName} to handle: ${jobDescription}`,
+                categoryId: cat.id,
+                basePrompt: basePrompt,
+            }
+        });
+
+        // Ensure the tools are linked to the role via RoleTool relation
+        // First get the actual tool IDs from the db based on the synced tool names
+        const dbTools = await prisma.tool.findMany({
+            where: {
+                name: { in: syncedTools.map(t => t.name) }
+            }
+        });
+
+        for (const dbTool of dbTools) {
+            await prisma.roleTool.create({
+                data: {
+                    roleId: role.id,
+                    toolId: dbTool.id,
+                }
+            });
+        }
+
+        await this.smartSeedVariant(role, {
+            identity: {
+                personaName: 'Specialist',
+                style: 'PROFESSIONAL_CONCISE',
+                systemPromptDraft: basePrompt,
+                thinkingProcess: 'CHAIN_OF_THOUGHT',
+                reflectionEnabled: true
+            },
+            cortex: {
+                executionMode: 'JSON_STRICT',
+                contextRange: { min: 32000, max: 128000 },
+                maxOutputTokens: 2048,
+                capabilities: ['reasoning'],
+                tools: dbTools.map(t => t.name)
+            },
+            context: { strategy: ['EXPLORATORY'], permissions: ['ALL'] },
+            governance: { rules: [], assessmentStrategy: ['LINT_ONLY'], enforcementLevel: 'LOW' }
+        });
+
+        return role;
+    }
+
+    /**
      * Seeds the "Role Architect" agent into the DB if missing.
      * This allows the user to chat with the factory.
      */
