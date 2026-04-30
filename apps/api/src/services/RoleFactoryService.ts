@@ -1,3 +1,8 @@
+import { identityArchitect, getIdentityFallback, IdentityConfig } from './IdentityArchitect.js';
+import { cortexArchitect, getCortexFallback, CortexConfig } from './CortexArchitect.js';
+import { contextArchitect, getContextFallback, ContextConfig } from './ContextArchitect.js';
+import { governanceArchitect, getGovernanceFallback, GovernanceConfig } from './GovernanceArchitect.js';
+import { executeJsonMode } from './architectHelpers.js';
 import { RoleVariant, Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { ProviderManager } from './ProviderManager.js';
@@ -9,6 +14,7 @@ import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { COORDINATOR_PROTOCOL_SNIPPET } from '../prompts/CoordinatorProtocol.js';
+import * as Constants from './roleFactoryConstants.js';
 
 const execAsync = promisify(exec);
 
@@ -33,38 +39,6 @@ export interface RoleIntent {
     capabilities?: string[]; // e.g. ['vision', 'reasoning', 'tts', 'embedding']
 }
 
-export interface IdentityConfig {
-    personaName: string;
-    systemPromptDraft: string;
-    style: string; // [FLEXIBLE] Allow legacy styles like 'SOCRATIC'
-    thinkingProcess: string; // [FLEXIBLE] Allow legacy processes
-    reflectionEnabled: boolean;
-    environmentAnchors?: {
-        runtime: string;
-        codingStandard: string;
-        forbidden: string[];
-    };
-}
-
-
-export interface CortexConfig {
-    executionMode: AgentExecutionMode;
-    contextRange: { min: number; max: number };
-    maxOutputTokens?: number; // Role-specific output length requirement (default: 1024 for JSON/tools, higher for planning/writing)
-    capabilities: string[];
-    tools: string[]; // List of tool names
-}
-
-export interface ContextConfig {
-    strategy: string[]; // Non-exclusive: EXPLORATORY, VECTOR_SEARCH, LOCUS_FOCUS
-    permissions: string[];
-}
-
-export interface GovernanceConfig {
-    rules: string[];
-    assessmentStrategy: string[]; // Non-exclusive: LINT_ONLY, VISUAL_CHECK, STRICT_TEST_PASS, JUDGE, LIBRARIAN
-    enforcementLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-}
 
 
 /**
@@ -82,53 +56,12 @@ export class RoleFactoryService {
      * Executes an architect stage using a structured JSON strategy.
      * This is much more robust than "Code Mode" for configuration data.
      */
-    private async executeJsonMode<T>(modelId: string, prompt: string, schemaName: string): Promise<T> {
-        const { provider, apiModelId } = await this.resolveProvider(modelId);
-
-        console.log(`[RoleFactory] 🤖 ${schemaName} Architect is thinking (JSON Mode)...`);
-
-        try {
-            const response = await provider.generateCompletion({
-                modelId: apiModelId,
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are the ${schemaName} Architect. 
-Return ONLY a valid JSON object. 
-No markdown code blocks unless requested. 
-Ensure the output is parseable by JSON.parse().`
-                    },
-                    { role: 'user', content: prompt }
-                ],
-                // responseFormat: { type: 'json_object' } // Some providers support this
-            });
-
-            // Robust JSON extraction
-            let jsonStr = response.text.trim();
-            // Allow ```json, ```JSON, or just ```
-            const blockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/i);
-            if (blockMatch) {
-                jsonStr = blockMatch[1];
-            } else {
-                const firstBrace = jsonStr.indexOf('{');
-                const lastBrace = jsonStr.lastIndexOf('}');
-                if (firstBrace !== -1 && lastBrace !== -1) {
-                    jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
-                }
-            }
-
-            return JSON.parse(jsonStr) as T;
-        } catch (e: unknown) {
-            console.error(`[RoleFactory] ❌ JSON Execution Failed for ${schemaName}:`, e instanceof Error ? e.message : String(e));
-            throw e;
-        }
-    }
 
     /**
      * Master method for code execution (Legacy/Hybrid support)
      */
-    private async executeCodeMode<T>(code: string, timeoutInput: any = 30000): Promise<T> {
-        const timeout = typeof timeoutInput === 'number' ? timeoutInput : (Number(timeoutInput) || 30000);
+    private async executeCodeMode<T>(code: string, timeoutInput: unknown = Constants.TIMEOUT_DEFAULT): Promise<T> {
+        const timeout = typeof timeoutInput === 'number' ? timeoutInput : (Number(timeoutInput) || Constants.TIMEOUT_DEFAULT);
         // Robust extraction: try to find a block or at least the roleBuilder call
         let cleanCode = code;
 
@@ -214,7 +147,7 @@ process.stdout.write(JSON.stringify(__result));
             operation: (modelId: string) => Promise<T>,
             fallbackGenerator: () => T
         ): Promise<T> => {
-            const MAX_RETRIES = 2;
+            const MAX_RETRIES = Constants.MAX_RETRIES;
             let attempts = 0;
 
             while (attempts <= MAX_RETRIES) {
@@ -248,29 +181,29 @@ process.stdout.write(JSON.stringify(__result));
         // 1. Identity Architect
         const identityConfig = await executeWithResilience<IdentityConfig>(
             "Identity",
-            (mid) => this.identityArchitect(mid, intent),
-            () => this.getIdentityFallback(intent)
+            (mid) => identityArchitect(mid, intent),
+            () => getIdentityFallback(intent)
         );
 
         // 2. Cortex Architect
         const cortexConfig = await executeWithResilience<CortexConfig>(
             "Cortex",
-            (mid) => this.cortexArchitect(mid, intent),
-            () => this.getCortexFallback(intent)
+            (mid) => cortexArchitect(mid, intent),
+            () => getCortexFallback(intent)
         );
 
         // 3. Context Architect
         const contextConfig = await executeWithResilience<ContextConfig>(
             "Context",
-            (mid) => this.contextArchitect(mid, intent),
-            () => this.getContextFallback(intent)
+            (mid) => contextArchitect(mid, intent),
+            () => getContextFallback(intent)
         );
 
         // 4. Governance Architect
         const governanceConfig = await executeWithResilience<GovernanceConfig>(
             "Governance",
-            (mid) => this.governanceArchitect(mid, intent),
-            () => this.getGovernanceFallback(intent)
+            (mid) => governanceArchitect(mid, intent),
+            () => getGovernanceFallback(intent)
         );
 
         // 5. Tool Architect
@@ -293,6 +226,18 @@ process.stdout.write(JSON.stringify(__result));
             }
         });
 
+        // Ensure Role has isEvolved flag
+        const currentRole = await prisma.role.findUnique({ where: { id: roleId } });
+        if (currentRole) {
+             const meta = (currentRole.metadata as Record<string, unknown>) || {};
+             meta.isEvolved = true;
+             meta.sourceOfTruth = 'DB';
+             await prisma.role.update({
+                  where: { id: roleId },
+                  data: { metadata: meta as Prisma.JsonObject }
+             });
+        }
+
         console.log(`[RoleFactory] ✅ Born: Variant ${variant.id}`);
         return variant;
     }
@@ -307,7 +252,7 @@ process.stdout.write(JSON.stringify(__result));
             metadata: {
                 requirements: {
                     capabilities: ['reasoning', 'json'],
-                    minContext: 16000
+                    minContext: Constants.IDENTITY_MAX_TOKENS
                 }
             }
         };
@@ -315,7 +260,7 @@ process.stdout.write(JSON.stringify(__result));
         try {
             // Ask the Arbitrage Router to pick the best model
             // PASS EXCLUSIONS and estimate context needs (Architect tasks are heavy)
-            const bestModelId = await resolveModelForRole(architectRequirements, 16000, excludedModelIds);
+            const bestModelId = await resolveModelForRole(architectRequirements, Constants.IDENTITY_MAX_TOKENS, excludedModelIds);
 
 
             // Get the provider details for this model
@@ -399,186 +344,22 @@ process.stdout.write(JSON.stringify(__result));
     /**
      * STAGE 1: IDENTITY
      */
-    async identityArchitect(modelId: string, intent: RoleIntent): Promise<IdentityConfig> {
-        const prompt = `
-        Design the core persona for a new AI Role.
-        Input Intent:
-        - Name: ${intent.name}
-        - Description: ${intent.description}
-        - Domain: ${intent.domain}
-        - Complexity: ${intent.complexity}
 
-        ## 🛡️ ENVIRONMENT ANCHORS (MANDATORY):
-        ALL roles MUST operate within these constraints:
-        - Runtime: Node.js 22+ / TypeScript 5.7
-        - Coding Standard: Functional, Type-Safe, 9-line function rule
-        - Execution Mode: TypeScript ONLY (async/await, system.* tools)
-        
-        ## 🚫 FORBIDDEN:
-        - Python code (def, import os, pip, requirements.txt)
-        - Manual thought logs (Thought:, Action:, Observation:)
-        - Any non-TypeScript/JavaScript syntax
-        
-        ## ✅ REQUIRED:
-        - Use TypeScript syntax exclusively
-        - Leverage async/await for all operations
-        - Call tools via system.* namespace
-        - Follow functional programming patterns
-
-        ## JSON Schema:
-        {
-            "personaName": "String",
-            "systemPromptDraft": "String (Detailed system instructions INCLUDING environment anchors)",
-            "style": "PROFESSIONAL_CONCISE" | "FRIENDLY_HELPFUL" | "ACADEMIC_FORMAL" | "CREATIVE",
-            "thinkingProcess": "SOLO" | "CHAIN_OF_THOUGHT" | "CRITIC_LOOP",
-            "reflectionEnabled": boolean,
-            "environmentAnchors": {
-                "runtime": "Node.js 22+ / TypeScript 5.7",
-                "codingStandard": "Functional, Type-Safe, 9-line rules",
-                "forbidden": ["python", "pip", "requirements.txt", "manual thought logs"]
-            }
-        }
-        `;
-        // Pass through errors to resilience layer
-        return await this.executeJsonMode<IdentityConfig>(modelId, prompt, "Identity");
-    }
-
-    private getIdentityFallback(intent: RoleIntent): IdentityConfig {
-        return {
-            personaName: intent.name,
-            systemPromptDraft: `You are ${intent.name}. ${intent.description}. 
-                
-                ENVIRONMENT: Node.js 22+ / TypeScript 5.7
-                FORBIDDEN: Python, pip, requirements.txt, manual thought logs
-                REQUIRED: Use TypeScript syntax with async/await and system.* tools`,
-            style: 'PROFESSIONAL_CONCISE',
-            thinkingProcess: intent.complexity === 'HIGH' ? 'CHAIN_OF_THOUGHT' : 'SOLO',
-            reflectionEnabled: intent.complexity === 'HIGH',
-            environmentAnchors: {
-                runtime: "Node.js 22+ / TypeScript 5.7",
-                codingStandard: "Functional, Type-Safe, 9-line rules",
-                forbidden: ["python", "pip", "requirements.txt", "manual thought logs"]
-            }
-        };
-    }
 
     /**
      * MODULE B: Cortex (The Brain)
      */
-    async cortexArchitect(modelId: string, intent: RoleIntent): Promise<CortexConfig> {
-        const isHealthProbe = intent.name === 'System Health Probe';
-        const isAuditor = intent.name === 'MCP Capability Auditor';
 
-        const prompt = `
-        Determine the cognitive load and execution strategy for this agent.
-        Intent:
-        - Name: ${intent.name}
-        - Complexity: ${intent.complexity}
-        - Domain: ${intent.domain}
-
-        ## DNA SETTINGS: 
-        Determine if this agent should use:
-        1. JSON_STRICT: Best for Architects/Managers (Data input/output).
-        2. CODE_INTERPRETER: Best for Workers/Engineers (Writing/Running code).
-        3. HYBRID_AUTO: Best for generalists who need to pick the best tool.
-
-        ${isHealthProbe ? 'NOTE: For System Health Probes, HYBRID_AUTO is MANDATORY.' : ''}
-        ${isAuditor ? 'NOTE: For Capability Auditors, HYBRID_AUTO is MANDATORY.' : ''}
-
-        ## OUTPUT LENGTH REQUIREMENTS:
-        Set maxOutputTokens based on role type:
-        - **1024**: JSON responses, tool calls, coordinators, managers (DEFAULT)
-        - **2048**: Code generation, refactoring, moderate documentation
-        - **4096**: Long-form planning, architectural documents, detailed analysis
-        - **8192**: Comprehensive documentation, multi-file generation, extensive reports
-
-        ## JSON Schema:
-        {
-            "executionMode": "JSON_STRICT" | "CODE_INTERPRETER" | "HYBRID_AUTO",
-            "contextRange": { "min": number, "max": number }, // Standard Min: 4000. Orchestrators: 32000.
-            "maxOutputTokens": number, // Set based on role's output needs (see above)
-            "capabilities": string[], // ["vision", "reasoning", "tts", "embedding"]
-            "tools": string[] // ["filesystem", "terminal", "browser", "search_codebase"]
-        }
-        `;
-        const config = await this.executeJsonMode<CortexConfig>(modelId, prompt, "Cortex");
-
-        if (isHealthProbe || isAuditor) {
-            config.executionMode = 'HYBRID_AUTO';
-        }
-
-        return config;
-    }
-
-    private getCortexFallback(intent: RoleIntent): CortexConfig {
-        return {
-            executionMode: intent.complexity === 'HIGH' ? 'HYBRID_AUTO' : 'JSON_STRICT',
-            contextRange: { min: 4000, max: 128000 },
-            maxOutputTokens: intent.complexity === 'HIGH' ? 2048 : 1024, // High complexity roles may need more output
-            capabilities: intent.capabilities || [],
-            tools: ['filesystem', 'terminal']
-        };
-    }
 
     /**
      * MODULE C: Context (The Memory)
      */
-    async contextArchitect(modelId: string, intent: RoleIntent): Promise<ContextConfig> {
-        const prompt = `
-        Determine how this agent accesses information.
-        Intent Domain: ${intent.domain}
 
-        ## JSON Schema:
-        {
-            "strategy": ["EXPLORATORY" | "VECTOR_SEARCH" | "LOCUS_FOCUS"],
-            "permissions": ["/src", "/docs", "ALL"]
-        }
-        `;
-        return await this.executeJsonMode<ContextConfig>(modelId, prompt, "Context");
-    }
-
-    private getContextFallback(intent: RoleIntent): ContextConfig {
-        return { strategy: ['EXPLORATORY'], permissions: ['ALL'] };
-    }
 
     /**
      * MODULE D: Governance (The Law)
      */
-    async governanceArchitect(modelId: string, intent: RoleIntent): Promise<GovernanceConfig> {
-        const isHealthProbe = intent.name === 'System Health Probe';
-        const isAuditor = intent.name === 'MCP Capability Auditor';
 
-        const prompt = `
-        Set the rules and assessment criteria.
-        Intent: ${intent.name} in ${intent.domain} (${intent.complexity})
-
-        ## JSON Schema:
-        {
-            "rules": string[],
-            "assessmentStrategy": ["LINT_ONLY" | "VISUAL_CHECK" | "STRICT_TEST_PASS" | "JUDGE"],
-            "enforcementLevel": "LOW" | "MEDIUM" | "HIGH"
-        }
-        `;
-        const config = await this.executeJsonMode<GovernanceConfig>(modelId, prompt, "Governance");
-
-        if (isHealthProbe) {
-            config.assessmentStrategy = ["STRICT_TEST_PASS"];
-        }
-
-        if (isAuditor) {
-            config.assessmentStrategy = ["JUDGE"]; // Auditor needs to judge logic
-        }
-
-        return config;
-    }
-
-    private getGovernanceFallback(intent: RoleIntent): GovernanceConfig {
-        return {
-            rules: ["Verify work before submitting."],
-            assessmentStrategy: ["VISUAL_CHECK"],
-            enforcementLevel: "MEDIUM"
-        };
-    }
 
     /**
      * MODULE E: Tools (The Hands)
@@ -595,7 +376,7 @@ process.stdout.write(JSON.stringify(__result));
             "tools": string[]
         }
         `;
-        const res = await this.executeJsonMode<{ tools: string[] }>(modelId, prompt, "Tool");
+        const res = await executeJsonMode<{ tools: string[] }>(modelId, prompt, "Tool");
         return res.tools || ['filesystem', 'terminal'];
     }
 
@@ -639,8 +420,8 @@ process.stdout.write(JSON.stringify(__result));
             },
             cortex: {
                 executionMode: 'JSON_STRICT',
-                contextRange: { min: 32000, max: 128000 },
-                maxOutputTokens: 2048,
+                contextRange: { min: Constants.CORTEX_MIN_CONTEXT_DEFAULT, max: Constants.CORTEX_MAX_CONTEXT_DEFAULT },
+                maxOutputTokens: Constants.CORTEX_MAX_OUTPUT_TOKENS_DEFAULT,
                 capabilities: ['reasoning'],
                 tools: ['role_registry_list', 'role_variant_evolve', 'role_config_patch']
             },
@@ -686,8 +467,8 @@ process.stdout.write(JSON.stringify(__result));
             },
             cortex: {
                 executionMode: 'JSON_STRICT',
-                contextRange: { min: 32000, max: 128000 },
-                maxOutputTokens: 2048,
+                contextRange: { min: Constants.CORTEX_MIN_CONTEXT_DEFAULT, max: Constants.CORTEX_MAX_CONTEXT_DEFAULT },
+                maxOutputTokens: Constants.CORTEX_MAX_OUTPUT_TOKENS_DEFAULT,
                 capabilities: ['reasoning'],
                 tools: ["role_registry_list", "role_variant_evolve", "volcano.execute_task"]
             },
@@ -728,8 +509,8 @@ process.stdout.write(JSON.stringify(__result));
             },
             cortex: {
                 executionMode: 'CODE_INTERPRETER',
-                contextRange: { min: 4000, max: 32000 },
-                maxOutputTokens: 1024,
+                contextRange: { min: Constants.LIAISON_MIN_CONTEXT, max: Constants.LIAISON_MAX_CONTEXT },
+                maxOutputTokens: Constants.LIAISON_MAX_OUTPUT,
                 capabilities: ['coding'],
                 tools: ["terminal_execute", "system.context_fetch"]
             },
@@ -782,7 +563,7 @@ process.stdout.write(JSON.stringify(__result));
         const defaultMin = (defaultConfig.cortex as any).contextRange?.min;
 
         // Known outdated defaults
-        const OUTDATED_DEFAULTS = [8192, 4096];
+        const OUTDATED_DEFAULTS = Constants.OUTDATED_CONTEXT_DEFAULTS;
 
         if (OUTDATED_DEFAULTS.includes(currentMin)) {
             if (defaultMin && defaultMin !== currentMin) {

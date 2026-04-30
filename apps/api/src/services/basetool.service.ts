@@ -63,7 +63,6 @@ const MODEL_DELEGATES: Record<string, keyof typeof prisma> = {
   'CustomButton': 'customButton',
   'ComponentRole': 'componentRole',
   'VoiceEngine': 'voiceEngine',
-  'VoiceRole': 'voiceRole',
 };
 
 export class BasetoolService {
