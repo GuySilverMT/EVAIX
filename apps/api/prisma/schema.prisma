@@ -80,6 +80,15 @@ model Model {
   lastSeenAt         DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   underlyingProvider String?
+  scoreJson          Int                @default(0)
+  scoreCode          Int                @default(0)
+  scorePlan          Int                @default(0)
+  scoreTool          Int                @default(0)
+  trialsJson         Int                @default(0)
+  trialsCode         Int                @default(0)
+  trialsPlan         Int                @default(0)
+  trialsTool         Int                @default(0)
+  isCalibrated       Boolean            @default(false)
   provider           ProviderConfig     @relation(fields: [providerId], references: [id], onDelete: Cascade)
   modelUsage         ModelUsage[]
   knowledgeVectors   KnowledgeVector[]
