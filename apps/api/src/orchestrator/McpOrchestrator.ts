@@ -200,6 +200,29 @@ export class McpOrchestrator implements IMcpOrchestrator {
     await Promise.all(shutdownPromises);
     this.activeServers.clear();
   }
+
+  /**
+   * Sub-agent delegation logic
+   */
+  async delegateTask(targetRoleId: string, taskContext: string, currentRoleId: string) {
+    if (targetRoleId === currentRoleId) {
+      throw new Error("Anti-Self-Recursion: Orchestrator cannot delegate task to its own exact Role ID.");
+    }
+
+    const { prisma } = await import('../db.js');
+    const role = await prisma.role.findUnique({ where: { id: targetRoleId } });
+    if (!role) {
+      // automatically inject a call to the hire_specialist native tool
+      return { tool: 'hire_specialist', args: { roleId: targetRoleId, context: taskContext } };
+    }
+
+    // Replace hardcoded model selection
+    const { getBestModel } = await import('../services/modelManager.service.js');
+    const selectedModels = [await getBestModel(), await getBestModel()]; // Mock ensemble selection since ModelSelectorBandit doesn't exist
+
+    return { role, models: selectedModels };
+  }
+
 }
 
 export const mcpOrchestrator = new McpOrchestrator();
