@@ -373,7 +373,7 @@ export async function selectBestModel(requirements: RoleRequirement, excludedMod
 }
 
 export async function resolveModelForRole(role: any, estimatedInputTokens?: number, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<string> {
-  const metadata = (role.metadata || {}) as any;
+  const metadata = (role.metadata || {});
   const requirements = metadata.requirements || {};
 
   const roleReq: RoleRequirement = {

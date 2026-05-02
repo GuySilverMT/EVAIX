@@ -56,16 +56,16 @@ model ProviderModel {
   @@index([providerId])
 }
 
-model Workspace {
-  id           String          @id @default(cuid())
-  name         String
-  rootPath     String
-  systemPrompt String?
-  codeRules    String?
-  glossary     Json?           @default("{}")
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  cards        WorkOrderCard[]
+model ArbitrageScore {
+  id          String   @id @default(cuid())
+  modelId     String
+  taskType    String
+  score       Float    @default(1200)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  model       Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@unique([modelId, taskType])
 }
 
 model Model {
@@ -102,6 +102,7 @@ model Model {
   complianceModel    ComplianceModel?
   rewardModel        RewardModel?
   unknownModel       UnknownModel?
+  arbitrageScores    ArbitrageScore[]
 
   @@unique([providerId, name])
 }
@@ -353,17 +354,6 @@ model FileIndex {
   updatedAt   DateTime @updatedAt
 }
 
-model WorkOrderCard {
-  id           String    @id @default(cuid())
-  title        String
-  description  String?
-  workspaceId  String
-  contextStats Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  workspace    Workspace @relation(fields: [workspaceId], references: [id])
-}
-
 model PromptRefinement {
   id             String   @id @default(cuid())
   roleId         String
@@ -382,78 +372,6 @@ model ModelFailure {
   lastFailedAt DateTime @updatedAt
 
   @@unique([providerId, modelId])
-}
-
-model CardConfig {
-  cardId         String          @id
-  componentRoles ComponentRole[]
-  customButtons  CustomButton[]
-}
-
-model CustomButton {
-  id         String     @id @default(cuid())
-  cardId     String
-  label      String
-  action     String
-  actionData String
-  icon       String?
-  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
-}
-
-model ComponentRole {
-  id         String     @id @default(cuid())
-  cardId     String
-  component  String
-  roleId     String?
-  cardConfig CardConfig @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
-}
-
-model VoiceEngine {
-  id        String   @id @default(cuid())
-  name      String
-  type      String
-  provider  String
-  isEnabled Boolean  @default(true)
-  config    Json     @default("{}")
-  metadata  Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-
-model Orchestration {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  userId      String?
-  cells       Json
-  gridSize    Json
-  isPublic    Boolean  @default(false)
-  tags        String[] @default([])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model BookmarkFolder {
-  id        String           @id @default(cuid())
-  name      String
-  parentId  String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  parent    BookmarkFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  children  BookmarkFolder[] @relation("FolderHierarchy")
-  bookmarks Bookmark[]
-}
-
-model Bookmark {
-  id         String          @id @default(cuid())
-  title      String
-  url        String
-  faviconUrl String?
-  folderId   String?
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  folder     BookmarkFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
 }
 
 model McpServer {
