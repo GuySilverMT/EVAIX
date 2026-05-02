@@ -31,7 +31,6 @@ export const startSessionSchema = z.object({
     maxTokens: z.number().int().min(256).max(128000).default(1024), // Most roles (JSON/tools) need 1024; planning/writing roles specify higher in metadata
   }),
   userGoal: z.string().min(1, "User goal/prompt is required"),
-  cardId: z.string(),
   context: z
     .object({
       targetDir: z.string().optional(),
@@ -77,17 +76,12 @@ interface RoleVariantWithBehavior {
 
 export class AgentService {
   async startSession(input: StartSessionInput) {
-    const sessionId = input.sessionId || `session-${input.cardId}-${Date.now()}`;
+    const sessionId = input.sessionId || `session-${Date.now()}`;
     const context: any = { input, sessionId };
 
     const pipeline = new InstructionChain(context)
       .addStep("resolve_context", async (ctx) => {
-        const { cardId, context: inputCtx, userGoal } = ctx.input;
-        const card = await prisma.workOrderCard.findUnique({
-          where: { id: cardId },
-          include: { workspace: true },
-        });
-        ctx.projectPrompt = card?.workspace.systemPrompt || undefined;
+        const { context: inputCtx, userGoal } = ctx.input;
 
         ctx.finalUserGoal = userGoal;
         if (inputCtx?.targetDir) {
@@ -196,7 +190,7 @@ export class AgentService {
           roleId,
           modelId: resolvedModelId!,
           providerId: resolvedProviderId,
-          internalId: (bestModel as any)?.id || resolvedModelId!, // bestModel is from line 165
+          internalId: (bestModel)?.id || resolvedModelId!, // bestModel is from line 165
           isLocked: false,
           temperature: modelConfig.temperature,
           maxTokens: effectiveMaxTokens,
@@ -214,12 +208,12 @@ export class AgentService {
 
         ctx.runtime = await AgentRuntime.create(undefined, ctx.tools, tier, ctx.executionMode, ctx.silenceConfirmation);
         if (ctx.input.context?.screenspaceId) {
-            (ctx.runtime as any).baggage = { ...((ctx.runtime as any).baggage || {}), screenspaceId: ctx.input.context.screenspaceId };
+            (ctx.runtime).baggage = { ...((ctx.runtime).baggage || {}), screenspaceId: ctx.input.context.screenspaceId };
         }
         return ctx;
       })
       .addStep("execute_loop", async (ctx) => {
-        const agent = await createVolcanoAgent(ctx.agentConfig!);
+        const agent = await createVolcanoAgent(ctx.agentConfig);
         const initialResponse = await ctx.runtime!.generateWithContext(
           agent,
           ctx.role?.basePrompt || "",
@@ -244,7 +238,7 @@ export class AgentService {
 
     // Save final state
     try {
-      const filePath = context.input.context?.targetFile || path.join(process.cwd(), 'sessions', `${input.cardId}.md`);
+      const filePath = context.input.context?.targetFile || path.join(process.cwd(), 'sessions', `session-${Date.now()}.md`);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, result, 'utf-8');
     } catch (e) { console.error("File save error", e); }
@@ -252,7 +246,6 @@ export class AgentService {
     return {
       sessionId,
       status: "completed",
-      cardId: input.cardId,
       result,
       logs,
       modelId: agent?.getConfig().modelId || context.agentConfig.modelId,

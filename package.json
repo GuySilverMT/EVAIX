@@ -4,8 +4,6 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "pnpm --parallel --stream --filter=!@repo/voice-input run dev",
-    "desktop": "turbo run desktop",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
