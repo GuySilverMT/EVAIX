@@ -76,9 +76,9 @@ model Model {
   aiData             Json               @default("{}")
   isActive           Boolean            @default(true)
   costPer1k          Float?
-  isCalibrated       Boolean          @default(false)
-  trialsCode         Int              @default(0)
-  shadowScore        Float            @default(0)
+  isCalibrated       Boolean            @default(false)
+  trialsCode         Int                @default(0)
+  shadowScore        Float              @default(0)
   firstSeenAt        DateTime           @default(now())
   lastSeenAt         DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -88,10 +88,8 @@ model Model {
   scorePlan          Int                @default(0)
   scoreTool          Int                @default(0)
   trialsJson         Int                @default(0)
-  trialsCode         Int                @default(0)
   trialsPlan         Int                @default(0)
   trialsTool         Int                @default(0)
-  isCalibrated       Boolean            @default(false)
   provider           ProviderConfig     @relation(fields: [providerId], references: [id], onDelete: Cascade)
   modelUsage         ModelUsage[]
   knowledgeVectors   KnowledgeVector[]
