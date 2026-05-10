@@ -1,0 +1,26 @@
+{
+  "id": "crm-v1",
+  "name": "Sales CRM",
+  "themeId": "corporate-light",
+  "layout": {
+    "id": "crm-root",
+    "type": "Flex",
+    "props": { "className": "h-full w-full flex-col bg-white text-black" },
+    "children": [
+      {
+        "id": "crm-title",
+        "type": "Text",
+        "props": { "content": "Sales Dashboard", "className": "p-4 font-bold text-xl" }
+      },
+      {
+        "id": "crm-grid",
+        "type": "Grid",
+        "props": { "className": "p-4 gap-4 grid-cols-1 md:grid-cols-2" },
+        "children": [
+           { "id": "stat-revenue", "type": "StatCard", "props": { "label": "Revenue", "value": "$50k" } },
+           { "id": "stat-leads", "type": "StatCard", "props": { "label": "Leads", "value": "120" } }
+        ]
+      }
+    ]
+  }
+}

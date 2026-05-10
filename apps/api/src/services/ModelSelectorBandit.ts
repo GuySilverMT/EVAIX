@@ -83,14 +83,14 @@ export class ModelSelectorBandit {
       }
 
       // Find cross-provider rookie
-      const selectedRookie = rookies.find((r: Model) => r.providerId !== selectedVeteran.providerId);
+      let selectedRookie = rookies.find((r: Model) => r.providerId !== selectedVeteran!.providerId);
 
       if (selectedRookie) {
         return [selectedVeteran, selectedRookie];
       }
 
       // If no cross-provider rookie, fallback to cross-provider veteran
-      const alternativeVeteran = veterans.find((v: Model) => v.providerId !== selectedVeteran.providerId);
+      const alternativeVeteran = veterans.find((v: Model) => v.providerId !== selectedVeteran!.providerId);
       if (alternativeVeteran) {
         return [selectedVeteran, alternativeVeteran];
       }

@@ -26,10 +26,23 @@ export class VfsManager {
       const monoDir = path.join(homeDir, 'mono');
       const projectHome = existsSync(monoDir) ? monoDir : homeDir;
       
-      const fsRoot = options.rootPath || projectHome;
+      let fsRoot = options.rootPath || projectHome;
 
       if (options.cardId) {
-        // No longer resolving from workorder card
+        const card = await prisma.workOrderCard.findUnique({
+          where: { id: options.cardId },
+          include: { workspace: true }
+        });
+        
+        if (card) {
+          // The provider root is the workspace root. 
+          // The agent will work relative to this, or we can fence strictly to card.relativePath
+          // For now, let's fence to the workspace root to allow some movement if needed, 
+          // or strictly to the card's path.
+          // The plan says: "Determine the rootPath from the WorkOrderCard."
+          // Schema does not have relativePath, defaulting to workspace root.
+          fsRoot = card.workspace.rootPath;
+        }
       }
 
       return new LocalProvider(fsRoot);

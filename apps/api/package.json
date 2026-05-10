@@ -36,6 +36,7 @@
     "@repo/api-contract": "workspace:*",
     "@repo/common": "workspace:*",
     "@repo/mcp-server-vfs": "workspace:*",
+    "@repo/nebula": "workspace:*",
     "@trpc/server": "^10.45.2",
     "@utcp/code-mode": "^1.0.5",
     "@utcp/sdk": "^1.0.17",

@@ -1678,7 +1678,7 @@ Requirements:
 2. Ensure the code is robust and handles missing fields.
 `;
 
-          const agentResponse = await runtime.generateWithContext(agent, "You are a senior dev.", prompt);
+          const agentResponse = await runtime.generateWithContext(agent, "You are a senior dev.", prompt) as string;
           const codeMatch = agentResponse.match(/```typescript([\s\S]*?)```/) ||
             agentResponse.match(/```javascript([\s\S]*?)```/) ||
             [null, agentResponse];
@@ -1737,7 +1737,7 @@ Return a strictly formatted JSON array of strings containing only the model IDs.
 Example: ["model-x-free", "model-y-free"]
 `;
 
-      const response = await runtime.generateWithContext(agent, "You are a researcher.", prompt);
+      const response = await runtime.generateWithContext(agent, "You are a researcher.", prompt) as string;
       const jsonMatch = response.match(/\[\s*".*"\s*\]/s) || response.match(/\[.*\]/s);
       if (jsonMatch) {
         const discovered = JSON.parse(jsonMatch[0]) as string[];

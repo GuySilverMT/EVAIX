@@ -35,6 +35,7 @@ interface QueryFilters {
 // Map Prisma model names to their delegate names
 const MODEL_DELEGATES: Record<string, keyof typeof prisma> = {
   'ProviderConfig': 'providerConfig',
+  'Workspace': 'workspace',
   'Model': 'model',
   'RoleVariant': 'roleVariant',
   'RoleAssessment': 'roleAssessment',
@@ -55,8 +56,13 @@ const MODEL_DELEGATES: Record<string, keyof typeof prisma> = {
   'Job': 'job',
   'KnowledgeVector': 'knowledgeVector',
   'FileIndex': 'fileIndex',
+  'WorkOrderCard': 'workOrderCard',
   'PromptRefinement': 'promptRefinement',
-  'ModelFailure': 'modelFailure'
+  'ModelFailure': 'modelFailure',
+  'CardConfig': 'cardConfig',
+  'CustomButton': 'customButton',
+  'ComponentRole': 'componentRole',
+  'VoiceEngine': 'voiceEngine',
 };
 
 export class BasetoolService {

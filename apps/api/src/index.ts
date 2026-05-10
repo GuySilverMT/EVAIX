@@ -16,6 +16,7 @@ import { createVolcanoTelemetry } from 'volcano-sdk';
 import { backupService } from './services/BackupService.js';
 // import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
 import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
+import { initializeMockEngines } from './services/voice/mockEngines.js';
 
 // Initialize Telemetry
 if (process.env.VOLCANO_TELEMETRY_ENABLED === VOLCANO_TELEMETRY_ENABLED) {
@@ -324,6 +325,13 @@ async function startServer() {
           .catch(err => console.error('[FileWatcher] Failed to start automated embedding:', err));
       });
 
+      // Initialize mock voice engines for development
+      try {
+        await initializeMockEngines();
+        console.log('✅ Mock voice engines initialized');
+      } catch (err) {
+        console.warn('⚠️ Failed to initialize mock voice engines:', err);
+      }
     })();
   });
 

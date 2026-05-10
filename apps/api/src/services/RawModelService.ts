@@ -110,7 +110,7 @@ export class RawModelService {
         const pageJson = await response.json() as RawModelResponse;
 
         // Extract models from the current page (OpenAI uses 'data', Google/Ollama uses 'models')
-        const pageModels = (pageJson.data || pageJson.models || []);
+        const pageModels = (pageJson.data || pageJson.models || []) as unknown[];
         if (pageModels.length === 0) {
           console.log('[RawModelService] ⚠️ Found 0 models in page. Response keys:', Object.keys(pageJson));
           console.log('[RawModelService] Preview:', JSON.stringify(pageJson).slice(0, 100));

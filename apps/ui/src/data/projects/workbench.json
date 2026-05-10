@@ -1,0 +1,35 @@
+{
+  "id": "root",
+  "type": "Flex",
+  "props": {
+    "className": "h-full w-full bg-zinc-950 text-white relative flex-col"
+  },
+  "children": [
+    {
+      "id": "menu-bar",
+      "type": "UnifiedMenuBar",
+      "responsive": {
+        "visibility": { "mobile": "hidden", "desktop": "visible" }
+      }
+    },
+    {
+      "id": "main-workspace",
+      "type": "Flex",
+      "props": { "className": "flex-1 overflow-hidden relative flex-row" },
+      "children": [
+        {
+          "id": "nav-sidebar",
+          "type": "FloatingNavigation",
+          "responsive": {
+            "mode": { "mobile": "bottom-bar", "desktop": "sidebar" }
+          }
+        },
+        {
+          "id": "grid-canvas",
+          "type": "NebulaCanvas",
+          "props": { "className": "flex-1", "flex": 1 }
+        }
+      ]
+    }
+  ]
+}

@@ -11,6 +11,10 @@
       "cache": false,
       "persistent": true
     },
+    "desktop": {
+      "cache": false,
+      "persistent": true
+    },
     "lint": {},
     "lint:fix": {}
   }

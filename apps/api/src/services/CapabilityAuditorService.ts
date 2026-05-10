@@ -77,7 +77,7 @@ DO NOT engage in conversation. Focus solely on the drill.
             const response = await provider.generateCompletion({
                 modelId: apiModelId,
                 messages: [
-                    { role: 'system', content: (variant.identityConfig).systemPromptDraft },
+                    { role: 'system', content: (variant.identityConfig as any).systemPromptDraft },
                     { role: 'user', content: prompt }
                 ]
             });

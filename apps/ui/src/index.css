@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 1. Import Titanium Theme - This MUST be the source of truth */
+@import './theme/global.css';
+
+/* 2. Map Titanium Variables to Tailwind/Shadcn Expectations 
+   This bridges the gap so <div className="bg-primary"> works with your HEX colors.
+*/
+@layer base {
+  :root {
+    /* Map 'background' to your Titanium --color-background */
+    --background: var(--color-background); 
+    --foreground: var(--color-text);
+
+    /* Map 'primary' to Titanium --color-primary */
+    --primary: var(--color-primary);
+    --primary-foreground: #000000;
+
+    /* Map 'secondary' to Titanium --color-secondary */
+    --secondary: var(--color-secondary);
+    --secondary-foreground: #ffffff;
+
+    /* Map 'border' and 'input' to Titanium --color-border */
+    --border: var(--color-border);
+    --input: var(--color-border);
+    --ring: var(--color-primary);
+    
+    /* Map additional utility colors */
+    --surface: var(--color-background-secondary);
+    --text-muted: var(--color-text-secondary);
+    --accent: var(--color-accent);
+    
+    --radius: 0.5rem;
+  }
+
+  /* KILL THE OLD SHADCN DEFAULTS - DO NOT UNCOMMENT
+  .dark {
+    --background: 222.2 84% 4.9%; <--- THIS WAS OVERRIDING YOU
+    ...
+  } 
+  */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Force Theme Editor to float above everything */
+.theme-editor-sidebar {
+  background-color: rgba(9, 9, 11, 0.95) !important;
+  border-left: 1px solid var(--color-primary);
+  z-index: 9999;
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-background);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-background);
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
