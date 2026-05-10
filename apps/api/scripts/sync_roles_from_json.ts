@@ -36,6 +36,15 @@ async function syncRoles() {
         }
         console.log(`✅ ${allTools.size} Tools ensured.`);
 
+        const toolsInDb = await prisma.tool.findMany({
+            where: { name: { in: Array.from(allTools) } }
+        });
+        const toolNameToId = new Map<string, string>();
+        for (const t of toolsInDb) {
+            toolNameToId.set(t.name, t.id);
+        }
+
+
         // 2. Sync Roles
         for (const roleDef of rolesConfig) {
             console.log(`   -> Syncing: ${roleDef.name} (${roleDef.id})`);
@@ -50,9 +59,12 @@ async function syncRoles() {
                 categoryId = cat.id;
             }
 
-            const toolConnections = (roleDef.tools || []).map((t: string) => ({
-                tool: { connect: { name: t } }
-            }));
+const toolConnections = (roleDef.tools || [])
+                .map((t: string) => {
+                    const toolId = toolNameToId.get(t);
+                    return toolId ? { toolId } : null;
+                })
+                .filter(Boolean);
 
             // Fix: use 'create' for RoleTool relation syntax in Prisma
             // For update, we delete existing and re-create to ensure sync
