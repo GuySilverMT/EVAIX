@@ -420,12 +420,13 @@ Always use the prefixed tool names (${toolNames}) when calling these tools.`;
             }
         });
 
-        for (const dbTool of dbTools) {
-            await prisma.roleTool.create({
-                data: {
+        if (dbTools.length > 0) {
+            await prisma.roleTool.createMany({
+                data: dbTools.map(dbTool => ({
                     roleId: role.id,
                     toolId: dbTool.id,
-                }
+                })),
+                skipDuplicates: true
             });
         }
 
