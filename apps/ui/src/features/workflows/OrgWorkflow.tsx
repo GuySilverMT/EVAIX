@@ -8,7 +8,7 @@
 import { Users, Fingerprint } from 'lucide-react';
 import { UniversalCardWrapper } from '../../components/work-order/UniversalCardWrapper.js';
 import { DbNodeCanvas } from '../../components/DbNodeCanvas.js';
-import { AgentDNAlab } from '../dna-lab/AgentDNAlab.js';
+import { UnifiedRoleManagerCard } from '../../components/UnifiedRoleManagerCard.js';
 
 export default function OrgWorkflow() {
   return (
@@ -43,7 +43,7 @@ export default function OrgWorkflow() {
             </div>
           }
         >
-          <AgentDNAlab embeddedMode />
+          <UnifiedRoleManagerCard cardId="role-creator" />
         </UniversalCardWrapper>
       </div>
 
