@@ -88,6 +88,7 @@ const isElectron = () => {
 };
 
 interface BrowserCardProps {
+  id?: string;
   cardId?: string;
   screenspaceId?: number;
   headerEnd?: React.ReactNode;
@@ -98,7 +99,8 @@ interface BrowserCardProps {
   onBillingSessionSaved?: () => void;
 }
 
-export const BrowserCard: React.FC<BrowserCardProps> = ({ 
+export const BrowserCard: React.FC<BrowserCardProps> = ({
+  id = "browser-default",
   cardId, 
   screenspaceId, 
   headerEnd, 
@@ -700,6 +702,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
 
   return (
     <UniversalCardWrapper
+      id={id}
       title="Smart Agentic Browser"
       icon={Globe}
       aiContext={url}

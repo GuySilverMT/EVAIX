@@ -370,6 +370,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     )}
                     {viewMode === 'editor' && (
                         <SmartEditor
+                            cardId={id}
                             fileName={activeFile}
                             content={content}
                             onChange={(val) => void handleSave(val)}
