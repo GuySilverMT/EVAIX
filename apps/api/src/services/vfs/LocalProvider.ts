@@ -76,4 +76,10 @@ export class LocalProvider implements IVfsProvider {
       return false;
     }
   }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    const fullOldPath = this.resolvePath(oldPath);
+    const fullNewPath = this.resolvePath(newPath);
+    await fs.rename(fullOldPath, fullNewPath);
+  }
 }
