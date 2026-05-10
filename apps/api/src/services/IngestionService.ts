@@ -7,6 +7,7 @@ import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import crypto from 'crypto';
 import ignore from 'ignore';
 import { getWebSocketService } from './websocket.singleton.js';
+import { createVolcanoAgent } from './VolcanoAgent.js';
 import { fileParserService } from './FileParserService.js';
 
 interface IgnoreFilter {
@@ -207,6 +208,55 @@ class IngestionService {
     return shadowFilePath;
   }
 
+  private async parseFile(fileExtension: string, content: Buffer): Promise<string> {
+    if (this.textExtensions.includes(fileExtension)) {
+      return content.toString('utf-8');
+    }
+
+    switch (fileExtension) {
+      case '.pdf':
+        if (!this.pdfParse) {
+          const mod = await import('pdf-parse') as { default?: PdfParser } | PdfParser;
+          this.pdfParse = (mod as { default?: PdfParser }).default || (mod as PdfParser);
+        }
+        if (this.pdfParse) {
+          const data = await this.pdfParse(content);
+          return data.text;
+        }
+        return '';
+      case '.docx':
+        // TODO: Implement DOCX parsing, potentially using a library like 'mammoth'
+        console.log('DOCX parsing not yet implemented.');
+        return 'DOCX content placeholder';
+      case '.png':
+        try {
+          console.log(`[IngestionService] Attempting to parse PNG image`);
+          const base64Image = content.toString('base64');
+
+          const agent = await createVolcanoAgent({
+            roleId: 'system-ingestion', // Needed by AgentConfig interface
+            isLocked: true,
+            modelId: 'gpt-4o',
+            temperature: 0.1,
+            maxTokens: 2000
+          });
+
+          // Standard OpenAI format for multimodal prompts
+          const prompt = [
+            { type: "text", text: "Please extract all text from this image and provide a brief description of what the image contains." },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } }
+          ];
+
+          const response = await agent.generate(prompt);
+          return response.text;
+        } catch (error) {
+          console.error('[IngestionService] Error parsing PNG image:', error);
+          return 'PNG content placeholder (parsing failed)';
+        }
+      default:
+        throw new Error(`Unsupported file type for parsing: ${fileExtension}`);
+    }
+  }
 }
 
 export const ingestionService = new IngestionService();
