@@ -50,6 +50,7 @@
     "google-auth-library": "^10.5.0",
     "groq-sdk": "^0.37.0",
     "https-proxy-agent": "^7.0.6",
+    "isolated-vm": "^6.1.2",
     "js-yaml": "^4.1.1",
     "jsdom": "^27.2.0",
     "mammoth": "^1.12.0",
