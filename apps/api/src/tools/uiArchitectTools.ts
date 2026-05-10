@@ -2,6 +2,31 @@ import type { SandboxTool } from '../types.js';
 
 export const uiArchitectTools: SandboxTool[] = [
   {
+    name: 'mutate_ui_node',
+    description: 'Surgically update an agentic context node on the frontend UI. Use this to live-edit markdown, update databases, or apply arbitrary UI mutations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodeId: { type: 'string', description: 'The ID of the UI node to mutate.' },
+        action: { type: 'string', description: 'The action to perform (e.g., REWRITE, UPDATE_TABLE).' },
+        payload: { type: 'object', description: 'The payload/data for the mutation.' }
+      },
+      required: ['nodeId', 'action', 'payload']
+    },
+    handler: async (args: unknown) => {
+        const typedArgs = args as Record<string, any>;
+        return [{
+            type: 'text',
+            text: JSON.stringify({
+                ui_action: {
+                    tool: 'mutate_ui_node',
+                    ...typedArgs
+                }
+            }, null, 2)
+        }];
+    },
+  },
+  {
     name: 'ui_architect_tree_inspect',
     description: 'Read-only access to the current UI state. Use this to discover the structure, node IDs, and available components before making changes.',
     inputSchema: {

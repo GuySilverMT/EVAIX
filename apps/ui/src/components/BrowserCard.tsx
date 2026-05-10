@@ -12,6 +12,7 @@ import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { SuperAiButton } from './ui/SuperAiButton.js';
 import { parseOmniboxInput } from '../utils/browser.utils.js';
 import { Plus, X as CloseIcon } from 'lucide-react';
+import { useAgenticContext } from '../hooks/useAgenticContext.js';
 
 /**
  * Persistent WebView Component
@@ -130,6 +131,17 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
   // Reader Mode State
   const [isReaderMode, setIsReaderMode] = useState(false);
   const [readerContent, setReaderContent] = useState<string>('');
+
+  useAgenticContext({
+      id: cardId || url,
+      type: 'browser',
+      title: url,
+      defaultIncluded: false,
+      getContext: async () => ({
+          format: 'markdown',
+          content: readerContent || url
+      })
+  });
 
   // tRPC
   const utils = trpc.useContext();

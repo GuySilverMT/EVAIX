@@ -61,7 +61,7 @@ export const UniversalCardWrapper: React.FC<UniversalCardWrapperProps> = ({
                     onChange={() => id && toggleContext(id)}
                     className="rounded border-zinc-700 text-indigo-500 focus:ring-indigo-500 bg-zinc-900"
                   />
-                  Include in AI Context
+                  ✨ Use in Prompt
                 </label>
               )}
               {headerEnd}
