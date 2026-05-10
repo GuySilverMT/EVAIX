@@ -16,6 +16,7 @@ type PdfParser = (content: Buffer) => Promise<{ text: string }>;
 
 class IngestionService {
   private pdfParse: PdfParser | null = null;
+  private mammoth: typeof import('mammoth') | null = null;
   private ignoreFilter: IgnoreFilter | null = null;
   private readonly repoRoot = process.cwd();
   private readonly textExtensions = ['.ts', '.js', '.tsx', '.jsx', '.md', '.json', '.css', '.html', '.txt', '.yaml', '.yml', '.sql'];
@@ -245,9 +246,15 @@ class IngestionService {
         }
         return '';
       case '.docx':
-        // TODO: Implement DOCX parsing, potentially using a library like 'mammoth'
-        console.log('DOCX parsing not yet implemented.');
-        return 'DOCX content placeholder';
+        if (!this.mammoth) {
+          const mod = await import('mammoth');
+          this.mammoth = mod.default || mod;
+        }
+        if (this.mammoth) {
+          const result = await this.mammoth.extractRawText({ buffer: content });
+          return result.value;
+        }
+        return '';
       case '.png':
         // TODO: Implement PNG parsing using a multimodal LLM
         console.log('PNG parsing not yet implemented.');
