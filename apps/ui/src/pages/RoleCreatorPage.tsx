@@ -1,13 +1,14 @@
 import React from 'react';
+// Import the new Unified Manager
 import { UnifiedRoleManagerCard } from '../components/UnifiedRoleManagerCard.js';
 
 export const RoleCreatorPage = () => {
     return (
-        <div className="w-full h-full bg-zinc-950 p-4">
-            {/* We pass a mock cardId for now since this is the standalone page. 
-              If this was inside a SwappableCard, the wrapper would provide this ID.
-            */}
-             <UnifiedRoleManagerCard cardId="standalone-role-creator" />
+        <div className="w-full h-full bg-zinc-950 p-6 flex justify-center items-center">
+             <div className="w-full max-w-4xl h-[800px]">
+                {/* Mount it standalone */}
+                <UnifiedRoleManagerCard cardId="standalone-role-creator" />
+             </div>
         </div>
     );
 };
