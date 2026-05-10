@@ -1,0 +1,28 @@
+--- apps/api/src/services/IngestionService.ts
++++ apps/api/src/services/IngestionService.ts
+@@ -10,12 +10,15 @@
+   ignores(path: string): boolean;
+ }
+
++type PdfParserType = (dataBuffer: Buffer, options?: any) => Promise<any>;
++
+ class IngestionService {
+   private ignoreFilter: IgnoreFilter | null = null;
+   private readonly repoRoot = process.cwd();
+   private readonly textExtensions = ['.ts', '.js', '.tsx', '.jsx', '.md', '.json', '.css', '.html', '.txt', '.yaml', '.yml', '.sql'];
+   private readonly binaryExtensions = ['.pdf', '.docx', '.png'];
++  private pdfParse?: PdfParserType;
+
+   constructor() {
+     this.subscribeToVfsEvents();
+@@ -215,10 +218,10 @@
+     switch (fileExtension) {
+       case '.pdf':
+         if (!this.pdfParse) {
+-          const mod = await import('pdf-parse') as { default?: PdfParser } | PdfParser;
+-          this.pdfParse = (mod as { default?: PdfParser }).default || (mod as PdfParser);
++          const mod = await import('pdf-parse' as any);
++          this.pdfParse = (mod as { default?: PdfParserType }).default || (mod as PdfParserType);
+         }
+         if (this.pdfParse) {
+           const data = await this.pdfParse(content);

@@ -80,6 +80,28 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
   const dispatchMutation = trpc.orchestrator.dispatch.useMutation({
     onSuccess: (data) => {
       console.log('✅ Command dispatched:', data);
+
+      // Global Interceptor for mutate_ui_node
+      if (data && typeof data === 'object') {
+         const responseStr = (data as any)?.text || (data as any)?.content;
+         if (responseStr) {
+             try {
+                 const parsed = JSON.parse(responseStr);
+                 if (parsed?.ui_action?.tool === 'mutate_ui_node') {
+                     const { nodeId, action, payload } = parsed.ui_action;
+                     import('../../stores/agenticWorkspace.store.js').then(({ useAgenticWorkspaceStore }) => {
+                         const applyMutation = useAgenticWorkspaceStore.getState().nodes[nodeId]?.applyMutation;
+                         if (applyMutation) {
+                             void applyMutation({ action, payload });
+                         }
+                     });
+                 }
+             } catch (e) {
+                 // Not JSON or missing ui_action, proceed normally
+             }
+         }
+      }
+
       if (onSuccess) onSuccess(data);
       // setPrompt(''); // Keep prompt for reuse per user request
       setState('idle');

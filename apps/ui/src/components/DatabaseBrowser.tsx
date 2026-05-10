@@ -12,12 +12,14 @@ import {
   Download,
   Upload,
 } from "lucide-react";
+import { useAgenticContext } from "../hooks/useAgenticContext.js";
 
 // A Wrapper for Cell Data that handles Protection
 // const ProtectedCell = ... (removed unused)
 
-export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean }> = ({
+export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string }> = ({
   showCreateTable: _showCreateTable = false,
+  id = "db-browser",
 }) => {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -35,6 +37,17 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean }> = ({
     { tableName: selectedTable! },
     { enabled: !!selectedTable },
   );
+
+  useAgenticContext({
+      id,
+      type: "db-table",
+      title: selectedTable || "Database",
+      defaultIncluded: false,
+      getContext: async () => ({
+          format: "json",
+          content: JSON.stringify(dataQuery.data || [])
+      })
+  });
 
   // Mutations
   const addCol = trpc.schema.addColumn.useMutation({

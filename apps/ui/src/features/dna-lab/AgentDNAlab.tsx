@@ -318,9 +318,15 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
                                                 side="left"
                                                 onGenerate={(p, opts) => {
                                                     void (async () => {
+                                                        const { useAgenticWorkspaceStore } = await import('../../stores/agenticWorkspace.store.js');
+                                                        const aggregatedContext = await useAgenticWorkspaceStore.getState().buildAggregatedContext();
+                                                        const goalWithContext = aggregatedContext
+                                                            ? `=== CONTEXT NODES ===\n${aggregatedContext}\n\n=== USER REQUEST ===\n${p}`
+                                                            : p;
+
                                                         const res = await utils.client.roles.generatePrompt.mutate({
                                                             name: formData.name,
-                                                            goal: p,
+                                                            goal: goalWithContext,
                                                             context: formData.basePrompt,
                                                             capabilities: {
                                                                 vision: formData.needsVision,
