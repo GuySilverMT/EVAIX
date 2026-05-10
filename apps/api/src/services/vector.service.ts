@@ -115,90 +115,69 @@ export const chunkText = (text: string, chunkSize: number = 1000, overlap: numbe
   return chunks;
 };
 
-// A placeholder for embedding generation
-// TODO: Replace this with a real embedding model. Consider using a library like sentence-transformers.
-import axios from 'axios';
 import { ProviderManager } from './ProviderManager.js';
 import { OllamaProvider } from '../utils/OllamaProvider.js';
+import { pipeline, env, FeatureExtractionPipeline } from '@xenova/transformers';
 
-// Simple concurrency limiter to prevent overwhelming local Ollama
-class ConcurrencyLimiter {
-  private queue: (() => void)[] = [];
-  private activeCount = 0;
-  private maxConcurrency: number;
+// Disable local models to fetch from huggingface if not cached
+env.allowLocalModels = false;
 
-  constructor(maxConcurrency: number) {
-    this.maxConcurrency = maxConcurrency;
-  }
+class EmbeddingPipeline {
+  static task = 'feature-extraction';
+  static model = 'Xenova/all-MiniLM-L6-v2';
+  static instance: Promise<FeatureExtractionPipeline> | null = null;
 
-  async run<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.activeCount >= this.maxConcurrency) {
-      await new Promise<void>(resolve => this.queue.push(resolve));
+  static async getInstance(progress_callback?: Function) {
+    if (this.instance === null) {
+      // @ts-ignore - type definitions might have a mismatch with actual kwargs supported
+      this.instance = pipeline(this.task, this.model, { progress_callback });
     }
-    this.activeCount++;
-    try {
-      return await fn();
-    } finally {
-      this.activeCount--;
-      if (this.queue.length > 0) {
-        const next = this.queue.shift();
-        next?.();
-      }
-    }
+    return this.instance;
   }
 }
-
-const embeddingLimiter = new ConcurrencyLimiter(1); // Limit to 1 concurrent request
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const createEmbedding = async (text: string, retryCount = 5): Promise<number[]> => {
   if (!text || !text.trim()) {
-    return new Array<number>(1024).fill(0);
+    return new Array<number>(384).fill(0);
   }
 
   // If text is too large for the model's context, truncate it.
-  // mxbai-embed-large handles up to 512 tokens (~2000 characters).
   const truncatedText = text.length > 2000 ? text.substring(0, 2000) : text;
 
-  return embeddingLimiter.run(async () => {
-    let lastError: any = null;
+  let lastError: any = null;
 
-    for (let attempt = 0; attempt < retryCount; attempt++) {
-      try {
-        // Try to get the 'local' provider first
-        const provider = ProviderManager.getProvider('local');
-        if (provider && provider instanceof OllamaProvider) {
-          return await provider.generateEmbedding(truncatedText);
-        }
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    try {
+      // Try to get the 'local' provider first
+      const provider = ProviderManager.getProvider('local');
+      if (provider && provider instanceof OllamaProvider) {
+        return await provider.generateEmbedding(truncatedText);
+      }
 
-        const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        const response = await axios.post<{ embedding: number[] }>(`${baseUrl}/api/embeddings`, {
-          model: 'mxbai-embed-large:latest',
-          prompt: truncatedText,
-        }, { timeout: 60000 }); // Increased timeout to 60s
+      // Default to transformers.js pipeline
+      const extractor = await EmbeddingPipeline.getInstance();
+      if (!extractor) throw new Error('Failed to initialize EmbeddingPipeline');
+      const output = await extractor(truncatedText, { pooling: 'mean', normalize: true });
+      return Array.from(output.data) as number[];
 
-        if (response.data?.embedding) {
-          return response.data.embedding;
-        }
-        throw new Error('No embedding returned in response');
-      } catch (error: any) {
-        lastError = error;
-        const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
-        const isOverload = error.response?.status === 503 || error.response?.status === 429;
+    } catch (error: any) {
+      lastError = error;
+      const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+      const isOverload = error.response?.status === 503 || error.response?.status === 429;
 
-        console.warn(`[Embedding] Attempt ${attempt + 1} failed: ${error.message}${isOverload ? ' (Overloaded)' : ''}`);
+      console.warn(`[Embedding] Attempt ${attempt + 1} failed: ${error.message}${isOverload ? ' (Overloaded)' : ''}`);
 
-        if (attempt < retryCount - 1) {
-          // Exponential backoff with a higher base
-          const delay = Math.pow(3, attempt) * 1000;
-          await sleep(delay);
-        }
+      if (attempt < retryCount - 1) {
+        // Exponential backoff with a higher base
+        const delay = Math.pow(3, attempt) * 1000;
+        await sleep(delay);
       }
     }
+  }
 
-    console.error(`Error creating embedding after ${retryCount} attempts: "${truncatedText.substring(0, 20)}..."`, lastError);
-    // Return zeros instead of random noise to avoid poisoning the vector space
-    return new Array<number>(1024).fill(0);
-  });
+  console.error(`Error creating embedding after ${retryCount} attempts: "${truncatedText.substring(0, 20)}..."`, lastError);
+  // Return zeros instead of random noise to avoid poisoning the vector space
+  return new Array<number>(384).fill(0);
 };
