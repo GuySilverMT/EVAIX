@@ -373,6 +373,32 @@ export async function selectBestModel(requirements: RoleRequirement, excludedMod
 }
 
 export async function resolveModelForRole(role: any, estimatedInputTokens?: number, excludedModelIds: string[] = [], excludedProviderIds: string[] = []): Promise<string> {
+  // 1. Strict Override Check
+  if (role && role.targetProvider && role.targetModel) {
+    console.log(`[ROUTING] Role ${role.name || role.id} strictly bound to ${role.targetProvider} : ${role.targetModel}`);
+    const activeProviders = ProviderManager.getProviderIds();
+
+    if (!activeProviders.includes(role.targetProvider)) {
+      throw new Error(`Role is strictly bound to provider '${role.targetProvider}', but it is currently unavailable.`);
+    }
+
+    const model = await prisma.model.findFirst({
+      where: {
+        providerId: role.targetProvider,
+        name: role.targetModel
+      }
+    });
+
+    if (!model) {
+      // If the hardcoded model isn't in our DB but the provider is active, we might fail or fallback.
+      // Based on strict rules, if it's strictly bound and missing, it's an error.
+      throw new Error(`Role is strictly bound to model '${role.targetModel}' on provider '${role.targetProvider}', but this model is not registered in the database.`);
+    }
+
+    return model.id;
+  }
+
+  // 2. Standard Routing
   const metadata = (role.metadata || {}) as any;
   const requirements = metadata.requirements || {};
 

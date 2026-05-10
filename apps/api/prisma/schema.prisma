@@ -263,6 +263,8 @@ model Role {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   metadata          Json?              @default("{}")
+  targetProvider    String?
+  targetModel       String?
   jobs              Job[]
   modelUsage        ModelUsage[]
   promptRefinements PromptRefinement[]
