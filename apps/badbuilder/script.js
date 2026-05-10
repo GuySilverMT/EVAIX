@@ -395,8 +395,16 @@ function setProp(key, val) {
 
 function setPropFromSelect(prop, val) {
   const b = getSelected(); if (!b) return;
+  saveHistory();
   b[prop] = val || null;
-  refreshBlock(b);
+
+  // CRITICAL FIX: Structural changes require full re-render
+  if (['role', 'parentId', 'grid', 'showGridlines'].includes(prop) || b.role === 'table' || b.role === 'cell') {
+    renderCanvas();
+  } else {
+    refreshBlock(b);
+  }
+
   renderTree();
   renderAllDropdowns();
 }
