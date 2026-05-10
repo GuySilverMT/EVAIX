@@ -1,32 +1,8 @@
-// A simple in-memory vector store for demonstration purposes.
-// TODO: Replace this with a more robust solution like pgvector.
-
 export interface Vector {
   id: string;
   vector: number[];
   metadata: Record<string, unknown>;
   similarity?: number;
-}
-
-export class InMemoryVectorStore {
-  private vectors: Vector[] = [];
-
-  add(vectors: Vector[]) {
-    this.vectors.push(...vectors);
-    console.log(`Added ${vectors.length} vectors to the store. Total vectors: ${this.vectors.length}`);
-  }
-
-  // A simple cosine similarity search
-  search(queryVector: number[], topK: number): Vector[] {
-    const similarities = this.vectors.map(v => {
-      const dotProduct = v.vector.reduce((acc, val, i) => acc + val * queryVector[i], 0);
-      const magnitudeA = Math.sqrt(v.vector.reduce((acc, val) => acc + val * val, 0));
-      const magnitudeB = Math.sqrt(queryVector.reduce((acc, val) => acc + val * val, 0));
-      return { ...v, similarity: dotProduct / (magnitudeA * magnitudeB) };
-    });
-
-    return similarities.sort((a, b) => b.similarity - a.similarity).slice(0, topK);
-  }
 }
 
 import { prisma } from '../db.js';
