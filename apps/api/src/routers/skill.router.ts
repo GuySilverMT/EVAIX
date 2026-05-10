@@ -94,15 +94,25 @@ export const skillRouter = t.router({
       // Connect tools via RoleTool
       if (syncResult.success && syncResult.tools) {
           await prisma.roleTool.deleteMany({ where: { roleId: role.id } });
-          for (const syncedTool of syncResult.tools) {
-             const toolRecord = await prisma.tool.findUnique({ where: { name: syncedTool.name } });
-             if (toolRecord) {
-                 await prisma.roleTool.create({
-                     data: { roleId: role.id, toolId: toolRecord.id }
-                 }).catch(e => {
-                     console.warn(`Failed to create RoleTool for ${syncedTool.name}:`, e);
-                 });
-             }
+
+          const syncedToolNames = syncResult.tools.map(t => t.name);
+          const toolRecords = await prisma.tool.findMany({
+              where: { name: { in: syncedToolNames } },
+              select: { id: true, name: true }
+          });
+
+          const roleToolData = toolRecords.map(t => ({
+              roleId: role.id,
+              toolId: t.id
+          }));
+
+          if (roleToolData.length > 0) {
+              await prisma.roleTool.createMany({
+                  data: roleToolData,
+                  skipDuplicates: true
+              }).catch(e => {
+                  console.warn(`Failed to batch create RoleTool records:`, e);
+              });
           }
       }
 
