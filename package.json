@@ -28,11 +28,16 @@
     "@prisma/client": "5.19.1",
     "adm-zip": "^0.5.17",
     "ignore": "^7.0.5",
+    "sharp": "^0.34.5",
     "zod": "^3.23.8"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "electron"
-    ]
+      "electron",
+      "sharp"
+    ],
+    "overrides": {
+      "sharp": "^0.34.5"
+    }
   }
 }

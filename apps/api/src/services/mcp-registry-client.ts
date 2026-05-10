@@ -10,7 +10,7 @@ export class RegistryClient implements IRegistryClient {
     },
     'git': {
       command: 'node',
-      args: ['node_modules/git-mcp-server/dist/index.js']
+      args: ['node_modules/git-mcp-server/build/index.js']
     }
   };
 

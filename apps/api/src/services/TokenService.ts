@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { get_encoding } from 'tiktoken';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const { get_encoding } = require('tiktoken');
 
 export type ContextState = {
   tone?: string;

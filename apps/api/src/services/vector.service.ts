@@ -117,7 +117,11 @@ export const chunkText = (text: string, chunkSize: number = 1000, overlap: numbe
 
 import { ProviderManager } from './ProviderManager.js';
 import { OllamaProvider } from '../utils/OllamaProvider.js';
-import { pipeline, env, FeatureExtractionPipeline } from '@xenova/transformers';
+import type { FeatureExtractionPipeline } from '@xenova/transformers';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const { pipeline, env } = require('@xenova/transformers');
 
 // Disable local models to fetch from huggingface if not cached
 env.allowLocalModels = false;
