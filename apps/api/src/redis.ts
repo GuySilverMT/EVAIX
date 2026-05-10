@@ -36,7 +36,7 @@ if (createClient) {
   });
 }
 
-let redisClient: any = null;
+const redisClient: any = null;
 export async function getRedisClient(): Promise<any> {
   return redis;
 }

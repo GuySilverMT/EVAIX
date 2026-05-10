@@ -583,7 +583,7 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
     let attempts = 0;
     const maxAttempts = 3;
     let currentAgent = agent;
-    let lastResult = "";
+    const lastResult = "";
 
     while (attempts < maxAttempts) {
       try {
@@ -661,7 +661,7 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
             modelId: nextModel.name,
             providerId: nextModel.providerId,
             internalId: nextModel.id
-          } as any);
+          });
 
           attempts++;
           console.log(`[Arbitrage] Retrying with ${nextModel.providerId}/${nextModel.name} (Attempt ${attempts}/${maxAttempts})`);
@@ -749,7 +749,7 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
    */
   public async runTerminalPlaybook(steps: PlaybookStep[], onLog?: (log: string) => void) {
     const engine = new TerminalPlaybookEngine();
-    let currentSteps = [...steps];
+    const currentSteps = [...steps];
     
     while (true) {
       try {

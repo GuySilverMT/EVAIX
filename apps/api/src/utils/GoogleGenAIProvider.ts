@@ -102,7 +102,7 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
 
     // ANTIGRAVITY: Enable Thinking for Gemini 3
 //    if (request.modelId.includes('gemini-3')) {
-//         eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 //        (params.config as any).thinkingConfig = {
 //            thinkingLevel: "high"
 //        };
