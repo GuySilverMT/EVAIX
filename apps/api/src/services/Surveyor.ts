@@ -1,5 +1,6 @@
 import { prisma } from '../db.js';
 import { resolveModelForRole } from './modelManager.service.js';
+import ivm from 'isolated-vm';
 
 
 // import { saveModelKnowledge } from './ModelKnowledgeBase.js';
@@ -1688,8 +1689,25 @@ Requirements:
 
           try {
             // Safe Execution Wrapper
-            const fn = new Function('data', `${script}; return extractFreeModels(data);`);
-            const repairedModels = fn(rawJsonResponse?.data || rawJsonResponse);
+            const isolate = new ivm.Isolate({ memoryLimit: 128 });
+            const context = isolate.createContextSync();
+            const jail = context.global;
+
+            jail.setSync('global', jail.derefInto());
+
+            const dataToPass = rawJsonResponse?.data || rawJsonResponse;
+            jail.setSync('data', new ivm.ExternalCopy(dataToPass).copyInto());
+
+            const wrappedCode = `
+              (() => {
+                ${script};
+                return JSON.stringify(extractFreeModels(data));
+              })();
+            `;
+
+            const compiled = isolate.compileScriptSync(wrappedCode);
+            const resultJson = compiled.runSync(context, { timeout: 1000 });
+            const repairedModels = JSON.parse(resultJson);
 
             if (Array.isArray(repairedModels) && repairedModels.length > 0) {
               console.log(`[Surveyor] ✨ Self-Healing Success! Extracted ${repairedModels.length} models.`);
