@@ -7,15 +7,14 @@ import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import crypto from 'crypto';
 import ignore from 'ignore';
 import { getWebSocketService } from './websocket.singleton.js';
+import { createVolcanoAgent } from './VolcanoAgent.js';
+import { fileParserService } from './FileParserService.js';
 
 interface IgnoreFilter {
   ignores(path: string): boolean;
 }
 
-type PdfParser = (content: Buffer) => Promise<{ text: string }>;
-
 class IngestionService {
-  private pdfParse: PdfParser | null = null;
   private ignoreFilter: IgnoreFilter | null = null;
   private readonly repoRoot = process.cwd();
   private readonly textExtensions = ['.ts', '.js', '.tsx', '.jsx', '.md', '.json', '.css', '.html', '.txt', '.yaml', '.yml', '.sql'];
@@ -75,46 +74,35 @@ class IngestionService {
     });
   }
 
+  private isIgnored(targetPath: string): boolean {
+    const relPath = path.relative(this.repoRoot, targetPath);
+    if (relPath.startsWith('..') || path.isAbsolute(relPath)) {
+      return true; // Consider outside files as ignored
+    }
+
+    if (this.ignoreFilter && this.ignoreFilter.ignores(relPath)) {
+      return true;
+    }
+
+    return false;
+  }
+
   private async handleFileWrite(provider: IVfsProvider, filePath: string, content: Buffer) {
     const fileExtension = path.extname(filePath).toLowerCase();
 
     if (this.textExtensions.includes(fileExtension)) {
-      // Check if the file should be ignored
-      const relPath = path.relative(this.repoRoot, filePath);
-
-      // Guard against files outside the repo root to prevent ignore() from crashing
-      if (relPath.startsWith('..') || path.isAbsolute(relPath)) {
-        return;
-      }
-
-      if (this.ignoreFilter && !this.ignoreFilter.ignores(relPath)) {
-        const text = content.toString('utf-8');
-        await this.indexFile(filePath, text);
-      } else if (!this.ignoreFilter) {
-        // If ignoreFilter not ready, index anyway
+      if (!this.isIgnored(filePath)) {
         const text = content.toString('utf-8');
         await this.indexFile(filePath, text);
       }
     } else if (this.binaryExtensions.includes(fileExtension)) {
       try {
-        const markdownContent = await this.parseFile(fileExtension, content);
+        const markdownContent = await fileParserService.parseFile(fileExtension, content, this.textExtensions);
         const shadowFilePath = await this.generateShadowFile(provider, filePath, markdownContent);
 
-        // Check if the file should be ignored
-        const relShadowPath = path.relative(this.repoRoot, shadowFilePath);
-
-        // Guard against files outside the repo root
-        if (relShadowPath.startsWith('..') || path.isAbsolute(relShadowPath)) {
-          return;
-        }
-
-        if (this.ignoreFilter && !this.ignoreFilter.ignores(relShadowPath)) {
-          await this.indexFile(shadowFilePath, markdownContent);
-        } else if (!this.ignoreFilter) {
-          // If ignoreFilter not ready, index anyway
+        if (!this.isIgnored(shadowFilePath)) {
           await this.indexFile(shadowFilePath, markdownContent);
         }
-
       } catch (error) {
         console.error(`Error processing file ${filePath}:`, error);
       }
@@ -137,15 +125,7 @@ class IngestionService {
           }
           await this.ingestRepository(fullPath);
         } else {
-          // Check ignore with proper type check
-          const rel = path.relative(this.repoRoot, fullPath);
-
-          // Guard against files outside root (shouldn't happen during directory scan but safe to add)
-          if (rel.startsWith('..') || path.isAbsolute(rel)) {
-            continue;
-          }
-
-          if (this.ignoreFilter && this.ignoreFilter.ignores(rel)) {
+          if (this.isIgnored(fullPath)) {
             const displayName = path.basename(fullPath);
             console.log(`[IngestionService] 🚫 Ignored: ${displayName}`);
             continue;
@@ -249,9 +229,30 @@ class IngestionService {
         console.log('DOCX parsing not yet implemented.');
         return 'DOCX content placeholder';
       case '.png':
-        // TODO: Implement PNG parsing using a multimodal LLM
-        console.log('PNG parsing not yet implemented.');
-        return 'PNG content placeholder';
+        try {
+          console.log(`[IngestionService] Attempting to parse PNG image`);
+          const base64Image = content.toString('base64');
+
+          const agent = await createVolcanoAgent({
+            roleId: 'system-ingestion', // Needed by AgentConfig interface
+            isLocked: true,
+            modelId: 'gpt-4o',
+            temperature: 0.1,
+            maxTokens: 2000
+          });
+
+          // Standard OpenAI format for multimodal prompts
+          const prompt = [
+            { type: "text", text: "Please extract all text from this image and provide a brief description of what the image contains." },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } }
+          ];
+
+          const response = await agent.generate(prompt);
+          return response.text;
+        } catch (error) {
+          console.error('[IngestionService] Error parsing PNG image:', error);
+          return 'PNG content placeholder (parsing failed)';
+        }
       default:
         throw new Error(`Unsupported file type for parsing: ${fileExtension}`);
     }

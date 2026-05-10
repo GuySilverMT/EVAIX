@@ -1,6 +1,6 @@
 
-import { createEmbedding } from '../src/services/vector.service.js';
-import { ProviderManager } from '../src/services/ProviderManager.js';
+import { createEmbedding } from '../../src/services/vector.service.js';
+import { ProviderManager } from '../../src/services/ProviderManager.js';
 
 async function main() {
   console.log('Initializing ProviderManager...');

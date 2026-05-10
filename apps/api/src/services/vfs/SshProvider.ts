@@ -66,4 +66,10 @@ export class SshProvider implements IVfsProvider {
     const result = await this.client.exists(fullPath);
     return !!result; // exists returns false | 'd' | '-' etc.
   }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    const fullOldPath = this.resolvePath(oldPath);
+    const fullNewPath = this.resolvePath(newPath);
+    await this.client.rename(fullOldPath, fullNewPath);
+  }
 }

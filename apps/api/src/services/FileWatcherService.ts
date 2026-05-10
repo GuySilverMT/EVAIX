@@ -22,6 +22,66 @@ class FileWatcherService {
   private projectRoot: string = process.cwd();
   private ignoreFilter = ignore();
 
+  private broadcastEvent(event: any) {
+    try {
+      getWebSocketService()?.broadcast(event);
+    } catch {
+      // Ignore WS errors
+    }
+  }
+
+  private shouldIgnore(filePath: string): boolean {
+    // 1. Always ignore certain patterns regardless of .gitignore
+    if (
+      filePath.includes('.git') ||
+      filePath.includes('.domoreai/shadow') ||
+      filePath.endsWith('.log') ||
+      filePath.endsWith('.sqlite') ||
+      filePath.endsWith('.db') ||
+      filePath.includes('/tmp/')
+    ) {
+      return true;
+    }
+
+    // 2. Use .gitignore rules
+    const relPath = path.relative(this.projectRoot, filePath);
+    if (relPath && this.ignoreFilter.ignores(relPath)) {
+      return true;
+    }
+
+    // 3. Fallback to basic node_modules/dist/build check for robustness
+    return (
+      filePath.includes('node_modules') ||
+      filePath.includes('/dist/') ||
+      filePath.includes('/build/') ||
+      filePath.includes('/.next/') ||
+      filePath.includes('/.turbo/')
+    );
+  }
+
+  private setupEventHandlers(rootPath: string | string[]) {
+    if (!this.watcher) return;
+
+    // File added or changed
+    this.watcher.on('add', (filePath: string) => { void this.handleFileChange(filePath, 'added'); });
+    this.watcher.on('change', (filePath: string) => { void this.handleFileChange(filePath, 'changed'); });
+
+    // File deleted
+    this.watcher.on('unlink', (filePath: string) => { void this.handleFileDelete(filePath); });
+
+    this.watcher.on('error', (error: unknown) => {
+      console.error('[FileWatcher] ❌ Error:', error);
+    });
+
+    this.watcher.on('ready', () => {
+      console.log('[FileWatcher] ✅ Ready and watching for changes');
+      this.broadcastEvent({
+        type: 'filewatcher.ready',
+        path: rootPath
+      });
+    });
+  }
+
   /**
    * Start watching a directory for file changes
    */
@@ -37,34 +97,7 @@ class FileWatcherService {
     console.log(`[FileWatcher] 👁️  Starting file watcher for: ${rootPath}`);
 
     this.watcher = chokidar.watch(rootPath, {
-      ignored: (filePath: string) => {
-        // 1. Always ignore certain patterns regardless of .gitignore
-        if (
-          filePath.includes('.git') || 
-          filePath.includes('.domoreai/shadow') ||
-          filePath.endsWith('.log') ||
-          filePath.endsWith('.sqlite') ||
-          filePath.endsWith('.db') ||
-          filePath.includes('/tmp/')
-        ) {
-          return true;
-        }
-
-        // 2. Use .gitignore rules
-        const relPath = path.relative(this.projectRoot, filePath);
-        if (relPath && this.ignoreFilter.ignores(relPath)) {
-          return true;
-        }
-
-        // 3. Fallback to basic node_modules/dist/build check for robustness
-        return (
-          filePath.includes('node_modules') || 
-          filePath.includes('/dist/') || 
-          filePath.includes('/build/') ||
-          filePath.includes('/.next/') ||
-          filePath.includes('/.turbo/')
-        );
-      },
+      ignored: (filePath: string) => this.shouldIgnore(filePath),
       persistent: true,
       ignoreInitial: false, // Trigger 'add' for existing files on startup
       awaitWriteFinish: {
@@ -73,28 +106,7 @@ class FileWatcherService {
       }
     });
 
-    // File added or changed
-    this.watcher.on('add', (filePath: string) => { void this.handleFileChange(filePath, 'added'); });
-    this.watcher.on('change', (filePath: string) => { void this.handleFileChange(filePath, 'changed'); });
-    
-    // File deleted
-    this.watcher.on('unlink', (filePath: string) => { void this.handleFileDelete(filePath); });
-
-    this.watcher.on('error', (error: unknown) => {
-      console.error('[FileWatcher] ❌ Error:', error);
-    });
-
-    this.watcher.on('ready', () => {
-      console.log('[FileWatcher] ✅ Ready and watching for changes');
-      try {
-        getWebSocketService()?.broadcast({ 
-          type: 'filewatcher.ready', 
-          path: rootPath 
-        });
-      } catch {
-        // Ignore WS errors
-      }
-    });
+    this.setupEventHandlers(rootPath);
   }
 
   /**
@@ -141,15 +153,10 @@ class FileWatcherService {
     }
   }
 
-  /**
-   * Handle file change (add or modify)
-   */
-  private async handleFileChange(filePath: string, changeType: 'added' | 'changed') {
-    const ext = path.extname(filePath).toLowerCase();
-    
+  private async isProcessableFile(filePath: string, ext: string): Promise<boolean> {
     // Only process text files
     if (!this.textExtensions.includes(ext)) {
-      return;
+      return false;
     }
 
     // SMART FILTERING: Skip noise files that are technically text but unhelpful for embeddings
@@ -166,7 +173,7 @@ class FileWatcherService {
       normalizedPath.includes('/.next/') ||
       normalizedPath.includes('/.turbo/')
     ) {
-      return;
+      return false;
     }
 
     // Further restrict JSON files: only small config files are worth embedding
@@ -174,31 +181,40 @@ class FileWatcherService {
       try {
         const stats = await fs.stat(filePath);
         if (stats.size > 50 * 1024) { // Skip JSON > 50KB (likely data, not config)
-          return;
+          return false;
         }
       } catch {
         // Skip if stat fails
-        return;
+        return false;
       }
     }
 
     // Skip hidden files/directories (except .prisma which we explicitly included)
     if (path.basename(filePath).startsWith('.') && ext !== '.prisma') {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Handle file change (add or modify)
+   */
+  private async handleFileChange(filePath: string, changeType: 'added' | 'changed') {
+    const ext = path.extname(filePath).toLowerCase();
+
+    if (!(await this.isProcessableFile(filePath, ext))) {
       return;
     }
 
     console.log(`[FileWatcher] 📝 File ${changeType}: ${path.basename(filePath)}`);
     
-    try {
-      getWebSocketService()?.broadcast({ 
-        type: 'filewatcher.change', 
-        file: path.basename(filePath),
-        filePath,
-        changeType 
-      });
-    } catch {
-      // Ignore WS errors
-    }
+    this.broadcastEvent({
+      type: 'filewatcher.change',
+      file: path.basename(filePath),
+      filePath,
+      changeType
+    });
 
     // Add to queue and process
     this.indexQueue.add(filePath);
@@ -217,15 +233,11 @@ class FileWatcherService {
 
       console.log(`[FileWatcher] ✅ Removed ${filePath} from index`);
       
-      try {
-        getWebSocketService()?.broadcast({ 
-          type: 'filewatcher.delete', 
-          file: path.basename(filePath),
-          filePath 
-        });
-      } catch {
-        // Ignore WS errors
-      }
+      this.broadcastEvent({
+        type: 'filewatcher.delete',
+        file: path.basename(filePath),
+        filePath
+      });
     } catch (error) {
       console.error(`[FileWatcher] ❌ Error removing ${filePath} from index:`, error);
     }
@@ -272,31 +284,7 @@ class FileWatcherService {
     }
   }
 
-  /**
-   * Index a single file (same logic as IngestionAgent)
-   */
-  private async indexFile(filePath: string, content: string) {
-    // Compute content hash to detect unchanged files
-    const hash = crypto.createHash('sha256').update(content, 'utf8').digest('hex');
-
-    try {
-      const existing = await fileIndexRepository.getByFilePath(filePath);
-
-      if (existing && existing.contentHash === hash) {
-        console.log(`[FileWatcher] ⏭️  Skipping ${path.basename(filePath)} — content unchanged`);
-        return;
-      }
-    } catch (err) {
-      console.warn(`[FileWatcher] Could not check FileIndex for ${filePath}:`, err);
-      // fall through to re-embed
-    }
-
-    console.log(`[FileWatcher] 🔄 Re-indexing ${path.basename(filePath)}...`);
-
-    const chunks = chunkText(content);
-    console.log(`[FileWatcher] 📦 Created ${chunks.length} chunks`);
-    
-    // Process chunks SEQUENTIALLY to avoid overloading the model context/queue
+  private async createVectorsForChunks(filePath: string, chunks: string[], hash: string): Promise<any[]> {
     const vectors = [];
     const isHighValue = this.highValueExtensions.includes(path.extname(filePath).toLowerCase());
     
@@ -328,12 +316,10 @@ class FileWatcherService {
         console.error(`[FileWatcher] ❌ Failed to embed chunk ${i} of ${filePath}:`, err);
       }
     }
+    return vectors;
+  }
 
-    if (vectors.length === 0) {
-      console.warn(`[FileWatcher] ⚠️ No vectors created for ${filePath}`);
-      return;
-    }
-
+  private async storeVectorsAndIndex(filePath: string, vectors: any[], hash: string) {
     // Delete old vectors for this file
     try {
       await fileIndexRepository.deleteVectorsByFilePath(filePath);
@@ -350,20 +336,51 @@ class FileWatcherService {
       await fileIndexRepository.upsert(filePath, hash);
       console.log(`[FileWatcher] 🔖 Updated FileIndex for ${path.basename(filePath)}`);
       
-      try {
-        getWebSocketService()?.broadcast({ 
-          type: 'filewatcher.indexed', 
-          file: path.basename(filePath),
-          filePath,
-          chunks: vectors.length,
-          hash 
-        });
-      } catch {
-        // Ignore WS errors
-      }
+      this.broadcastEvent({
+        type: 'filewatcher.indexed',
+        file: path.basename(filePath),
+        filePath,
+        chunks: vectors.length,
+        hash
+      });
     } catch (err) {
       console.warn(`[FileWatcher] Failed to update FileIndex for ${filePath}:`, err);
     }
+  }
+
+  /**
+   * Index a single file (same logic as IngestionAgent)
+   */
+  private async indexFile(filePath: string, content: string) {
+    // Compute content hash to detect unchanged files
+    const hash = crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+
+    try {
+      const existing = await fileIndexRepository.getByFilePath(filePath);
+
+      if (existing && existing.contentHash === hash) {
+        console.log(`[FileWatcher] ⏭️  Skipping ${path.basename(filePath)} — content unchanged`);
+        return;
+      }
+    } catch (err) {
+      console.warn(`[FileWatcher] Could not check FileIndex for ${filePath}:`, err);
+      // fall through to re-embed
+    }
+
+    console.log(`[FileWatcher] 🔄 Re-indexing ${path.basename(filePath)}...`);
+
+    const chunks = chunkText(content);
+    console.log(`[FileWatcher] 📦 Created ${chunks.length} chunks`);
+
+    // Process chunks SEQUENTIALLY to avoid overloading the model context/queue
+    const vectors = await this.createVectorsForChunks(filePath, chunks, hash);
+
+    if (vectors.length === 0) {
+      console.warn(`[FileWatcher] ⚠️ No vectors created for ${filePath}`);
+      return;
+    }
+
+    await this.storeVectorsAndIndex(filePath, vectors, hash);
   }
 
   /**

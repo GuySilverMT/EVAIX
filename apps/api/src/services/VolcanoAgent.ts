@@ -19,7 +19,7 @@ export class VolcanoAgent {
     return this.config;
   }
 
-  async generate(prompt: string): Promise<{ text: string, usage?: any }> {
+  async generate(prompt: string | any[]): Promise<{ text: string, usage?: any }> {
     const { modelId, temperature, maxTokens } = this.config;
     
     // ...

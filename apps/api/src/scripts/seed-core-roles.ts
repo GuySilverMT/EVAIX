@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -156,108 +158,75 @@ You are the master designer of the Nebula ecosystem. Your mission is to construc
     console.log('✅ Updated DNA Variant for Nebula Architect');
   }
 
-  // 4. Ensure Role Architect
-    let roleArchitect = await prisma.role.upsert({
-    where: { name: 'Role Architect' },
-    update: {
-      description: 'Designs AI agent roles using the complete DNA architecture with proper understanding of exclusive vs non-exclusive fields',
-      categoryId: systemCategory.id,
-      basePrompt: `# Role Architect
-You are the master architect of the Nebula role ecosystem. Your mission is to design, refine, and optimize AI agent roles using the comprehensive DNA architecture.
+  // 4. Ensure Role Architect Tools exist in Tool registry
+  const roleArchitectToolNames = [
+    'role_registry_list',
+    'role_variant_evolve',
+    'upsert_role',
+    'list_available_tools'
+  ];
 
-## 🎯 Primary Directives
-1. **DNA IS THE MEDIUM**: You construct roles by defining their DNA blocks (Identity, Cortex, Context, Governance, Behavior).
-2. **NO CONVERSATION**: You output only pure configuration or structured data.
-3. **ALIGNMENT**: Ensure new roles do not duplicate existing core capabilities but extend them meaningfully.
-
-## 🧬 DNA Architecture Rules
-When designing a role, you must consider the following components:
-
-### 1. Identity Module (The Soul)
-- \`personaName\`: A short, evocative name for the specific variant (e.g., "The Gavel", "DNA Synthesizer").
-- \`style\`: Must be exactly one of: \`IMPERATIVE\`, \`SOCRATIC\`, \`AGGRESSIVE_AUDITOR\`, or \`CASUAL\`.
-- \`thinkingProcess\`: Must be exactly one of: \`SOLO\`, \`CHAIN_OF_THOUGHT\`, or \`MULTI_STEP_PLANNING\`.
-- \`reflectionEnabled\`: Boolean indicating if the agent should self-correct.
-
-### 2. Cortex Module (The Brain)
-- \`capabilities\`: Array of innate skills. Options: \`reasoning\`, \`coding\`, \`vision\`, \`voice\`. (Can be empty).
-- \`executionMode\`: Must be exactly one of: \`JSON_STRICT\`, \`CODE_INTERPRETER\`, or \`API_NATIVE\`.
-- \`contextRange\`: Set sensible defaults (e.g., \`min: 8192\`, \`max: 32000\` for coding tasks).
-
-### 3. Governance Module (The Law)
-- \`assessmentStrategy\`: Array of checks. Options: \`LINT_ONLY\`, \`VISUAL_CHECK\`, \`STRICT_TEST_PASS\`, \`JUDGE\`, \`LIBRARIAN\`.
-  - *Note*: Coding roles usually need at least \`["LINT_ONLY"]\`.
-- \`enforcementLevel\`: Must be exactly one of: \`BLOCK_ON_FAIL\` or \`WARN_ONLY\`.
-
-### 4. Context Module (The Memory Strategy)
-- \`strategy\`: Array of memory access patterns. Options: \`EXPLORATORY\`, \`VECTOR_SEARCH\`, \`LOCUS_FOCUS\`.
-  - *Note*: Most roles should include \`"EXPLORATORY"\` to find relevant files.
-- \`permissions\`: Usually \`["ALL"]\` for internal agents.
-
-## 🛠️ Global API Reference
-- \`role_registry_list\`: View existing roles.
-- \`role_variant_evolve\`: Create or update a DNA Variant.
-- \`role_config_patch\`: Update base role settings.
-
-## ⚠️ Critical Rules
-- ❌ NEVER use conversational filler like "Here is the configuration you requested."
-- ✅ ALWAYS use the provided JSON schema for tool calls.
-- ✅ ALWAYS consider the specific domain when setting governance rules.`,
-      metadata: { needsReasoning: true },
-      targetProvider: null,
-      targetModel: null
-    },
-    create: {
-      name: 'Role Architect',
-      description: 'Designs AI agent roles using the complete DNA architecture with proper understanding of exclusive vs non-exclusive fields',
-      categoryId: systemCategory.id,
-      basePrompt: `# Role Architect
-You are the master architect of the Nebula role ecosystem. Your mission is to design, refine, and optimize AI agent roles using the comprehensive DNA architecture.
-
-## 🎯 Primary Directives
-1. **DNA IS THE MEDIUM**: You construct roles by defining their DNA blocks (Identity, Cortex, Context, Governance, Behavior).
-2. **NO CONVERSATION**: You output only pure configuration or structured data.
-3. **ALIGNMENT**: Ensure new roles do not duplicate existing core capabilities but extend them meaningfully.
-
-## 🧬 DNA Architecture Rules
-When designing a role, you must consider the following components:
-
-### 1. Identity Module (The Soul)
-- \`personaName\`: A short, evocative name for the specific variant (e.g., "The Gavel", "DNA Synthesizer").
-- \`style\`: Must be exactly one of: \`IMPERATIVE\`, \`SOCRATIC\`, \`AGGRESSIVE_AUDITOR\`, or \`CASUAL\`.
-- \`thinkingProcess\`: Must be exactly one of: \`SOLO\`, \`CHAIN_OF_THOUGHT\`, or \`MULTI_STEP_PLANNING\`.
-- \`reflectionEnabled\`: Boolean indicating if the agent should self-correct.
-
-### 2. Cortex Module (The Brain)
-- \`capabilities\`: Array of innate skills. Options: \`reasoning\`, \`coding\`, \`vision\`, \`voice\`. (Can be empty).
-- \`executionMode\`: Must be exactly one of: \`JSON_STRICT\`, \`CODE_INTERPRETER\`, or \`API_NATIVE\`.
-- \`contextRange\`: Set sensible defaults (e.g., \`min: 8192\`, \`max: 32000\` for coding tasks).
-
-### 3. Governance Module (The Law)
-- \`assessmentStrategy\`: Array of checks. Options: \`LINT_ONLY\`, \`VISUAL_CHECK\`, \`STRICT_TEST_PASS\`, \`JUDGE\`, \`LIBRARIAN\`.
-  - *Note*: Coding roles usually need at least \`["LINT_ONLY"]\`.
-- \`enforcementLevel\`: Must be exactly one of: \`BLOCK_ON_FAIL\` or \`WARN_ONLY\`.
-
-### 4. Context Module (The Memory Strategy)
-- \`strategy\`: Array of memory access patterns. Options: \`EXPLORATORY\`, \`VECTOR_SEARCH\`, \`LOCUS_FOCUS\`.
-  - *Note*: Most roles should include \`"EXPLORATORY"\` to find relevant files.
-- \`permissions\`: Usually \`["ALL"]\` for internal agents.
-
-## 🛠️ Global API Reference
-- \`role_registry_list\`: View existing roles.
-- \`role_variant_evolve\`: Create or update a DNA Variant.
-- \`role_config_patch\`: Update base role settings.
-
-## ⚠️ Critical Rules
-- ❌ NEVER use conversational filler like "Here is the configuration you requested."
-- ✅ ALWAYS use the provided JSON schema for tool calls.
-- ✅ ALWAYS consider the specific domain when setting governance rules.`,
-      metadata: { needsReasoning: true },
-      targetProvider: null,
-      targetModel: null
+  const toolIds = [];
+  for (const toolName of roleArchitectToolNames) {
+    let tool = await prisma.tool.findUnique({ where: { name: toolName } });
+    if (!tool) {
+      tool = await prisma.tool.create({
+        data: {
+          name: toolName,
+          description: `Core tool ${toolName}`,
+          instruction: `Instructions for ${toolName}`,
+          schema: '{}',
+        }
+      });
+      console.log(`✅ Created Tool: ${toolName}`);
+    } else {
+      console.log(`⏭️  Tool already exists: ${toolName}`);
     }
+    toolIds.push(tool.id);
+  }
+
+  // 5. Ensure Role Architect
+  const roleArchitectPromptPath = path.join(__dirname, '../../data/agents/role-architect.md');
+  const roleArchitectPrompt = fs.readFileSync(roleArchitectPromptPath, 'utf8');
+
+  let roleArchitect = await prisma.role.findUnique({
+    where: { name: 'Role Architect' }
   });
-  console.log('✅ Upserted Role Architect role');
+
+  if (!roleArchitect) {
+    roleArchitect = await prisma.role.create({
+      data: {
+        name: 'Role Architect',
+        description: 'Designs and evolves AI agent roles using the DNA architecture.',
+        categoryId: systemCategory.id,
+        basePrompt: roleArchitectPrompt,
+        targetProvider: "xai",
+        targetModel: "grok-beta",
+        metadata: { needsReasoning: true }
+      }
+    });
+    console.log('✅ Created Role Architect role');
+  } else {
+    roleArchitect = await prisma.role.update({
+        where: { id: roleArchitect.id },
+        data: {
+            basePrompt: roleArchitectPrompt,
+            targetProvider: "xai",
+            targetModel: "grok-beta",
+            metadata: { needsReasoning: true }
+        }
+    });
+    console.log('✅ Refreshed Role Architect role');
+  }
+
+  // 6. Explicitly map RoleArchitect Tools
+  await prisma.roleTool.deleteMany({ where: { roleId: roleArchitect.id } });
+  for (const toolId of toolIds) {
+    await prisma.roleTool.create({
+        data: { roleId: roleArchitect.id, toolId }
+    });
+  }
+  console.log('✅ Mapped RoleArchitect tools');
 
   // Meta is a native tool - it doesn't need a DB record
   console.log("ℹ️  'meta' is available as a native tool for Role Architect");
