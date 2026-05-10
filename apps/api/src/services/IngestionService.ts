@@ -7,6 +7,7 @@ import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import crypto from 'crypto';
 import ignore from 'ignore';
 import { getWebSocketService } from './websocket.singleton.js';
+import { createVolcanoAgent } from './VolcanoAgent.js';
 
 interface IgnoreFilter {
   ignores(path: string): boolean;
@@ -249,9 +250,30 @@ class IngestionService {
         console.log('DOCX parsing not yet implemented.');
         return 'DOCX content placeholder';
       case '.png':
-        // TODO: Implement PNG parsing using a multimodal LLM
-        console.log('PNG parsing not yet implemented.');
-        return 'PNG content placeholder';
+        try {
+          console.log(`[IngestionService] Attempting to parse PNG image`);
+          const base64Image = content.toString('base64');
+
+          const agent = await createVolcanoAgent({
+            roleId: 'system-ingestion', // Needed by AgentConfig interface
+            isLocked: true,
+            modelId: 'gpt-4o',
+            temperature: 0.1,
+            maxTokens: 2000
+          });
+
+          // Standard OpenAI format for multimodal prompts
+          const prompt = [
+            { type: "text", text: "Please extract all text from this image and provide a brief description of what the image contains." },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } }
+          ];
+
+          const response = await agent.generate(prompt);
+          return response.text;
+        } catch (error) {
+          console.error('[IngestionService] Error parsing PNG image:', error);
+          return 'PNG content placeholder (parsing failed)';
+        }
       default:
         throw new Error(`Unsupported file type for parsing: ${fileExtension}`);
     }

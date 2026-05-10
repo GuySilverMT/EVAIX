@@ -32,7 +32,7 @@ export interface LLMModel {
 
 export interface Message {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | any[];
 }
 
 export interface CompletionRequest {
