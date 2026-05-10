@@ -943,21 +943,18 @@ Return ONLY the system prompt, no additional commentary.`;
 
           // Connect tools
           if (roleData.tools && roleData.tools.length > 0) {
-            for (const toolName of roleData.tools) {
-              const tool = await prisma.tool.findUnique({
-                where: { name: toolName }
-              });
+            const tools = await prisma.tool.findMany({
+              where: { name: { in: roleData.tools } }
+            });
 
-              if (tool) {
-                await prisma.roleTool.create({
-                  data: {
-                    roleId: role.id,
-                    toolId: tool.id
-                  }
-                }).catch(() => {
-                  // Ignore duplicate tool connections
-                });
-              }
+            if (tools.length > 0) {
+              await prisma.roleTool.createMany({
+                data: tools.map(tool => ({
+                  roleId: role.id,
+                  toolId: tool.id
+                })),
+                skipDuplicates: true
+              });
             }
           }
 
