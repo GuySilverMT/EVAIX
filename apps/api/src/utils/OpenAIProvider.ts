@@ -168,9 +168,24 @@ export class OpenAIProvider implements BaseLLMProvider {
       if (msg.role === 'system') continue;
       
       if (isFirstUserMessage && msg.role === 'user') {
+        let mergedContent;
+        if (typeof msg.content === 'string') {
+          mergedContent = `${systemPrompt}\n\n${msg.content}`;
+        } else if (Array.isArray(msg.content)) {
+          const newContent = [...msg.content];
+          if (newContent.length > 0 && newContent[0].type === 'text') {
+            newContent[0] = { ...newContent[0], text: `${systemPrompt}\n\n${newContent[0].text}` };
+          } else {
+            newContent.unshift({ type: 'text', text: `${systemPrompt}\n\n` });
+          }
+          mergedContent = newContent;
+        } else {
+          mergedContent = `${systemPrompt}\n\n${JSON.stringify(msg.content)}`;
+        }
+
         newMessages.push({
           role: 'user',
-          content: `${systemPrompt}\n\n${msg.content}`
+          content: mergedContent
         });
         isFirstUserMessage = false;
       } else {
@@ -178,6 +193,14 @@ export class OpenAIProvider implements BaseLLMProvider {
         if (msg.role === 'user') isFirstUserMessage = false;
       }
     }
+
+    if (isFirstUserMessage && systemPrompt) {
+      newMessages.push({
+        role: 'user',
+        content: systemPrompt
+      });
+    }
+
     return newMessages;
   }
 }
