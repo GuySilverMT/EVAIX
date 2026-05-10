@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { get_encoding } from 'tiktoken';
 
 export type ContextState = {
   tone?: string;
@@ -219,17 +220,21 @@ export class TokenService {
   }
 
   /**
-   * Counts approximate tokens from file paths
-   * Uses a simple heuristic: 1 token ≈ 4 characters
+   * Counts exact tokens from file paths using tiktoken
    */
   private async countTokensFromFiles(filePaths: string[]): Promise<number> {
-    let totalChars = 0;
+    let totalTokens = 0;
+
+    // cl100k_base is the standard encoding for modern OpenAI models (e.g. gpt-3.5, gpt-4)
+    // and serves as a good general-purpose token counter fallback for others.
+    const enc = get_encoding('cl100k_base');
 
     for (const filePath of filePaths) {
       try {
         if (fs.existsSync(filePath)) {
           const content = fs.readFileSync(filePath, 'utf8');
-          totalChars += content.length;
+          const tokens = enc.encode(content);
+          totalTokens += tokens.length;
         } else {
           console.warn(`[TokenService] File not found: ${filePath}`);
         }
@@ -238,13 +243,13 @@ export class TokenService {
       }
     }
 
-    // Simple heuristic: ~4 chars per token
-    return Math.ceil(totalChars / 4);
+    enc.free();
+
+    return totalTokens;
   }
 
   /**
-   * Advanced tokenization using a proper tokenizer (TODO: integrate tiktoken or similar)
-   * For now, uses the simple character-based heuristic
+   * Advanced tokenization using a proper tokenizer
    */
   async getTokenLimits(modelId: string): Promise<{ contextWindow: number; maxOutput: number }> {
     try {
@@ -266,13 +271,14 @@ export class TokenService {
   }
 
   /**
-   * Advanced tokenization using a proper tokenizer (TODO: integrate tiktoken or similar)
-   * For now, uses the simple character-based heuristic
+   * Advanced tokenization using a proper tokenizer
    */
   async countTokens(text: string): Promise<number> {
-    // TODO: Integrate proper tokenizer (tiktoken for GPT models, etc.)
-    // For now, use simple heuristic
-    return Math.ceil(text.length / 4);
+    const enc = get_encoding('cl100k_base');
+    const tokens = enc.encode(text);
+    const count = tokens.length;
+    enc.free();
+    return count;
   }
 }
 

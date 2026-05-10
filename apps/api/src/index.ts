@@ -46,7 +46,21 @@ async function startServer() {
 
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || DEFAULT_CORS_ORIGIN,
+      origin: (requestOrigin, callback) => {
+        const allowedOrigins = (process.env.CORS_ORIGIN || DEFAULT_CORS_ORIGIN)
+          .split(',')
+          .map(o => o.trim())
+          .filter(Boolean);
+
+        // Allow requests with no origin (like mobile apps or curl requests)
+        // or requests where the origin is explicitly in the whitelist
+        if (!requestOrigin || allowedOrigins.includes(requestOrigin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
     })
   );
   app.use(express.json({ limit: '50mb' }));

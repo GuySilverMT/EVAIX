@@ -11,4 +11,5 @@ export interface IVfsProvider {
   write(path: string, content: string | Buffer): Promise<void>;
   mkdir(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
+  rename(oldPath: string, newPath: string): Promise<void>;
 }

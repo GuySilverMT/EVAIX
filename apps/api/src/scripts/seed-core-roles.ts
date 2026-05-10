@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -189,7 +191,37 @@ You are the master designer of the Nebula ecosystem. Your mission is to construc
     console.log('✅ Updated DNA Variant for Nebula Architect');
   }
 
-  // 4. Ensure Role Architect
+  // 4. Ensure Role Architect Tools exist in Tool registry
+  const roleArchitectToolNames = [
+    'role_registry_list',
+    'role_variant_evolve',
+    'upsert_role',
+    'list_available_tools'
+  ];
+
+  const toolIds = [];
+  for (const toolName of roleArchitectToolNames) {
+    let tool = await prisma.tool.findUnique({ where: { name: toolName } });
+    if (!tool) {
+      tool = await prisma.tool.create({
+        data: {
+          name: toolName,
+          description: `Core tool ${toolName}`,
+          instruction: `Instructions for ${toolName}`,
+          schema: '{}',
+        }
+      });
+      console.log(`✅ Created Tool: ${toolName}`);
+    } else {
+      console.log(`⏭️  Tool already exists: ${toolName}`);
+    }
+    toolIds.push(tool.id);
+  }
+
+  // 5. Ensure Role Architect
+  const roleArchitectPromptPath = path.join(__dirname, '../../data/agents/role-architect.md');
+  const roleArchitectPrompt = fs.readFileSync(roleArchitectPromptPath, 'utf8');
+
   let roleArchitect = await prisma.role.findUnique({
     where: { name: 'Role Architect' }
   });
@@ -200,65 +232,34 @@ You are the master designer of the Nebula ecosystem. Your mission is to construc
         name: 'Role Architect',
         description: 'Designs and evolves AI agent roles using the DNA architecture.',
         categoryId: systemCategory.id,
-        basePrompt: `You are the Role Architect.
-Your mission is to design specialized AI agents (Roles) for the user's workspace.
-You have access to atomic role tools to registry, evolve and patch personas.
-
-## 🛠️ ARCHITECT GOALS:
-1. Discover existing roles using 'system.role_registry_list'.
-2. Evolve new capabilities using 'system.role_variant_evolve'.
-3. Fine-tune behavior using 'system.role_config_patch'.
-
-## 📋 Operational Workflow
-1. Discover Intent: Infer Name, Description, Domain, and Complexity.
-2. DO NOT ASK FOR CLARIFICATION: Act autonomously.
-3. Execute via JSON tool calls for maximum reliability.`,
+        basePrompt: roleArchitectPrompt,
+        targetProvider: "xai",
+        targetModel: "grok-beta",
         metadata: { needsReasoning: true }
       }
     });
-
-    roleArchitect = await prisma.role.update({
-        where: { id: roleArchitect.id },
-        data: {
-            basePrompt: `You are the Role Architect.
-Your mission is to design specialized AI agents (Roles) for the user's workspace.
-You have access to atomic role tools to registry, evolve and patch personas.
-
-## 🛠️ ARCHITECT GOALS:
-1. Discover existing roles using 'system.role_registry_list'.
-2. Evolve new capabilities using 'system.role_variant_evolve'.
-3. Fine-tune behavior using 'system.role_config_patch'.
-
-## 📋 Operational Workflow
-1. Discover Intent: Infer Name, Description, Domain, and Complexity.
-2. DO NOT ASK FOR CLARIFICATION: Act autonomously.
-3. Execute via JSON tool calls for maximum reliability.`,
-            metadata: { needsReasoning: true }
-        }
-    });
-    console.log('✅ Updated Role Architect role');
+    console.log('✅ Created Role Architect role');
   } else {
     roleArchitect = await prisma.role.update({
         where: { id: roleArchitect.id },
         data: {
-            basePrompt: `You are the Role Architect.
-Your mission is to design specialized AI agents (Roles) for the user's workspace.
-You have access to atomic role tools to registry, evolve and patch personas.
-
-## 🛠️ ARCHITECT GOALS:
-1. Discover existing roles using 'system.role_registry_list'.
-2. Evolve new capabilities using 'system.role_variant_evolve'.
-3. Fine-tune behavior using 'system.role_config_patch'.
-
-## 📋 Operational Workflow
-1. Discover Intent: Infer Name, Description, Domain, and Complexity.
-2. DO NOT ASK FOR CLARIFICATION: Act autonomously.
-3. Execute via JSON tool calls for maximum reliability.`,
+            basePrompt: roleArchitectPrompt,
+            targetProvider: "xai",
+            targetModel: "grok-beta",
             metadata: { needsReasoning: true }
         }
     });
     console.log('✅ Refreshed Role Architect role');
   }
+
+  // 6. Explicitly map RoleArchitect Tools
+  await prisma.roleTool.deleteMany({ where: { roleId: roleArchitect.id } });
+  for (const toolId of toolIds) {
+    await prisma.roleTool.create({
+        data: { roleId: roleArchitect.id, toolId }
+    });
+  }
+  console.log('✅ Mapped RoleArchitect tools');
 
   // Meta is a native tool - it doesn't need a DB record
   console.log("ℹ️  'meta' is available as a native tool for Role Architect");
