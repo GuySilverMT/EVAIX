@@ -9,6 +9,7 @@ import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
 import { Terminal as TerminalIcon, ArrowRight, Sparkles, Copy, Check } from 'lucide-react';
 
 interface XtermTerminalProps {
+  id?: string;
   logs: TerminalMessage[];
   workingDirectory?: string;
   onInput: (input: string) => void;
@@ -348,6 +349,7 @@ export default function XtermTerminal({ logs, workingDirectory, onInput, headerE
 
   return (
     <UniversalCardWrapper
+      id={id}
       title="Terminal (Local)"
       icon={TerminalIcon}
       aiContext={workingDirectory || 'Local Terminal'}

@@ -68,6 +68,13 @@ export class GoogleGenAIProvider implements BaseLLMProvider {
       if (msg.role === 'system') continue; // Handled above
 
       let content = msg.content;
+      if (Array.isArray(content)) {
+        // Fallback for arrays (multimodal): extract and join text parts
+        content = content
+          .filter(part => part.type === 'text')
+          .map(part => part.text)
+          .join('\n');
+      }
       
       // Merge system prompt into first user message
       if (isFirstUserMessage && msg.role === 'user' && systemInstruction) {

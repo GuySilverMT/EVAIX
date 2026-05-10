@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import MonacoEditor from './MonacoEditor.js'; 
 import { Bot, Loader2, Play, Copy, Save, RefreshCw } from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
+import { useAgenticContext } from '../hooks/useAgenticContext.js';
 import { toast } from 'sonner';
 import { trpc } from '../utils/trpc.js';
 
@@ -16,6 +17,7 @@ type AiResponse = string | {
 };
 
 interface SmartEditorProps {
+  cardId?: string;
   fileName: string;
   content: string;
   onChange: (val: string) => void;
@@ -26,7 +28,7 @@ interface SmartEditorProps {
   onRoleChange?: (roleId: string) => void;
 }
 
-const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate, roleId, onRoleChange }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void, roleId?: string | null, onRoleChange?: (roleId: string) => void }) => {
+const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate, roleId, onRoleChange, cardId }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void, roleId?: string | null, onRoleChange?: (roleId: string) => void, cardId?: string }) => {
   const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
   const utils = trpc.useContext();
   
@@ -212,8 +214,28 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
   );
 };
 
-const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate, roleId, onRoleChange }) => {
+const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate, roleId, onRoleChange, cardId }) => {
   const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
+
+
+  useAgenticContext({
+    id: cardId || fileName,
+    type: isCode ? 'code-editor' : 'markdown-editor',
+    title: fileName,
+    defaultIncluded: true,
+    getContext: async () => ({
+      format: 'markdown',
+      content: content
+    }),
+    applyMutation: async (mutation) => {
+      if (mutation.action === 'REWRITE') {
+        // Just directly setting content for now, ideally prompt user
+        onChange(mutation.content);
+        return true;
+      }
+      return false;
+    }
+  });
 
   if (isCode) {
     const extension = fileName.split('.').pop() || 'text';
@@ -270,7 +292,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     );
   }
 
-  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} />;
+  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} cardId={cardId} />;
 };
 
 export default SmartEditor;

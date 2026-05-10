@@ -59,7 +59,9 @@ export const schemaRouter = createTRPCRouter({
 
   commitMigration: publicProcedure
     .input(z.object({
-      sql: z.string(),
+      tableName: z.string(),
+      columnName: z.string(),
+      type: z.enum(['TEXT', 'BOOLEAN', 'INTEGER', 'FLOAT', 'JSONB', 'TIMESTAMP']),
       userSignature: z.boolean(),
     }))
     .mutation(async ({ input }) => {
@@ -70,7 +72,20 @@ export const schemaRouter = createTRPCRouter({
         });
       }
       
-      await prisma.$executeRawUnsafe(input.sql);
+      const table = sanitize(input.tableName);
+      const col = sanitize(input.columnName);
+
+      let sql = '';
+      switch (input.type) {
+        case 'TEXT': sql = `ALTER TABLE ${table} ADD COLUMN ${col} TEXT;`; break;
+        case 'BOOLEAN': sql = `ALTER TABLE ${table} ADD COLUMN ${col} BOOLEAN DEFAULT false;`; break;
+        case 'INTEGER': sql = `ALTER TABLE ${table} ADD COLUMN ${col} INTEGER;`; break;
+        case 'FLOAT': sql = `ALTER TABLE ${table} ADD COLUMN ${col} DOUBLE PRECISION;`; break;
+        case 'JSONB': sql = `ALTER TABLE ${table} ADD COLUMN ${col} JSONB DEFAULT '{}';`; break;
+        case 'TIMESTAMP': sql = `ALTER TABLE ${table} ADD COLUMN ${col} TIMESTAMP(3);`; break;
+      }
+
+      await prisma.$executeRawUnsafe(sql);
       return { success: true };
     }),
   // 1. Get Table Schema (Crucial for seeing empty tables)
