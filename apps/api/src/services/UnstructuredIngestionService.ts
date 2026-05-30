@@ -1,8 +1,9 @@
 import fs from 'fs';
+import { writeFile } from 'fs/promises';
 import path from 'path';
 
 // Node.js 20+ feature check - safe fallback if needed, though package.json says ^20.12.12
-const { openAsBlob, existsSync, mkdirSync, writeFileSync, readFileSync } = fs;
+const { openAsBlob, existsSync, mkdirSync, readFileSync } = fs;
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
@@ -65,7 +66,7 @@ export class UnstructuredIngestionService {
       const shadowFileName = `${fileName}.json`;
       const shadowFilePath = path.join(UnstructuredIngestionService.SHADOW_DIR, shadowFileName);
       
-      writeFileSync(shadowFilePath, JSON.stringify(data, null, 2));
+      await writeFile(shadowFilePath, JSON.stringify(data, null, 2));
       console.log(`[UnstructuredIngestionService] Shadow file saved: ${shadowFilePath}`);
 
       return shadowFilePath;
