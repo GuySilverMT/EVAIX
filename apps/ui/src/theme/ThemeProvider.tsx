@@ -72,21 +72,31 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // 1. Inject Colors — using the key map so CSS var names are always correct
     Object.entries(theme.colors).forEach(([key, value]) => {
+      // Standard --color-name-here (e.g. textMuted -> --color-text-muted)
       const cssKey = COLOR_KEY_MAP[key] ?? key.replace(/([A-Z])/g, '-$1').toLowerCase();
       root.style.setProperty(`--color-${cssKey}`, value);
+
+      // Compatibility Aliases for common variables used in legacy and component code
+      if (key === 'text') {
+        root.style.setProperty('--text-primary', value);
+      }
+      if (key === 'textMuted') {
+        root.style.setProperty('--text-muted', value);
+        root.style.setProperty('--text-secondary', value);
+        root.style.setProperty('--color-text-secondary', value);
+        root.style.setProperty('--color-text-muted', value);
+      }
+      if (key === 'border') {
+        root.style.setProperty('--border-color', value);
+      }
+      if (key === 'background') {
+        root.style.setProperty('--bg-background', value);
+      }
+      if (key === 'surface') {
+        // surface is mapped to background-secondary in COLOR_KEY_MAP, but we also ensure consistency here
+        root.style.setProperty('--color-background-secondary', value);
+      }
     });
-
-    // Also expose surface as --color-background-secondary explicitly
-    // (in case older pages reference it directly)
-    if (theme.colors.surface) {
-      root.style.setProperty('--color-background-secondary', theme.colors.surface);
-    }
-
-    // Also expose textMuted as --color-text-secondary for pages that use that name
-    if (theme.colors.textMuted) {
-      root.style.setProperty('--color-text-secondary', theme.colors.textMuted);
-      root.style.setProperty('--color-text-muted', theme.colors.textMuted);
-    }
 
     // 2. Inject Gradients
     if (theme.gradients.enabled) {
@@ -120,10 +130,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     });
 
-    // 6. Inject AI Intent Colors
+    // 6. Inject AI Intent Colors (camelCase -> kebab-case)
     if (theme.ai?.intents) {
       Object.entries(theme.ai.intents).forEach(([key, color]) => {
-        root.style.setProperty(`--ai-intent-${key}`, color);
+        const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        root.style.setProperty(`--ai-intent-${cssKey}`, color);
       });
     }
 
