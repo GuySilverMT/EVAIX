@@ -18,7 +18,19 @@ async function main() {
     },
   });
 
-  console.log('✅ Seeding complete: 1 Provider, 0 Roles.');
+
+  await prisma.providerConfig.upsert({
+    where: { id: 'google_jules' },
+    update: {},
+    create: {
+      id: 'google_jules',
+      name: 'Google Jules',
+      type: 'google_jules',
+      isEnabled: true,
+    },
+  });
+
+  console.log('✅ Seeding complete: 2 Providers, 0 Roles.');
 }
 
 main()
