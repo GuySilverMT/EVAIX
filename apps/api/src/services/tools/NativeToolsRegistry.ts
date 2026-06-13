@@ -206,7 +206,7 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
                     lines: { type: 'number', description: 'Number of lines to fetch (default 100)' }
                 }
             }
-        }
+        },
 
          // Jules Tools
          ...julesTools.map(t => ({
