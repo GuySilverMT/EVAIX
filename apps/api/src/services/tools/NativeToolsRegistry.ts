@@ -65,7 +65,7 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
         {
             name: 'write_file',
             handler: async (args: unknown) => fsTools.writeFile(args as { path: string; content: string }),
-            description: 'Write to a file',
+            description: 'Write to a new file. Throws an error if the file already exists. Use patch_file to modify existing files.',
             input_schema: {
                 type: 'object',
                 properties: {
@@ -73,6 +73,20 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
                     content: { type: 'string' }
                 },
                 required: ['path', 'content']
+            }
+        },
+        {
+            name: 'patch_file',
+            handler: async (args: unknown) => fsTools.patchFile(args as { path: string; search_string: string; replace_string: string }),
+            description: 'Modify an existing file using a robust Find & Replace mechanism. Provides exact block of code to search for and replacement.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string' },
+                    search_string: { type: 'string', description: 'The exact block of code to search for.' },
+                    replace_string: { type: 'string', description: 'The new block of code to replace the search string with.' }
+                },
+                required: ['path', 'search_string', 'replace_string']
             }
         },
         {

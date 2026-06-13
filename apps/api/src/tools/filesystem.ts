@@ -16,7 +16,44 @@ export const createFsTools = (rootPath: string = process.cwd()) => {
     },
     writeFile: async ({ path: filePath, content }: { path: string, content: string }) => {
       const fullPath = resolvePath(filePath);
+
+      // Enforce patch_file over write_file for existing files
+      try {
+        await fs.access(fullPath);
+        throw new Error(`File '${filePath}' already exists. To modify existing code, you MUST use the patch_file tool instead of write_file.`);
+      } catch (err: any) {
+        if (err.code !== 'ENOENT') {
+           throw err; // Re-throw if it's an access or permission error
+        }
+      }
+
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
+      await fs.writeFile(fullPath, content);
+      return { success: true };
+    },
+    patchFile: async ({ path: filePath, search_string, replace_string }: { path: string, search_string: string, replace_string: string }) => {
+      const fullPath = resolvePath(filePath);
+      let content = await fs.readFile(fullPath, 'utf-8');
+
+      // Attempt exact match first
+      if (content.includes(search_string)) {
+        content = content.replace(search_string, replace_string);
+      } else {
+        // Fallback: Normalize line endings and trim whitespace
+        const normalize = (str: string) => str.replace(/\r\n/g, '\n').trim();
+        const normalizedContent = content.replace(/\r\n/g, '\n');
+        const normalizedSearch = normalize(search_string);
+        const normalizedReplace = replace_string; // Keep replacement as provided
+
+        const searchIdx = normalizedContent.indexOf(normalizedSearch);
+        if (searchIdx !== -1) {
+          // Careful: replacing based on normalized string. For robust fuzzy patch, we can use exact match after normalization
+          content = normalizedContent.replace(normalizedSearch, normalizedReplace);
+        } else {
+          throw new Error(`Search string not found in file '${filePath}'. Make sure you are providing the exact block to search for.`);
+        }
+      }
+
       await fs.writeFile(fullPath, content);
       return { success: true };
     },

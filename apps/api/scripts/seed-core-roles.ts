@@ -17,6 +17,12 @@ async function main() {
       description: 'Manages isolated coding environments and parallel workflows via PTY.',
       promptFileName: 'coding-agent.md',
       tools: ['terminal', 'filesystem'] 
+    },
+    {
+      name: 'Code Patcher',
+      description: 'A specialized role dedicated to safely modifying existing files using AST or regex patches via the patch_file tool.',
+      promptFileName: 'code-patcher.md',
+      tools: ['patch_file', 'read_file']
     }
   ];
 

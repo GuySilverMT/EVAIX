@@ -137,10 +137,15 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
       type: 'browser',
       title: url,
       defaultIncluded: false,
-      getContext: async () => ({
-          format: 'markdown',
-          content: readerContent || url
-      })
+      getContext: async () => {
+          if (!url || url.trim() === "") {
+              return { format: 'markdown', content: "" };
+          }
+          return {
+              format: 'markdown',
+              content: readerContent || url
+          };
+      }
   });
 
   // tRPC

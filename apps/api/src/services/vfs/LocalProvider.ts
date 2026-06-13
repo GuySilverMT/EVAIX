@@ -59,7 +59,8 @@ export class LocalProvider implements IVfsProvider {
     await fs.writeFile(fullPath, contentBuffer);
 
     // Emit the file write event for ingestion
-    emitFileWriteEvent(this, filePath, contentBuffer);
+    // Avoid blocking since it does async lookup now
+    void emitFileWriteEvent(this, filePath, contentBuffer);
   }
 
   async mkdir(dirPath: string): Promise<void> {

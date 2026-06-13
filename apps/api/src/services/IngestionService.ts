@@ -73,7 +73,7 @@ class IngestionService {
 
   private subscribeToVfsEvents() {
     onFileWrite((data) => {
-      void this.handleFileWrite(data.provider, data.filePath, data.content);
+      void this.handleFileWrite(data.provider, data.filePath, data.content, data.workspaceId);
     });
   }
 
@@ -90,13 +90,13 @@ class IngestionService {
     return false;
   }
 
-  private async handleFileWrite(provider: IVfsProvider, filePath: string, content: Buffer) {
+  private async handleFileWrite(provider: IVfsProvider, filePath: string, content: Buffer, workspaceId?: string) {
     const fileExtension = path.extname(filePath).toLowerCase();
 
     if (this.textExtensions.includes(fileExtension)) {
       if (!this.isIgnored(filePath)) {
         const text = content.toString('utf-8');
-        await this.indexFile(filePath, text);
+        await this.indexFile(filePath, text, workspaceId);
       }
     } else if (this.binaryExtensions.includes(fileExtension)) {
       try {
@@ -104,7 +104,7 @@ class IngestionService {
         const shadowFilePath = await this.generateShadowFile(provider, filePath, markdownContent);
 
         if (!this.isIgnored(shadowFilePath)) {
-          await this.indexFile(shadowFilePath, markdownContent);
+          await this.indexFile(shadowFilePath, markdownContent, workspaceId);
         }
       } catch (error) {
         console.error(`Error processing file ${filePath}:`, error);
@@ -112,7 +112,7 @@ class IngestionService {
     }
   }
 
-  public async ingestRepository(dir: string) {
+  public async ingestRepository(dir: string, workspaceId?: string) {
     console.log(`[IngestionService] 🚀 Scanning directory: ${dir}`);
     try { if (dir === this.repoRoot) getWebSocketService()?.broadcast({ type: 'ingest.start', path: dir }); } catch { /* Ignore */ }
     let totalFiles = 0;
@@ -126,7 +126,7 @@ class IngestionService {
             console.log(`[IngestionService] ⏭️  Skipping: ${fullPath}`);
             continue;
           }
-          await this.ingestRepository(fullPath);
+          await this.ingestRepository(fullPath, workspaceId);
         } else {
           if (this.isIgnored(fullPath)) {
             const displayName = path.basename(fullPath);
@@ -142,7 +142,7 @@ class IngestionService {
             try { getWebSocketService()?.broadcast({ type: 'ingest.file.start', file: displayName, filePath: fullPath }); } catch { /* Ignore */ }
             const content = await fs.readFile(fullPath);
             const text = content.toString('utf-8');
-            await this.indexFile(fullPath, text);
+            await this.indexFile(fullPath, text, workspaceId);
             processedFiles++;
             console.log(`[IngestionService] ✅ Indexed file ${processedFiles}/${totalFiles}: ${displayName}`);
             try { getWebSocketService()?.broadcast({ type: 'ingest.file.complete', file: displayName, filePath: fullPath, processedFiles, totalFiles }); } catch { /* Ignore */ }
@@ -156,7 +156,7 @@ class IngestionService {
     }
   }
 
-  private async indexFile(filePath: string, content: string) {
+  private async indexFile(filePath: string, content: string, workspaceId?: string) {
     // Compute content hash to detect unchanged files
     const hash = crypto.createHash('sha256').update(content, 'utf8').digest('hex');
 
@@ -184,6 +184,7 @@ class IngestionService {
           filePath,
           chunk,
           contentHash: hash,
+          workspaceId: workspaceId,
         },
       };
     }));

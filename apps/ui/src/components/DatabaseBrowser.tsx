@@ -43,10 +43,18 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
       type: "db-table",
       title: selectedTable || "Database",
       defaultIncluded: false,
-      getContext: async () => ({
-          format: "json",
-          content: JSON.stringify(dataQuery.data || [])
-      })
+      getContext: async () => {
+          const data = dataQuery.data || [];
+          const schema = schemaQuery.data;
+          // Return empty if no data or no columns
+          if (data.length === 0 || !schema || Object.keys(schema).length === 0) {
+              return { format: "json", content: "" };
+          }
+          return {
+              format: "json",
+              content: JSON.stringify(data)
+          };
+      }
   });
 
   // Mutations

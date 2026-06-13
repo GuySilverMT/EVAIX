@@ -339,14 +339,16 @@ model KnowledgeVector {
 }
 
 model VectorEmbedding {
-  id        String   @id
-  vector    Float[]
-  content   String
-  filePath  String
-  metadata  Json
-  createdAt DateTime @default(now())
+  id          String   @id
+  vector      Float[]
+  content     String
+  filePath    String
+  metadata    Json
+  workspaceId String?
+  createdAt   DateTime @default(now())
 
   @@index([filePath])
+  @@index([workspaceId])
 }
 
 model FileIndex {
