@@ -34,6 +34,7 @@ export interface WorkspaceState {
   // Workspace Loading
   activeWorkspace: string | null;
   loadWorkspace: (id: string) => void;
+  initializeFromWorkspace: (projectType: string) => void;
 
   // AI Context (Application Wide)
   aiContext: {
@@ -96,6 +97,30 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       activeWorkspace: null,
       loadWorkspace: (id: string) => set({ activeWorkspace: id }),
+
+      initializeFromWorkspace: (projectType: string) => set((state) => {
+        let initialCards: CardData[] = [];
+        if (projectType === 'CODE') {
+           initialCards = [
+             { id: '1', roleId: '', column: 0, screenspaceId: 1, metadata: { viewMode: 'files' } },
+             { id: '2', roleId: '', column: 1, screenspaceId: 1, metadata: { viewMode: 'editor' } },
+             { id: '3', roleId: '', column: 2, screenspaceId: 1, metadata: { viewMode: 'browser' } },
+           ];
+        } else if (projectType === 'DEPLOY') {
+           initialCards = [
+             { id: '1', roleId: '', column: 0, screenspaceId: 1, metadata: { viewMode: 'terminal' } },
+             { id: '2', roleId: '', column: 1, screenspaceId: 1, metadata: { viewMode: 'terminal' } },
+             { id: '3', roleId: '', column: 2, screenspaceId: 1, metadata: { viewMode: 'terminal' } },
+           ];
+        } else {
+           initialCards = [
+             { id: '1', roleId: '', column: 0, screenspaceId: 1 },
+             { id: '2', roleId: '', column: 1, screenspaceId: 1 },
+             { id: '3', roleId: '', column: 2, screenspaceId: 1 },
+           ];
+        }
+        return { cards: initialCards };
+      }),
 
       aiContext: {
         scope: 'Global',

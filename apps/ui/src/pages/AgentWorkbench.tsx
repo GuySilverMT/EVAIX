@@ -1,19 +1,19 @@
-import { useWorkspaceStore } from '../stores/workspace.store.js';
-import { SwappableCard } from '../components/work-order/SwappableCard.js';
-import { Button } from '../components/ui/button.js';
+import React, { useEffect, useState, useMemo, useRef, Suspense, lazy } from 'react';
 import { Plus } from 'lucide-react';
-import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
-import { trpc } from '../utils/trpc.js';
-import { useState, useRef, useMemo, useEffect, lazy, Suspense } from 'react';
+import { SwappableCard } from '../components/work-order/SwappableCard.js';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
+import { useColumnFocus } from '../hooks/useColumnFocus.js';
+import { Button } from '../components/ui/button.js';
 import { cn } from '../lib/utils.js';
+import { trpc } from '../utils/trpc.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lazy-load workflow components to keep the initial bundle lean
+// Workflow components
 // ─────────────────────────────────────────────────────────────────────────────
 const ProviderWorkflow  = lazy(() => import('../features/workflows/ProviderWorkflow.jsx'));
 const OrgWorkflow       = lazy(() => import('../features/workflows/OrgWorkflow.jsx'));
-const DatacenterWorkflow = lazy(() => import('../features/workflows/DatacenterWorkflow.jsx'));
+const DatacenterWorkflow= lazy(() => import('../features/workflows/DatacenterWorkflow.jsx'));
 const SettingsWorkflow  = lazy(() => import('../features/workflows/SettingsWorkflow.jsx'));
 const VoiceWorkflow     = lazy(() => import('../features/workflows/VoiceWorkflow.jsx'));
 
@@ -64,16 +64,24 @@ function WorkflowFallback({ name }: { name: string }) {
 export default function AgentWorkbench({ className }: { className?: string }) {
   const {
     columns, cards, setCards, addCard,
-    activeWorkspace, activeScreenspaceId, loadWorkspace,
+    activeWorkspace, activeScreenspaceId, loadWorkspace, initializeFromWorkspace,
     activeWorkflow,
   } = useWorkspaceStore();
 
   const { data: roles } = trpc.roles.list.useQuery();
   const availableRoles = Array.isArray(roles) ? roles : [];
 
+  const { data: workspaceData } = trpc.workspace.getCurrent.useQuery();
+
   useEffect(() => {
     if (!activeWorkspace) loadWorkspace('default');
   }, [activeWorkspace, loadWorkspace]);
+
+  useEffect(() => {
+    if (workspaceData && workspaceData.projectType) {
+        initializeFromWorkspace(workspaceData.projectType);
+    }
+  }, [workspaceData, initializeFromWorkspace]);
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
   const { setColumnFocus } = useColumnFocus(columns);
