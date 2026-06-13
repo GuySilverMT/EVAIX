@@ -15,6 +15,7 @@ import { orchestrationTools } from '../../tools/orchestrationTools.js';
 import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
 import { themeEditorTool } from '../../tools/themeEditor.js';
 import { julesTools } from '../../tools/jules_tools.js';
+import { prisma } from '../../db.js';
 
 export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof createFsTools>): ToolDefinition[] {
      return [
