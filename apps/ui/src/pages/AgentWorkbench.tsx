@@ -64,7 +64,6 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     columns, setColumns
   } = useWorkspaceStore();
 
-  const [columnWidths, setColumnWidths] = useState<number[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load project configuration from local file system
@@ -83,33 +82,92 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     if (vfsReadQuery.data?.content) {
       try {
         const config = JSON.parse(vfsReadQuery.data.content);
+        
+        let layoutColumns = config.layout?.columns;
+        if (!layoutColumns && Array.isArray(config.cards) && config.cards.length > 0) {
+          const colsCount = config.columns || 3;
+          layoutColumns = Array.from({ length: colsCount }).map((_, colIndex) => {
+            const colCards = config.cards.filter((c: any) => c.column === colIndex);
+            return {
+              id: `col-${colIndex + 1}`,
+              cards: colCards.map((c: any) => ({
+                id: c.id,
+                roleId: c.roleId || '',
+                activeTool: c.activeTool !== undefined ? c.activeTool : (c.metadata?.viewMode || null),
+                metadata: c.metadata
+              }))
+            };
+          });
+        }
+
+        if (!layoutColumns || !Array.isArray(layoutColumns) || layoutColumns.length === 0) {
+          layoutColumns = [
+            {
+              id: 'col-1',
+              cards: [
+                {
+                  id: 'card-1',
+                  roleId: '',
+                  activeTool: null
+                }
+              ]
+            }
+          ];
+        }
+
+        const parsedCards: CardData[] = [];
+        layoutColumns.forEach((col: any, colIndex: number) => {
+          if (Array.isArray(col.cards)) {
+            col.cards.forEach((c: any) => {
+              parsedCards.push({
+                id: c.id,
+                roleId: c.roleId || '',
+                column: colIndex,
+                screenspaceId: c.screenspaceId || activeScreenspaceId,
+                activeTool: c.activeTool !== undefined ? c.activeTool : (c.metadata?.viewMode || null),
+                metadata: {
+                  ...c.metadata,
+                  viewMode: c.metadata?.viewMode || c.activeTool || undefined
+                }
+              });
+            });
+          }
+        });
+
         if (config.projectType) setProjectType(config.projectType);
         if (config.name) setProjectName(config.name);
-        if (typeof config.columns === 'number') setColumns(config.columns);
-        if (Array.isArray(config.cards)) setCards(config.cards);
+        setColumns(layoutColumns.length);
+        setCards(parsedCards);
       } catch (e) {
         console.error("Failed to parse project.json from VFS", e);
       }
     }
-  }, [vfsReadQuery.data?.content, setProjectType, setProjectName, setColumns, setCards]);
+  }, [vfsReadQuery.data?.content, setProjectType, setProjectName, setColumns, setCards, activeScreenspaceId]);
 
   // Debounced Save project state to project.json
   const vfsWriteMutation = trpc.vfs.write.useMutation();
   const serializedState = useMemo(() => {
     if (!activeWorkspaceId || !projectType) return null;
+    
+    const layoutColumns = Array.from({ length: columns }).map((_, colIndex) => {
+      const colCards = cards.filter(c => c.column === colIndex);
+      return {
+        id: `col-${colIndex + 1}`,
+        cards: colCards.map(c => ({
+          id: c.id,
+          roleId: c.roleId || '',
+          activeTool: c.activeTool !== undefined ? c.activeTool : (c.metadata?.viewMode || null),
+          metadata: c.metadata
+        }))
+      };
+    });
+
     return {
       name: useWorkspaceStore.getState().projectName || 'Unnamed Project',
       projectType,
-      columns,
-      cards: cards.map(c => ({
-        id: c.id,
-        roleId: c.roleId,
-        column: c.column,
-        screenspaceId: c.screenspaceId,
-        title: c.title,
-        type: c.type,
-        metadata: c.metadata
-      }))
+      layout: {
+        columns: layoutColumns
+      }
     };
   }, [projectType, columns, cards, activeWorkspaceId]);
 
@@ -152,27 +210,39 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   const { data: roles } = trpc.roles.list.useQuery();
   const availableRoles = Array.isArray(roles) ? roles : [];
 
+  const handleAddColumn = () => {
+    const newColIndex = columns;
+    setColumns(columns + 1);
+    
+    const roleId = availableRoles.length > 0 ? availableRoles[0].id : '';
+    addCard({
+      id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      roleId,
+      column: newColIndex,
+      screenspaceId: activeScreenspaceId,
+      activeTool: null,
+      metadata: { viewMode: null }
+    });
+  };
+
+  const handleRemoveColumn = (colIndexToRemove: number) => {
+    const remainingCards = cards.filter(c => c.column !== colIndexToRemove || c.screenspaceId !== activeScreenspaceId);
+    const shiftedCards = remainingCards.map(c => {
+      if (c.screenspaceId === activeScreenspaceId && c.column > colIndexToRemove) {
+        return { ...c, column: c.column - 1 };
+      }
+      return c;
+    });
+    setCards(shiftedCards);
+    setColumns(Math.max(1, columns - 1));
+  };
+
   useEffect(() => {
     if (!activeWorkspace) loadWorkspace('default');
   }, [activeWorkspace, loadWorkspace]);
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
   const { setColumnFocus } = useColumnFocus(columns);
-  const prevColumnsRef = useRef(columns);
-
-  // Initialize or reset column widths when columns count changes
-  useEffect(() => {
-    setColumnWidths(new Array(columns).fill(100 / columns));
-  }, [columns]);
-
-  // Redistribute cards when column count changes
-  useEffect(() => {
-    if (prevColumnsRef.current !== columns && Array.isArray(cards)) {
-      setCards(cards.map((card, index) => ({ ...card, column: index % columns })));
-      prevColumnsRef.current = columns;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns]);
 
   const handleSpawnTool = (columnIndex: number, viewMode: 'editor' | 'terminal' | 'builder' | 'databrowser') => {
     if (!activeWorkspaceId) {
@@ -235,97 +305,122 @@ export default function AgentWorkbench({ className }: { className?: string }) {
 
   // ── Free-grid mode (default, no active workflow) ───────────────────────────
   return (
-    <div className={cn('h-full w-full flex flex-col overflow-hidden relative', className)}>
-      <div ref={containerRef} className="flex-1 flex overflow-hidden bg-zinc-950">
+    <div className={cn('h-full w-full flex flex-col overflow-hidden relative bg-zinc-950', className)}>
+      {/* Workspace Header Bar */}
+      <div className="h-10 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/50 shrink-0 select-none">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Workspace:</span>
+          <span className="text-xs font-bold text-white font-mono">{useWorkspaceStore.getState().projectName || 'Unnamed Project'}</span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-bold uppercase">{projectType}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleAddColumn}
+            variant="outline"
+            className="h-6 px-2.5 bg-indigo-950/30 border-indigo-900/50 hover:bg-indigo-900/50 text-[10px] font-bold text-indigo-400 uppercase rounded flex items-center gap-1.5"
+          >
+            <Plus size={10} /> Add Column
+          </Button>
+        </div>
+      </div>
+
+      <div ref={containerRef} className="flex-1 flex overflow-x-auto bg-zinc-950 p-4 gap-4 min-w-full">
         {Array.from({ length: columns }).map((_, columnIndex) => {
           const columnCards = cardsByColumn[columnIndex] || [];
           const currentFocusIndex = focusedCardIndex[columnIndex] || 0;
           const currentCard = columnCards[currentFocusIndex];
-          const width = columnWidths[columnIndex] ?? (100 / columns);
 
           return (
-            <React.Fragment key={columnIndex}>
-              <div
-                className="flex-1 flex flex-col overflow-hidden bg-[var(--color-background-secondary)]"
-                style={{ width: `${width}%`, flexGrow: 0, flexShrink: 0 }}
-              >
-                {/* Cards above the focused one (clickable breadcrumbs) */}
-                {currentFocusIndex > 0 && (
-                  <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
-                    {columnCards.slice(0, currentFocusIndex).map((c, idx) => (
-                      <Button
-                        key={c.id}
-                        onClick={() => scrollToCardIndex(columnIndex, idx)}
-                        variant="outline"
-                        size="icon"
-                        className="w-6 h-6 text-[10px] font-bold hover:bg-[var(--color-primary)] hover:text-black hover:border-[var(--color-primary)]"
-                        title={`Go to card ${idx + 1}`}
-                      >
-                        {idx + 1}
-                      </Button>
-                    ))}
+            <div
+              key={columnIndex}
+              className="flex-1 flex flex-col overflow-hidden bg-[var(--color-background-secondary)] rounded-lg border border-zinc-800/80 min-w-[280px]"
+            >
+              {/* Cards above the focused one (clickable breadcrumbs) */}
+              {currentFocusIndex > 0 && (
+                <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
+                  {columnCards.slice(0, currentFocusIndex).map((c, idx) => (
+                    <Button
+                      key={c.id}
+                      onClick={() => scrollToCardIndex(columnIndex, idx)}
+                      variant="outline"
+                      size="icon"
+                      className="w-6 h-6 text-[10px] font-bold hover:bg-[var(--color-primary)] hover:text-black hover:border-[var(--color-primary)]"
+                      title={`Go to card ${idx + 1}`}
+                    >
+                      {idx + 1}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {/* Active card */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {currentCard ? (
+                  <div
+                    id={`card-${currentCard.id}`}
+                    className="h-full"
+                    onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
+                  >
+                    <SwappableCard key={currentCard.id} id={currentCard.id} />
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
+                    No cards in this column
                   </div>
                 )}
+              </div>
 
-                {/* Active card */}
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  {currentCard ? (
-                    <div
-                      id={`card-${currentCard.id}`}
-                      className="h-full"
-                      onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
-                    >
-                      <SwappableCard key={currentCard.id} id={currentCard.id} />
+              {/* Column navigation footer */}
+              <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
+                {columnCards.length > 0 ? (
+                  <div className="h-full flex items-center justify-between px-3">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
+                        disabled={currentFocusIndex === 0}
+                        variant="ghost" size="sm"
+                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                      >
+                        ↑ Prev
+                      </Button>
+                      <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
+                        {currentFocusIndex + 1}/{columnCards.length}
+                      </span>
+                      <Button
+                        onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
+                        disabled={currentFocusIndex === columnCards.length - 1}
+                        variant="ghost" size="sm"
+                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                      >
+                        Next ↓
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
-                      No cards in this column
-                    </div>
-                  )}
-                </div>
 
-                {/* Column navigation footer */}
-                <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
-                  {columnCards.length > 0 ? (
-                    <div className="h-full flex items-center justify-between px-3">
-                      <div className="flex items-center gap-1">
+                    {/* Spawn tools inside footer when cards are present */}
+                    {activeWorkspaceId && (
+                      <div className="flex items-center gap-1.5">
                         <Button
-                          onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
-                          disabled={currentFocusIndex === 0}
-                          variant="ghost" size="sm"
-                          className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                          onClick={() => handleSpawnCard(columnIndex)}
+                          variant="outline"
+                          className="h-5 px-2 bg-indigo-950/20 border-indigo-900/50 hover:bg-indigo-900/40 text-[8px] font-bold text-indigo-400 uppercase rounded-sm flex items-center gap-0.5"
                         >
-                          ↑ Prev
+                          <Plus size={8} /> Card
                         </Button>
-                        <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
-                          {currentFocusIndex + 1}/{columnCards.length}
-                        </span>
                         <Button
-                          onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
-                          disabled={currentFocusIndex === columnCards.length - 1}
-                          variant="ghost" size="sm"
-                          className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                          onClick={() => handleRemoveColumn(columnIndex)}
+                          variant="outline"
+                          className="h-5 px-2 bg-red-950/20 border-red-900/50 hover:bg-red-900/40 text-[8px] font-bold text-red-400 uppercase rounded-sm"
+                          title="Remove Column"
                         >
-                          Next ↓
+                          Remove
                         </Button>
                       </div>
-
-                      {/* Spawn tools inside footer when cards are present */}
-                      {activeWorkspaceId && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            onClick={() => handleSpawnCard(columnIndex)}
-                            variant="outline"
-                            className="h-5 px-2 bg-indigo-950/20 border-indigo-900/50 hover:bg-indigo-900/40 text-[8px] font-bold text-indigo-400 uppercase rounded-sm flex items-center gap-0.5"
-                          >
-                            <Plus size={8} /> Card
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center gap-1.5">
-                      {activeWorkspaceId ? (
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center gap-1.5">
+                    {activeWorkspaceId ? (
+                      <div className="flex items-center gap-2">
                         <Button
                           onClick={() => handleSpawnCard(columnIndex)}
                           variant="outline"
@@ -333,50 +428,34 @@ export default function AgentWorkbench({ className }: { className?: string }) {
                         >
                           <Plus size={10} /> Add Card
                         </Button>
-                      ) : (
-                        <span className="text-[10px] text-zinc-500 font-mono">Select workspace to spawn tools</span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        <Button
+                          onClick={() => handleRemoveColumn(columnIndex)}
+                          variant="outline"
+                          className="h-6 px-3 bg-red-950/30 border-red-900/50 hover:bg-red-900/50 text-[9px] font-bold text-red-400 uppercase rounded-sm"
+                        >
+                          Remove Column
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-zinc-500 font-mono">Select workspace to spawn tools</span>
+                    )}
+                  </div>
+                )}
               </div>
-              {columnIndex < columns - 1 && (
-                <div
-                  className="w-[3px] hover:w-[5px] bg-zinc-800/80 hover:bg-indigo-500 cursor-col-resize transition-all h-full z-30 shrink-0 self-stretch"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const initialWidths = [...columnWidths];
-                    const container = containerRef.current;
-                    if (!container) return;
-                    const containerWidth = container.getBoundingClientRect().width;
-
-                    const handleMouseMove = (moveEvent: MouseEvent) => {
-                      const deltaX = moveEvent.clientX - startX;
-                      const deltaPercent = (deltaX / containerWidth) * 100;
-                      const newWidths = [...initialWidths];
-                      const totalTwo = (newWidths[columnIndex] || 0) + (newWidths[columnIndex + 1] || 0);
-                      const minWidth = 15; // minimum width in percent
-                      const targetWidth = Math.max(minWidth, Math.min(totalTwo - minWidth, (newWidths[columnIndex] || 0) + deltaPercent));
-                      
-                      newWidths[columnIndex] = targetWidth;
-                      newWidths[columnIndex + 1] = totalTwo - targetWidth;
-                      setColumnWidths(newWidths);
-                    };
-
-                    const handleMouseUp = () => {
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-              )}
-            </React.Fragment>
+            </div>
           );
         })}
+
+        {/* Add Column Button Card */}
+        {activeWorkspaceId && (
+          <div 
+            onClick={handleAddColumn}
+            className="flex-1 max-w-[240px] min-w-[150px] flex flex-col justify-center items-center p-6 border border-dashed border-zinc-800 rounded-lg hover:border-indigo-500/50 hover:bg-indigo-500/5 cursor-pointer group transition-all shrink-0 self-stretch min-h-[300px]"
+          >
+            <Plus size={24} className="text-zinc-600 group-hover:text-indigo-400 mb-2 transition-colors animate-pulse" />
+            <span className="text-xs font-semibold text-zinc-500 group-hover:text-zinc-300 transition-colors">Add Column</span>
+          </div>
+        )}
       </div>
     </div>
   );

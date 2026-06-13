@@ -8,6 +8,7 @@ export interface CardData {
   screenspaceId: number;
   title?: string;
   type?: string;
+  activeTool?: string | null;
   metadata?: Record<string, unknown>;
 }
 

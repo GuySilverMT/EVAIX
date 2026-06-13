@@ -58,8 +58,61 @@ export default function ProjectDashboard() {
       setActiveWorkspaceId(path);
       if (config.projectType) setProjectType(config.projectType);
       if (config.name) setProjectName(config.name);
-      if (typeof config.columns === 'number') useWorkspaceStore.getState().setColumns(config.columns);
-      if (Array.isArray(config.cards)) setCards(config.cards);
+
+      // Parse layout columns or fallback to legacy format
+      let layoutColumns = config.layout?.columns;
+      if (!layoutColumns && Array.isArray(config.cards) && config.cards.length > 0) {
+        const colsCount = config.columns || 3;
+        layoutColumns = Array.from({ length: colsCount }).map((_, colIndex) => {
+          const colCards = config.cards.filter((c: any) => c.column === colIndex);
+          return {
+            id: `col-${colIndex + 1}`,
+            cards: colCards.map((c: any) => ({
+              id: c.id,
+              roleId: c.roleId || '',
+              activeTool: c.activeTool !== undefined ? c.activeTool : (c.metadata?.viewMode || null),
+              metadata: c.metadata
+            }))
+          };
+        });
+      }
+
+      if (!layoutColumns || !Array.isArray(layoutColumns) || layoutColumns.length === 0) {
+        layoutColumns = [
+          {
+            id: 'col-1',
+            cards: [
+              {
+                id: 'card-1',
+                roleId: '',
+                activeTool: null
+              }
+            ]
+          }
+        ];
+      }
+
+      const parsedCards: CardData[] = [];
+      layoutColumns.forEach((col: any, colIndex: number) => {
+        if (Array.isArray(col.cards)) {
+          col.cards.forEach((c: any) => {
+            parsedCards.push({
+              id: c.id,
+              roleId: c.roleId || '',
+              column: colIndex,
+              screenspaceId: 1, // Default to 1
+              activeTool: c.activeTool !== undefined ? c.activeTool : (c.metadata?.viewMode || null),
+              metadata: {
+                ...c.metadata,
+                viewMode: c.metadata?.viewMode || c.activeTool || undefined
+              }
+            });
+          });
+        }
+      });
+
+      useWorkspaceStore.getState().setColumns(layoutColumns.length);
+      setCards(parsedCards);
 
       addRecentProject(path);
       toast.success(`Loaded workspace: ${config.name || 'Unnamed'}`);
@@ -104,11 +157,42 @@ export default function ProjectDashboard() {
       ];
     }
 
+    const layoutColumns = [
+      {
+        id: 'col-1',
+        cards: defaultCards.filter(c => c.column === 0).map(c => ({
+          id: c.id,
+          roleId: c.roleId || '',
+          activeTool: c.metadata?.viewMode || null,
+          metadata: c.metadata
+        }))
+      },
+      {
+        id: 'col-2',
+        cards: defaultCards.filter(c => c.column === 1).map(c => ({
+          id: c.id,
+          roleId: c.roleId || '',
+          activeTool: c.metadata?.viewMode || null,
+          metadata: c.metadata
+        }))
+      },
+      {
+        id: 'col-3',
+        cards: defaultCards.filter(c => c.column === 2).map(c => ({
+          id: c.id,
+          roleId: c.roleId || '',
+          activeTool: c.metadata?.viewMode || null,
+          metadata: c.metadata
+        }))
+      }
+    ];
+
     const projectConfig = {
       name: initName.trim(),
       projectType: initType,
-      columns: 3,
-      cards: defaultCards
+      layout: {
+        columns: layoutColumns
+      }
     };
 
     try {

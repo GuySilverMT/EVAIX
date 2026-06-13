@@ -34,6 +34,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     } = useCardVFS(id);
 
     const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
+    const updateCard = useWorkspaceStore(s => s.updateCard);
     const navigate = useNavigate();
 
     const startSessionMutation = trpc.agent.startSession.useMutation();
@@ -60,10 +61,23 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder'>(() => {
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | null>(() => {
+        if (card?.activeTool === null) return null;
+        if (card?.activeTool) return card.activeTool as any;
         const meta = card?.metadata as { viewMode?: string } | undefined;
-        return (meta?.viewMode as any) || 'editor';
+        return (meta?.viewMode as any) || null;
     });
+
+    const setViewModeAndStore = useCallback((mode: typeof viewMode) => {
+        setViewMode(mode);
+        updateCard(id, { 
+            activeTool: mode,
+            metadata: {
+                ...(useWorkspaceStore.getState().cards.find(c => c.id === id)?.metadata || {}),
+                viewMode: mode || undefined
+            }
+        });
+    }, [id, updateCard]);
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -82,8 +96,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     useEffect(() => {
         if (activeFile) setHeaderFilename(getBasename(activeFile));
     }, [activeFile]);
-
-    const updateCard = useWorkspaceStore(s => s.updateCard);
 
     // Persistence
     useEffect(() => {
@@ -127,10 +139,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         if (activeFile) {
             if (activeFile.startsWith('http')) {
                 setBrowserUrl(prev => prev === activeFile ? prev : activeFile);
-                setViewMode('browser');
+                setViewModeAndStore('browser');
             } else if (/\.(png|jpg|jpeg|gif|svg|html)$/i.test(activeFile)) {
                 setBrowserUrl(`file://${activeFile}`);
-                setViewMode('browser');
+                setViewModeAndStore('browser');
             } else {
                 void readFile(activeFile)
                     .then(setContent)
@@ -190,7 +202,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         const effectiveRoleId = roleIdOverride || agentConfig.roleId;
         if (!effectiveRoleId) {
             toast.error("Role Required", { description: "Select a role first." });
-            setViewMode('config');
+            setViewModeAndStore('config');
             return;
         }
 
@@ -220,7 +232,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             if (activeFile) {
                 void refresh().then(() => readFile(activeFile)).then(setContent).catch(() => { });
             }
-            setViewMode('terminal');
+            setViewModeAndStore('terminal');
         } catch (err: any) {
             if (err.name === 'AbortError') {
                 toast.info("Run cancelled", { id: 'agent-run' });
@@ -244,6 +256,24 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
             {/* 1. Header with Clean Filename Display */}
             <div className="h-9 border-b border-[var(--border-color)] flex items-center px-2 bg-[var(--bg-secondary)] gap-2">
+                <select
+                    value={viewMode || ''}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setViewModeAndStore(val ? (val as any) : null);
+                    }}
+                    className="bg-[var(--bg-primary)] text-[10px] text-[var(--text-primary)] border border-[var(--border-color)] rounded px-1.5 py-0.5 outline-none font-mono focus:border-[var(--color-primary)] h-6 shrink-0"
+                >
+                    <option value="">Select Tool...</option>
+                    <option value="files">File Explorer</option>
+                    <option value="editor">Code Editor</option>
+                    <option value="terminal">Smart Terminal</option>
+                    <option value="browser">Web Browser</option>
+                    <option value="dna-lab">Agent DNA Lab</option>
+                    <option value="preview">Live Preview</option>
+                    <option value="databrowser">Database Grid</option>
+                </select>
+
                 <div className="flex-1 flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6" title={activeFile}>
                     <FileText size={10} className="text-[var(--text-muted)] mr-1.5" />
                     <input
@@ -254,7 +284,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                             if (!headerFilename) setHeaderFilename(getBasename(activeFile));
                         }}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter') void handleSave(content);
+                            if (e.key === 'Enter' && viewMode) void handleSave(content);
                         }}
                         className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)]"
                         placeholder="filename.md"
@@ -263,9 +293,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         {activeFile.includes('/sessions/') ? '(Session)' : ''}
                     </span>
                     <button
-                        onClick={() => void handleSave(content)}
+                        onClick={() => viewMode && void handleSave(content)}
                         className="p-1 hover:text-[var(--color-primary)] text-[var(--text-muted)] transition-colors"
                         title="Save (Ctrl+S)"
+                        disabled={!viewMode}
                     >
                         <Save size={10} />
                     </button>
@@ -273,6 +304,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         onClick={() => setShowHistory(!showHistory)}
                         className={cn("p-1 hover:text-[var(--color-primary)] transition-colors", showHistory ? "text-[var(--color-primary)]" : "text-[var(--text-muted)]")}
                         title="Version History"
+                        disabled={!viewMode}
                     >
                         <History size={10} />
                     </button>
@@ -296,7 +328,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 if (t.id === 'role') {
                                     setShowRolePicker(!showRolePicker);
                                 } else {
-                                    setViewMode(t.id as any);
+                                    setViewModeAndStore(t.id as any);
                                     setShowRolePicker(false);
                                 }
                             }}
@@ -342,6 +374,13 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     )}
                 >
                     <ErrorBoundary>
+                        {viewMode === null && (
+                            <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center bg-zinc-900/40 backdrop-blur-sm">
+                                <LayoutTemplate size={32} className="text-zinc-600 mb-3 animate-pulse" />
+                                <span className="text-xs font-semibold text-zinc-400 mb-1">Card Tool Unselected</span>
+                                <span className="text-[10px] text-zinc-500 font-mono">Select a tool from the header dropdown to begin</span>
+                            </div>
+                        )}
                         {showFileNamePrompt && (
                             <div className="absolute inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
                                 <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-sm shadow-2xl space-y-4">
@@ -431,7 +470,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 onRoleChange={(roleId) => updateCard(id, { roleId: roleId })}
                                 onNavigate={(url) => {
                                     setBrowserUrl(url);
-                                    setViewMode('browser');
+                                    setViewModeAndStore('browser');
                                 }}
                             />
                         )}
@@ -449,7 +488,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                             <div className="h-full w-full flex flex-col">
                                 <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between">
                                     <span className="text-xs font-bold text-zinc-400">Diff View: {getBasename(activeFile)}</span>
-                                    <button onClick={() => setViewMode('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
+                                    <button onClick={() => setViewModeAndStore('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
                                 </div>
                                 <div className="flex-1 min-h-0">
                                     <MonacoDiffEditor
@@ -464,7 +503,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                             files={files}
                             currentPath={currentPath}
                             onNavigate={(p) => void navigateTo(p)}
-                            onSelect={(p) => { setActiveFile(p); if (!p.endsWith('/')) setViewMode('editor'); }}
+                            onSelect={(p) => { setActiveFile(p); if (!p.endsWith('/')) setViewModeAndStore('editor'); }}
                             onCreateNode={(t, n) => void createNode(t, n)}
                             onRefresh={() => void refresh()}
                             onEmbedDir={(p) => void ingestDirectory(p)}
@@ -476,7 +515,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                     await writeFile(path, text);
                                     toast.success("Saved content to " + getBasename(path));
                                     setActiveFile(path);
-                                    setViewMode('editor');
+                                    setViewModeAndStore('editor');
                                 })();
                             }}
                         />}
@@ -546,7 +585,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                     onEdit={(roleId) => {
                                         updateCard(id, { roleId: roleId });
                                         setShowRolePicker(false);
-                                        setViewMode('dna-lab');
+                                        setViewModeAndStore('dna-lab');
                                     }}
                                     className="border-none"
                                 />
