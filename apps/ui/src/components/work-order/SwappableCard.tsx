@@ -19,6 +19,8 @@ import { HistoryPanel } from '../HistoryPanel.js';
 import { RefreshCcw, Activity } from 'lucide-react';
 import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
 import { UniversalDataGrid } from '../UniversalDataGrid.js';
+import { DatabaseBrowser } from '../DatabaseBrowser.js';
+import { NebulaBuilder } from '../../nebula/features/builder/NebulaBuilder.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -57,7 +59,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data'>('editor');
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder'>(() => {
+        const meta = card?.metadata as { viewMode?: string } | undefined;
+        return (meta?.viewMode as any) || 'editor';
+    });
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -281,7 +286,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         { id: 'role', icon: Fingerprint },
                         { id: 'dna-lab', icon: Dna },
                         { id: 'preview', icon: LayoutTemplate },
-                        { id: 'data', icon: Database }
+                        { id: 'databrowser', icon: Database }
                     ].map(t => (
                         <button
                             key={t.id}
@@ -290,7 +295,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 if (t.id === 'role') {
                                     setShowRolePicker(!showRolePicker);
                                 } else {
-                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'preview' | 'data');
+                                    setViewMode(t.id as any);
                                     setShowRolePicker(false);
                                 }
                             }}
@@ -478,6 +483,24 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
                     {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}
                     {viewMode === 'data' && <div className="h-full w-full bg-white"><UniversalDataGrid data={[]} /></div>}
+                    {viewMode === 'databrowser' && <DatabaseBrowser id={id} />}
+                    {viewMode === 'builder' && (
+                        <NebulaBuilder
+                            initialTree={{
+                                rootId: 'root',
+                                nodes: {
+                                    root: { id: 'root', type: 'Box', props: {}, children: [] }
+                                },
+                                imports: [],
+                                exports: [],
+                                version: 1
+                            }}
+                            onSave={(newTree) => {
+                                console.log('Saved card tree:', newTree);
+                                toast.success("Nebula Tree updated");
+                            }}
+                        />
+                    )}
 
                     {/* [NEW] SupplementaryAgentSlot */}
                     {showSupplementary && (

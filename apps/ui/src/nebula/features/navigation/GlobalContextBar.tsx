@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Command, Sparkles, X, Layers,
   Workflow, Settings, Palette, Plus, Minus,
@@ -178,73 +179,106 @@ function WorkspaceFlipper() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WorkflowsDropdown — portal-based workflow switcher
+// ProjectContextBar — Active Project Context + Model Selector
 // ─────────────────────────────────────────────────────────────────────────────
-function WorkflowsDropdown() {
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
-  const { activeWorkflow, setActiveWorkflow, setColumns } = useWorkspaceStore();
-  const close = useCallback(() => setOpen(false), []);
+function ProjectContextBar() {
+  const navigate = useNavigate();
+  const { activeWorkspaceId, projectType, activeModelId, setActiveModelId } = useWorkspaceStore();
+  const [modelOpen, setModelOpen] = useState(false);
+  const modelAnchorRef = useRef<HTMLButtonElement>(null);
 
-  const handleSelect = (wf: typeof WORKFLOWS[number] | null) => {
-    if (wf) {
-      setActiveWorkflow(wf.id);
-      setColumns(wf.columnCount);
-    } else {
-      setActiveWorkflow(null);
-    }
-    close();
+  // Fetch workspace details if activeWorkspaceId is present
+  const { data: wsDetails } = trpc.workspace.get.useQuery(
+    { id: activeWorkspaceId || '' },
+    { enabled: !!activeWorkspaceId }
+  );
+
+  // Fetch active models
+  const { data: models } = trpc.model.list.useQuery();
+
+  const handleModelSelect = (modelId: string) => {
+    setActiveModelId(modelId);
+    setModelOpen(false);
   };
 
-  const activeWf = WORKFLOWS.find(w => w.id === activeWorkflow);
+  const selectedModel = models?.find(m => m.id === activeModelId) || models?.[0];
+
+  useEffect(() => {
+    if (models && models.length > 0 && !activeModelId) {
+      setActiveModelId(models[0].id);
+    }
+  }, [models, activeModelId, setActiveModelId]);
 
   return (
-    <div>
+    <div className="flex items-center gap-2">
+      {/* Dashboard Back Button */}
       <button
-        ref={anchorRef}
-        onClick={() => setOpen(o => !o)}
-        title="Switch Workflow"
-        className={cn(
-          'flex items-center gap-1.5 px-2 h-8 rounded-sm text-[9px] font-bold uppercase tracking-wider transition-all border',
-          open || activeWorkflow
-            ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
-            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-color)] hover:text-[var(--text-primary)] hover:border-[var(--color-primary)]/50'
-        )}
+        onClick={() => navigate('/')}
+        title="Go to Dashboard"
+        className="flex items-center justify-center w-8 h-8 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-color)] hover:text-white hover:border-indigo-500/50 transition-all animate-in fade-in"
       >
-        {activeWf ? <activeWf.icon size={11} /> : <Folder size={11} />}
-        <span className="hidden md:block">{activeWf?.label ?? 'Project Manager'}</span>
-        <ChevronDown size={9} className={cn('transition-transform', open && 'rotate-180')} />
+        <Folder size={13} className="text-zinc-500 hover:text-indigo-400" />
       </button>
 
-      <DropdownPortal anchorRef={anchorRef} open={open} onClose={close} align="left" width={208}>
-        <div className="px-3 py-1 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-          Project Manager
+      {activeWorkspaceId && wsDetails && (
+        <div className="flex items-center gap-2 border-l border-zinc-800 pl-2 animate-in slide-in-from-left-2 duration-200">
+          {/* Project Info Badge */}
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-wider text-white truncate max-w-[120px]" title={wsDetails.name}>
+              {wsDetails.name}
+            </span>
+            <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest">
+              {projectType || wsDetails.projectType}
+            </span>
+          </div>
+
+          <div className="w-px h-4 bg-zinc-800 mx-1" />
+
+          {/* Model Selector Dropdown */}
+          <div className="relative">
+            <button
+              ref={modelAnchorRef}
+              onClick={() => setModelOpen(o => !o)}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-[9px] font-bold uppercase tracking-wider transition-all border",
+                modelOpen
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
+                  : "bg-[var(--bg-primary)] text-zinc-400 border-[var(--border-color)] hover:text-white hover:border-indigo-500/50"
+              )}
+            >
+              <Sparkles size={11} className={cn("text-indigo-400", modelOpen && "text-white animate-pulse")} />
+              <span className="max-w-[100px] truncate">{selectedModel?.name || "Select Model"}</span>
+              <ChevronDown size={8} className={cn("transition-transform", modelOpen && "rotate-180")} />
+            </button>
+
+            <DropdownPortal anchorRef={modelAnchorRef} open={modelOpen} onClose={() => setModelOpen(false)} align="left" width={220}>
+              <div className="px-3 py-1 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                Select Model Fleet
+              </div>
+              <div className="h-px bg-zinc-700 my-1" />
+              <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                {models && models.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => handleModelSelect(m.id)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-[10px] flex flex-col transition-colors border-b border-zinc-800/30 last:border-b-0",
+                      m.id === activeModelId
+                        ? "text-indigo-400 bg-indigo-400/10 font-bold"
+                        : "hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+                    )}
+                  >
+                    <span className="font-bold truncate w-full">{m.name}</span>
+                    <span className="text-[8px] text-zinc-500 font-mono mt-0.5 truncate w-full">
+                      {m.provider?.name || m.providerId}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </DropdownPortal>
+          </div>
         </div>
-        <div className="h-px bg-zinc-700 my-1" />
-        {WORKFLOWS.map(wf => (
-          <button
-            key={wf.id}
-            onClick={() => handleSelect(wf)}
-            className={cn(
-              'w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 transition-colors',
-              wf.id === activeWorkflow
-                ? 'text-indigo-400 bg-indigo-400/10 font-bold'
-                : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100'
-            )}
-          >
-            <wf.icon size={12} />
-            {wf.label}
-            <span className="ml-auto text-[8px] text-zinc-600">{wf.columnCount}col</span>
-          </button>
-        ))}
-        <div className="h-px bg-zinc-700 my-1" />
-        <button
-          onClick={() => handleSelect(null)}
-          className="w-full text-left px-3 py-1.5 text-[10px] text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
-        >
-          ✕ Exit Workflow (Free Grid)
-        </button>
-      </DropdownPortal>
+      )}
     </div>
   );
 }
@@ -287,6 +321,13 @@ function SettingsDropdown({ onToggleTheme, themeOpen }: { onToggleTheme?: () => 
         >
           <Settings size={12} />
           Constitution & Settings
+        </button>
+        <button
+          onClick={() => { useWorkspaceStore.getState().setActiveWorkflow('org'); close(); }}
+          className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+        >
+          <Users size={12} />
+          Org & Orchestration
         </button>
         <button
           onClick={() => { useWorkspaceStore.getState().setActiveWorkflow('provider'); close(); }}
@@ -370,7 +411,7 @@ export const GlobalContextBar = ({
 
         {/* ── LEFT: Core controls ── */}
         <div className="flex items-center gap-1 flex-none">
-          <WorkflowsDropdown />
+          <ProjectContextBar />
           <div className="w-px h-4 bg-[var(--border-color)]" />
           <WorkspaceFlipper />
           <div className="w-px h-4 bg-[var(--border-color)]" />

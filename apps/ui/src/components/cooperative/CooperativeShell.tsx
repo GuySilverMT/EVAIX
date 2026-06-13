@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { injectCssVariables } from '../../design-system/cssVariables.js';
 import AgentWorkbench from '../../pages/AgentWorkbench.js';
+import ProjectDashboard from '../../pages/ProjectDashboard.js';
 import ControlPlane from '../../pages/ControlPlane.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
 
@@ -28,9 +29,12 @@ export function CooperativeShell() {
     <div className="flex flex-col h-full w-full overflow-hidden bg-[var(--colors-background)] text-[var(--colors-text)] font-sans">
       <main className="flex-1 relative overflow-hidden flex flex-col">
         <Routes>
+          {/* Project dashboard home */}
+          <Route path="/"          element={<ProjectDashboard />} />
+
           {/* Primary workbench */}
-          <Route path="/"          element={<AgentWorkbench />} />
-          <Route path="/workbench" element={<AgentWorkbench />} />
+          <Route path="/workspace/:id" element={<AgentWorkbench />} />
+          <Route path="/workbench"     element={<AgentWorkbench />} />
 
           {/* Legacy URL convenience routes — activate correct workflow */}
           <Route path="/datacenter"        element={<WorkflowRedirect workflow="datacenter" />} />

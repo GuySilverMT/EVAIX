@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, Suspense, lazy } from 'react';
+import { useParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useHotkeys } from '../hooks/useHotkeys.js';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
@@ -9,6 +10,7 @@ import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { Button } from '../components/ui/button.js';
 import { cn } from '../lib/utils.js';
 import { trpc } from '../utils/trpc.js';
+import { toast } from 'sonner';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Workflow components
@@ -20,20 +22,7 @@ const SettingsWorkflow  = lazy(() => import('../features/workflows/SettingsWorkf
 const VoiceWorkflow     = lazy(() => import('../features/workflows/VoiceWorkflow.jsx'));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Headless scaffold — reusable layout primitive
-// ─────────────────────────────────────────────────────────────────────────────
-export const AgentWorkbenchScaffold = ({
-  header,
-  content,
-}: {
-  header?: React.ReactNode;
-  content?: React.ReactNode;
-}) => (
-  <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950">
-    {header && <div className="h-16 border-b border-zinc-800 shrink-0">{header}</div>}
-    <main className="flex-1 overflow-hidden relative">{content}</main>
-  </div>
-);
+import { AgentWorkbenchScaffold } from '../components/cooperative/AgentWorkbenchScaffold.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Workflow → Component mapping
@@ -64,11 +53,28 @@ function WorkflowFallback({ name }: { name: string }) {
 // AgentWorkbench — main entry point
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AgentWorkbench({ className }: { className?: string }) {
+  const { id } = useParams<{ id: string }>();
+  const { data: getWorkspaceData } = trpc.workspace.get.useQuery({ id: id || '' }, { enabled: !!id });
+  const { data: currentWorkspaceData } = trpc.workspace.getCurrent.useQuery(undefined, { enabled: !id });
+  const workspaceData = id ? getWorkspaceData : currentWorkspaceData;
+
   const {
     setCards, addCard,
     activeWorkspace, activeScreenspaceId, loadWorkspace, initializeFromWorkspace,
     activeWorkflow,
+    setActiveWorkspaceId, setProjectType, projectType, activeWorkspaceId, cards
   } = useWorkspaceStore();
+
+  const [lastLoadedWorkspaceId, setLastLoadedWorkspaceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (workspaceData && workspaceData.id !== lastLoadedWorkspaceId) {
+        setActiveWorkspaceId(workspaceData.id);
+        setProjectType(workspaceData.projectType);
+        initializeFromWorkspace(workspaceData.projectType);
+        setLastLoadedWorkspaceId(workspaceData.id);
+    }
+  }, [workspaceData, lastLoadedWorkspaceId, setActiveWorkspaceId, setProjectType, initializeFromWorkspace]);
 
   const { loadProject, currentTree } = useBuilderStore();
 
@@ -88,48 +94,27 @@ export default function AgentWorkbench({ className }: { className?: string }) {
 
   const columns = builderColumns.length || 1;
 
-  // Extract cards mapping
+  // Extract cards mapping (pull from workspace store cards)
   const cardsByColumn = useMemo(() => {
     const buckets: Record<number, any[]> = {};
     for (let i = 0; i < columns; i++) buckets[i] = [];
 
-    if (builderColumns.length > 0 && treeNodes) {
-        builderColumns.forEach((col, idx) => {
-            const childIds = Array.isArray(col.children) ? col.children : [];
-            childIds.forEach(childId => {
-                const childNode = treeNodes[childId as string];
-                if (childNode) {
-                    buckets[idx].push({
-                        id: childNode.id,
-                        roleId: childNode.roleId || childNode.name || childNode.id,
-                        screenspaceId: activeScreenspaceId || 1,
-                        column: idx
-                    });
-                }
-            });
+    if (Array.isArray(cards)) {
+        cards.forEach(card => {
+            if (card.screenspaceId === activeScreenspaceId && typeof card.column === 'number' && card.column < columns) {
+                buckets[card.column].push(card);
+            }
         });
     }
     return buckets;
-  }, [builderColumns, treeNodes, columns, activeScreenspaceId]);
-
-  const cards = useMemo(() => {
-     return Object.values(cardsByColumn).flat();
-  }, [cardsByColumn]);
+  }, [columns, cards, activeScreenspaceId]);
 
   const { data: roles } = trpc.roles.list.useQuery();
   const availableRoles = Array.isArray(roles) ? roles : [];
 
-  const { data: workspaceData } = trpc.workspace.getCurrent.useQuery();
-
   useEffect(() => {
     if (!activeWorkspace) loadWorkspace('default');
   }, [activeWorkspace, loadWorkspace]);
-
-  useEffect(() => {
-    if (workspaceData && workspaceData.projectType) {
-        initializeFromWorkspace(workspaceData.projectType);
-    }
-  }, [workspaceData, initializeFromWorkspace]);
 
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
   const { setColumnFocus } = useColumnFocus(columns);
@@ -144,12 +129,24 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns]);
 
-  const handleSpawnCard = (columnIndex: number) => {
-    if (availableRoles.length === 0) {
-      alert('Create at least one role in the Org Workflow before spawning a card.');
+  const handleSpawnTool = (columnIndex: number, viewMode: 'editor' | 'terminal' | 'builder' | 'databrowser') => {
+    if (!activeWorkspaceId) {
+      toast.error('No active workspace context loaded.');
       return;
     }
-    addCard({ id: String(Date.now()), roleId: availableRoles[0].id, column: columnIndex, screenspaceId: activeScreenspaceId });
+    const roleId = availableRoles.length > 0 ? availableRoles[0].id : '';
+    addCard({
+      id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      roleId,
+      column: columnIndex,
+      screenspaceId: activeScreenspaceId,
+      metadata: { viewMode }
+    });
+    toast.success(`Spawned ${viewMode} tool`);
+  };
+
+  const handleSpawnCard = (columnIndex: number) => {
+    handleSpawnTool(columnIndex, 'editor');
   };
 
   const scrollToCardIndex = (columnIndex: number, cardIndex: number) => {
@@ -244,35 +241,106 @@ export default function AgentWorkbench({ className }: { className?: string }) {
               <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
                 {columnCards.length > 0 ? (
                   <div className="h-full flex items-center justify-between px-3">
-                    <Button
-                      onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
-                      disabled={currentFocusIndex === 0}
-                      variant="ghost" size="sm"
-                      className="h-auto px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                    >
-                      ↑ Prev
-                    </Button>
-                    <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">
-                      {currentFocusIndex + 1}/{columnCards.length}
-                    </span>
-                    <Button
-                      onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
-                      disabled={currentFocusIndex === columnCards.length - 1}
-                      variant="ghost" size="sm"
-                      className="h-auto px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                    >
-                      Next ↓
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
+                        disabled={currentFocusIndex === 0}
+                        variant="ghost" size="sm"
+                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                      >
+                        ↑ Prev
+                      </Button>
+                      <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
+                        {currentFocusIndex + 1}/{columnCards.length}
+                      </span>
+                      <Button
+                        onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
+                        disabled={currentFocusIndex === columnCards.length - 1}
+                        variant="ghost" size="sm"
+                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                      >
+                        Next ↓
+                      </Button>
+                    </div>
+
+                    {/* Spawn tools inside footer when cards are present */}
+                    {activeWorkspaceId && (
+                      <div className="flex items-center gap-1">
+                        {projectType === 'CODE' && (
+                          <Button
+                            onClick={() => handleSpawnTool(columnIndex, 'builder')}
+                            variant="outline"
+                            className="h-5 px-1.5 bg-indigo-950/20 border-indigo-900/50 hover:bg-indigo-900/40 text-[8px] font-bold text-indigo-400 uppercase rounded-sm"
+                          >
+                            + Builder
+                          </Button>
+                        )}
+                        {(projectType === 'CODE' || projectType === 'DEPLOY') && (
+                          <Button
+                            onClick={() => handleSpawnTool(columnIndex, 'terminal')}
+                            variant="outline"
+                            className="h-5 px-1.5 bg-rose-950/20 border-rose-900/50 hover:bg-rose-900/40 text-[8px] font-bold text-rose-400 uppercase rounded-sm"
+                          >
+                            + Terminal
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => handleSpawnTool(columnIndex, 'editor')}
+                          variant="outline"
+                          className="h-5 px-1.5 bg-cyan-950/20 border-cyan-900/50 hover:bg-cyan-900/40 text-[8px] font-bold text-cyan-400 uppercase rounded-sm"
+                        >
+                          + Editor
+                        </Button>
+                        <Button
+                          onClick={() => handleSpawnTool(columnIndex, 'databrowser')}
+                          variant="outline"
+                          className="h-5 px-1.5 bg-emerald-950/20 border-emerald-900/50 hover:bg-emerald-900/40 text-[8px] font-bold text-emerald-400 uppercase rounded-sm"
+                        >
+                          + Data
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="h-full flex items-center justify-center">
-                    <Button
-                      onClick={() => handleSpawnCard(columnIndex)}
-                      variant="outline" size="sm"
-                      className="h-7 bg-[var(--color-primary)]/20 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/30 text-[10px] font-bold uppercase tracking-wider"
-                    >
-                      <Plus size={12} className="mr-1" /> Spawn Card
-                    </Button>
+                  <div className="h-full flex items-center justify-center gap-1.5">
+                    {activeWorkspaceId ? (
+                      <>
+                        {projectType === 'CODE' && (
+                          <Button
+                            onClick={() => handleSpawnTool(columnIndex, 'builder')}
+                            variant="outline"
+                            className="h-6 px-2.5 bg-indigo-950/30 border-indigo-900/50 hover:bg-indigo-900/50 text-[9px] font-bold text-indigo-400 uppercase rounded-sm"
+                          >
+                            + Spawn BadBuilder
+                          </Button>
+                        )}
+                        {(projectType === 'CODE' || projectType === 'DEPLOY') && (
+                          <Button
+                            onClick={() => handleSpawnTool(columnIndex, 'terminal')}
+                            variant="outline"
+                            className="h-6 px-2.5 bg-rose-950/30 border-rose-900/50 hover:bg-rose-900/50 text-[9px] font-bold text-rose-400 uppercase rounded-sm"
+                          >
+                            + Spawn Terminal
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => handleSpawnTool(columnIndex, 'editor')}
+                          variant="outline"
+                          className="h-6 px-2.5 bg-cyan-950/30 border-cyan-900/50 hover:bg-cyan-900/50 text-[9px] font-bold text-cyan-400 uppercase rounded-sm"
+                        >
+                          + Spawn SmartEditor
+                        </Button>
+                        <Button
+                          onClick={() => handleSpawnTool(columnIndex, 'databrowser')}
+                          variant="outline"
+                          className="h-6 px-2.5 bg-emerald-950/30 border-emerald-900/50 hover:bg-emerald-900/50 text-[9px] font-bold text-emerald-400 uppercase rounded-sm"
+                        >
+                          + Spawn DataBrowser
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-zinc-500 font-mono">Select workspace to spawn tools</span>
+                    )}
                   </div>
                 )}
               </div>

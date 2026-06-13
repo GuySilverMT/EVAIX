@@ -4,6 +4,13 @@ import os from 'os';
 import path from 'path';
 
 export const workspaceRouter = createTRPCRouter({
+  list: protectedProcedure
+    .query(async ({ ctx }) => {
+      return ctx.prisma.workspace.findMany({
+        orderBy: { updatedAt: 'desc' },
+      });
+    }),
+
   get: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {

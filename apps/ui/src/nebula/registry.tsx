@@ -6,7 +6,7 @@ import { RoleManagementGrid } from "../features/roles/RoleManagementGrid.js";
 import { Canvas } from "../components/nebula/system/Canvas.js";
 import { PropertyPanel } from "../components/nebula/system/PropertyPanel.js";
 import { cn } from "../lib/utils.js";
-import { AgentWorkbenchScaffold } from "../pages/AgentWorkbench.js";
+import { AgentWorkbenchScaffold } from "../components/cooperative/AgentWorkbenchScaffold.js";
 
 
 export type ComponentCategory = 'layout' | 'atom' | 'molecule' | 'data' | 'feature' | 'system' | 'logic';

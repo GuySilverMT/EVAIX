@@ -33,7 +33,13 @@ export interface WorkspaceState {
   
   // Workspace Loading
   activeWorkspace: string | null;
+  activeWorkspaceId: string | null;
+  projectType: string | null;
+  activeModelId: string | null;
   loadWorkspace: (id: string) => void;
+  setActiveWorkspaceId: (id: string | null) => void;
+  setProjectType: (type: string | null) => void;
+  setActiveModelId: (id: string | null) => void;
   initializeFromWorkspace: (projectType: string) => void;
 
   // AI Context (Application Wide)
@@ -96,7 +102,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       })),
 
       activeWorkspace: null,
+      activeWorkspaceId: null,
+      projectType: null,
+      activeModelId: null,
       loadWorkspace: (id: string) => set({ activeWorkspace: id }),
+      setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
+      setProjectType: (type) => set({ projectType: type }),
+      setActiveModelId: (id) => set({ activeModelId: id }),
 
       initializeFromWorkspace: (projectType: string) => set((state) => {
         let initialCards: CardData[] = [];
@@ -153,6 +165,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         columns: state.columns,
         cards: state.cards,
         activeScreenspaceId: state.activeScreenspaceId,
+        activeWorkspaceId: state.activeWorkspaceId,
+        projectType: state.projectType,
+        activeModelId: state.activeModelId,
         // Do NOT persist activeWorkflow — always start fresh
       }),
     }
