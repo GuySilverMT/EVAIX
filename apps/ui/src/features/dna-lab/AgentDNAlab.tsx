@@ -6,7 +6,8 @@ import { DEFAULT_ROLE_FORM_DATA } from '../../constants.js';
 import {
     Save, Trash2, Sparkles,
     Fingerprint, Cpu, Shield, Globe, Wrench, Eye,
-    FileText, Plus, X as CloseIcon, Bot, Download
+    FileText, Plus, X as CloseIcon, Bot, Download,
+    PanelLeftClose, PanelLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompactCategorizer } from './components/CompactCategorizer.js';
@@ -27,6 +28,7 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
     const [activeTab, setActiveTab] = useState<LabTab>('identity');
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [editingTool, setEditingTool] = useState<string | null>(null);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     const utils = trpc.useContext();
     const { data: roles, isLoading: rolesLoading } = trpc.roles.list.useQuery();
@@ -214,21 +216,26 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
                     setFormData(DEFAULT_ROLE_FORM_DATA);
                     setActiveTab('identity');
                 }}
-                className="w-64 border-r border-[var(--border-color)] hidden lg:block"
+                className={cn("w-64 border-r border-[var(--border-color)]", sidebarCollapsed ? "hidden" : "hidden lg:block")}
             />
 
             {/* 2. MAIN WORKSPACE */}
             <div className="flex-1 flex flex-col min-w-0">
 
                 <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--border-color)] bg-[var(--bg-secondary)]/30">
-                    <div className="flex flex-col">
-                        <input
-                            value={formData.name}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            className="bg-transparent text-xl font-bold text-[var(--text-primary)] outline-none border-b border-transparent focus:border-[var(--color-primary)] transition-colors"
-                            placeholder="Subject Name..."
-                        />
-                        <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-widest">
+                    <div className="flex flex-col relative">
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                                {sidebarCollapsed ? <PanelLeft size={16} /> : <PanelLeftClose size={16} />}
+                            </button>
+                            <input
+                                value={formData.name}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                className="bg-transparent text-xl font-bold text-[var(--text-primary)] outline-none border-b border-transparent focus:border-[var(--color-primary)] transition-colors"
+                                placeholder="Subject Name..."
+                            />
+                        </div>
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-widest ml-7">
                             {selectedRoleId ? `ID: ${selectedRoleId}` : 'NEW AGENT DETECTED'}
                         </span>
                     </div>

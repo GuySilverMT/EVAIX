@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, Dna } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, Dna, LayoutTemplate, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -18,6 +18,7 @@ import { cn } from '../../lib/utils.js';
 import { HistoryPanel } from '../HistoryPanel.js';
 import { RefreshCcw, Activity } from 'lucide-react';
 import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
+import { UniversalDataGrid } from '../UniversalDataGrid.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -56,7 +57,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab'>('editor');
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data'>('editor');
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -67,6 +68,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const [showSupplementary, setShowSupplementary] = useState(false);
     const [supplementaryLogs, setSupplementaryLogs] = useState<TerminalMessage[]>([]);
     const [isRunning, setIsRunning] = useState(false);
+    const [showFileNamePrompt, setShowFileNamePrompt] = useState(false);
+    const [newFileName, setNewFileName] = useState('');
     const abortController = useRef<AbortController | null>(null);
 
     // Sync header filename with active file
@@ -109,30 +112,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         }
 
         if (!activeFile && viewMode === 'editor') {
-            const initDefaultFile = async () => {
-                const sessionsDir = `${currentPath}/sessions`;
-                const filePath = `${sessionsDir}/card-${id}.md`;
-
-                try {
-                    await mkdir(sessionsDir);
-                } catch {
-                    // Ignore if dir exists
-                }
-
-                try {
-                    // Only write if we are sure we want a fresh start
-                    await writeFile(filePath, '');
-                    setActiveFile(filePath);
-                } catch (e) {
-                    console.error("Failed to create default session file", e);
-                    // Absolute fallback
-                    const fallbackPath = `${currentPath}/card-${id}.md`;
-                    void writeFile(fallbackPath, '').catch(() => { });
-                    setActiveFile(fallbackPath);
-                }
-            };
-
-            void initDefaultFile();
+            setShowFileNamePrompt(true);
         }
     }, [activeFile, viewMode, id, currentPath, writeFile, mkdir]);
 
@@ -299,7 +279,9 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         { id: 'terminal', icon: Terminal },
                         { id: 'browser', icon: Globe },
                         { id: 'role', icon: Fingerprint },
-                        { id: 'dna-lab', icon: Dna }
+                        { id: 'dna-lab', icon: Dna },
+                        { id: 'preview', icon: LayoutTemplate },
+                        { id: 'data', icon: Database }
                     ].map(t => (
                         <button
                             key={t.id}
@@ -308,7 +290,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 if (t.id === 'role') {
                                     setShowRolePicker(!showRolePicker);
                                 } else {
-                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config');
+                                    setViewMode(t.id as 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'preview' | 'data');
                                     setShowRolePicker(false);
                                 }
                             }}
@@ -353,6 +335,69 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         "bg-[var(--color-background)]"
                     )}
                 >
+                    {showFileNamePrompt && (
+                        <div className="absolute inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-sm shadow-2xl space-y-4">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-wide">Create New Document</h3>
+                                <p className="text-[10px] text-[var(--text-muted)]">Please provide a semantic filename for this session.</p>
+                                <input
+                                    autoFocus
+                                    value={newFileName}
+                                    onChange={e => setNewFileName(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && newFileName.trim()) {
+                                            const createNamedFile = async () => {
+                                                let name = newFileName.trim();
+                                                if (!name.includes('.')) name += '.md';
+
+                                                const sessionsDir = `${currentPath}/sessions`;
+                                                const filePath = `${sessionsDir}/${name}`;
+
+                                                try {
+                                                    await mkdir(sessionsDir);
+                                                } catch {
+                                                    // Ignore
+                                                }
+
+                                                await writeFile(filePath, '');
+                                                setActiveFile(filePath);
+                                                setShowFileNamePrompt(false);
+                                            };
+                                            void createNamedFile();
+                                        }
+                                    }}
+                                    placeholder="e.g. system_architecture.md"
+                                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)] font-mono"
+                                />
+                                <button
+                                    disabled={!newFileName.trim()}
+                                    onClick={() => {
+                                        const createNamedFile = async () => {
+                                            let name = newFileName.trim();
+                                            if (!name.includes('.')) name += '.md';
+
+                                            const sessionsDir = `${currentPath}/sessions`;
+                                            const filePath = `${sessionsDir}/${name}`;
+
+                                            try {
+                                                await mkdir(sessionsDir);
+                                            } catch {
+                                                // Ignore
+                                            }
+
+                                            await writeFile(filePath, '');
+                                            setActiveFile(filePath);
+                                            setShowFileNamePrompt(false);
+                                        };
+                                        void createNamedFile();
+                                    }}
+                                    className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Create File
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {viewMode === 'config' && (
                         <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
                             <div className="max-w-xs space-y-4">
@@ -431,8 +476,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
                     {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
                     {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
-
-                    {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
+                    {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}
+                    {viewMode === 'data' && <div className="h-full w-full bg-white"><UniversalDataGrid data={[]} /></div>}
 
                     {/* [NEW] SupplementaryAgentSlot */}
                     {showSupplementary && (

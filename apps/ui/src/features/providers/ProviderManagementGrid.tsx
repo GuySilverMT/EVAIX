@@ -596,7 +596,7 @@ export const ProviderManagementGrid: React.FC<{ workflowMode?: boolean }> = () =
 
       {/* Provider cards */}
       <div className="flex-1 overflow-auto p-4 space-y-6">
-        {(Object.entries(byClass) as [string, Provider[]][]).map(([cls, providers]) => {
+        {(Object.entries(byClass)).map(([cls, providers]) => {
           if (!providers.length) return null;
           return (
             <div key={cls}>

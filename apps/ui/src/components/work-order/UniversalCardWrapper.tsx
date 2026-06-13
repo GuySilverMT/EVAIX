@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Settings, ArrowLeft, type LucideIcon } from 'lucide-react';
 import { SuperAiButton } from '../ui/SuperAiButton.js';
 import { useAgenticWorkspaceStore } from '../../stores/agenticWorkspace.store.js';
+import { useWorkspaceStore } from '../../stores/workspace.store.js';
 
 interface UniversalCardWrapperProps {
   id?: string;
@@ -28,6 +29,10 @@ export const UniversalCardWrapper: React.FC<UniversalCardWrapperProps> = ({
 
   const node = useAgenticWorkspaceStore(state => id ? state.nodes[id] : undefined);
   const toggleContext = useAgenticWorkspaceStore(state => state.toggleContextInclusion);
+
+  const updateCard = useWorkspaceStore(state => state.updateCard);
+  const cards = useWorkspaceStore(state => state.cards);
+  const card = id ? cards.find(c => c.id === id) : undefined;
 
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -64,6 +69,15 @@ export const UniversalCardWrapper: React.FC<UniversalCardWrapperProps> = ({
                   ✨ Use in Prompt
                 </label>
               )}
+              <select
+                value={(card?.metadata?.agentConfig as any)?.modelId || ''}
+                onChange={e => id && updateCard(id, { metadata: { ...card?.metadata, agentConfig: { ...(card?.metadata?.agentConfig as any), modelId: e.target.value } } })}
+                className="text-[10px] bg-[var(--bg-primary)] border border-[var(--border-color)] outline-none text-zinc-500 rounded ml-2"
+              >
+                <option value="">Auto Model</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              </select>
               {headerEnd}
 
               <div className="h-4 w-px bg-zinc-800 mx-1" />
