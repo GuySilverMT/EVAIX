@@ -47,7 +47,7 @@ export const useAgenticWorkspaceStore = create<WorkspaceState>((set, get) => ({
     let contextParts = [];
     for (const node of includedNodes) {
       const ctx = await node.getContext();
-      if (!ctx.content || ctx.content.trim() === "") continue; // Skip empty
+      if (!ctx.content || ctx.content.trim() === "" || ctx.content.trim() === "{}" || ctx.content.trim() === "[]") continue; // Skip empty
       contextParts.push(`\n--- Card Context: ${node.title} (${node.type}) ---\n`);
       if (ctx.format === 'json') {
           contextParts.push("```json\n" + ctx.content + "\n```");
