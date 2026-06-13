@@ -14,6 +14,7 @@ import { roleArchitectTools } from '../../tools/roleArchitectTools.js';
 import { orchestrationTools } from '../../tools/orchestrationTools.js';
 import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
 import { themeEditorTool } from '../../tools/themeEditor.js';
+import { prisma } from '../../db.js';
 
 export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof createFsTools>): ToolDefinition[] {
      return [
@@ -144,6 +145,46 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
                 type: 'object',
                 properties: {
                     query: { type: 'string' }
+                },
+                required: ['query']
+            }
+        },
+        {
+            name: 'semantic_search_codebase',
+            handler: async (args: unknown) => {
+                const typedArgs = args as { query: string; limit?: number };
+
+                let workspaceId: string | undefined = undefined;
+                try {
+                    const match = rootPath.match(/apps\/([^\/]+)/);
+                    if (match && match[1]) {
+                        const projectName = match[1];
+                        const workspace = await prisma.workspace.findFirst({
+                            where: { name: projectName }
+                        });
+                        if (workspace) {
+                            workspaceId = workspace.id;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error resolving workspaceId for semantic search:", error);
+                }
+
+                const { vectorStore, createEmbedding } = await import('../vector.service.js');
+                const queryEmbedding = await createEmbedding(typedArgs.query);
+                const results = await vectorStore.search(queryEmbedding, typedArgs.limit || 5, { workspaceId });
+
+                return results.map((r) => {
+                    const meta = r.metadata as { filePath: string; chunk: string };
+                    return `File: ${meta.filePath}\nSimilarity: ${(r.similarity ?? 0).toFixed(4)}\nContent:\n${meta.chunk}\n---`;
+                }).join('\n');
+            },
+            description: 'Semantic search over the codebase using vector embeddings. Use this to find relevant code snippets or documentation.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', description: 'The search query' },
+                    limit: { type: 'number', description: 'Max results to return (default 5)' }
                 },
                 required: ['query']
             }

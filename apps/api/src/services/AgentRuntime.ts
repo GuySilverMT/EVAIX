@@ -101,7 +101,7 @@ export class AgentRuntime {
       // ... existing tool loading logic ...
       const nativeToolNames = [
         "read_file", "write_file", "patch_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
-        "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", 
+        "terminal_execute", "search_codebase", "semantic_search_codebase", "list_files_tree", "scan_ui_components",
         "ui_architect_tree_inspect", "ui_architect_node_mutate", "ui_factory_layout_generate",
         "role_registry_list", "role_variant_evolve", "role_config_patch"
       ];

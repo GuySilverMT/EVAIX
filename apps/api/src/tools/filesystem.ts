@@ -39,16 +39,32 @@ export const createFsTools = (rootPath: string = process.cwd()) => {
       if (content.includes(search_string)) {
         content = content.replace(search_string, replace_string);
       } else {
-        // Fallback: Normalize line endings and trim whitespace
-        const normalize = (str: string) => str.replace(/\r\n/g, '\n').trim();
+        // Fallback: Normalize line endings and handle leading whitespace
         const normalizedContent = content.replace(/\r\n/g, '\n');
-        const normalizedSearch = normalize(search_string);
-        const normalizedReplace = replace_string; // Keep replacement as provided
+        const normalizedSearchLines = search_string.replace(/\r\n/g, '\n').split('\n');
+        const contentLines = normalizedContent.split('\n');
 
-        const searchIdx = normalizedContent.indexOf(normalizedSearch);
-        if (searchIdx !== -1) {
-          // Careful: replacing based on normalized string. For robust fuzzy patch, we can use exact match after normalization
-          content = normalizedContent.replace(normalizedSearch, normalizedReplace);
+        let matchIdx = -1;
+        for (let i = 0; i <= contentLines.length - normalizedSearchLines.length; i++) {
+          let isMatch = true;
+          for (let j = 0; j < normalizedSearchLines.length; j++) {
+            if (contentLines[i + j].trim() !== normalizedSearchLines[j].trim()) {
+              isMatch = false;
+              break;
+            }
+          }
+          if (isMatch) {
+            matchIdx = i;
+            break;
+          }
+        }
+
+        if (matchIdx !== -1) {
+          // We found the matching lines. Now replace them.
+          const beforeMatch = contentLines.slice(0, matchIdx);
+          const afterMatch = contentLines.slice(matchIdx + normalizedSearchLines.length);
+          // Insert the replacement string as provided
+          content = [...beforeMatch, replace_string, ...afterMatch].join('\n');
         } else {
           throw new Error(`Search string not found in file '${filePath}'. Make sure you are providing the exact block to search for.`);
         }
