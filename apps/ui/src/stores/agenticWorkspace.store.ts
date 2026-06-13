@@ -47,6 +47,7 @@ export const useAgenticWorkspaceStore = create<WorkspaceState>((set, get) => ({
     let contextParts = [];
     for (const node of includedNodes) {
       const ctx = await node.getContext();
+      if (!ctx.content || ctx.content.trim() === "") continue; // Skip empty
       contextParts.push(`\n--- Card Context: ${node.title} (${node.type}) ---\n`);
       if (ctx.format === 'json') {
           contextParts.push("```json\n" + ctx.content + "\n```");
@@ -54,6 +55,9 @@ export const useAgenticWorkspaceStore = create<WorkspaceState>((set, get) => ({
           contextParts.push(ctx.content);
       }
     }
+
+    // Dynamic pruning drops empty strings here
+    contextParts = contextParts.filter(context => context && context.trim() !== "");
 
     return contextParts.join("\n");
   }

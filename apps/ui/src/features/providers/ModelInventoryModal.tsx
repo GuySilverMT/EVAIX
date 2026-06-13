@@ -24,7 +24,7 @@ export const ModelInventoryModal: React.FC<ModelInventoryModalProps> = ({
         if (!data?.models) return [];
         return data.models.filter(m =>
             m.name.toLowerCase().includes(filter.toLowerCase()) ||
-            (m.id as string).toLowerCase().includes(filter.toLowerCase())
+            (m.id).toLowerCase().includes(filter.toLowerCase())
         ).map(m => {
             const caps = (m.capabilities as any) || {};
             return {
@@ -36,8 +36,8 @@ export const ModelInventoryModal: React.FC<ModelInventoryModalProps> = ({
                 tools: caps.supportsFunctionCalling ? 'YES' : 'no',
                 embedding: caps.hasEmbedding ? 'YES' : 'no',
                 image: caps.hasImageGen ? 'YES' : 'no',
-                price_in: (caps.specs as any)?.inputCostPer1k || 0,
-                price_out: (caps.specs as any)?.outputCostPer1k || 0,
+                price_in: (caps.specs)?.inputCostPer1k || 0,
+                price_out: (caps.specs)?.outputCostPer1k || 0,
                 last_seen: new Date(m.lastSeenAt).toLocaleString(),
             };
         });

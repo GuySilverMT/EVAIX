@@ -223,10 +223,16 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     type: isCode ? 'code-editor' : 'markdown-editor',
     title: fileName,
     defaultIncluded: true,
-    getContext: async () => ({
-      format: 'markdown',
-      content: content
-    }),
+    getContext: async () => {
+      // Dynamic Context Pruning
+      if (!content || content.trim() === "") {
+        return { format: 'markdown', content: "" };
+      }
+      return {
+        format: 'markdown',
+        content: content
+      };
+    },
     applyMutation: async (mutation) => {
       if (mutation.action === 'REWRITE') {
         // Just directly setting content for now, ideally prompt user

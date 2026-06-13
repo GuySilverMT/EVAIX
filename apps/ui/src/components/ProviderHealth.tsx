@@ -10,7 +10,7 @@ export const ProviderHealth: React.FC = () => {
     if (!models) return [];
 
     return models.map((m: any) => {
-      const caps = m.capabilities as any;
+      const caps = m.capabilities;
       return {
         id: m.id,
         modelId: m.name,

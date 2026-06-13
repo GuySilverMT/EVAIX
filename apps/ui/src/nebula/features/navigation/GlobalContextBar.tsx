@@ -4,7 +4,7 @@ import {
   Command, Sparkles, X, Layers,
   Workflow, Settings, Palette, Plus, Minus,
   ChevronDown, Terminal, Mic, Database, Users,
-  ShieldCheck
+  ShieldCheck, Folder
 } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 import { useWorkspaceStore } from '../../../stores/workspace.store.js';
@@ -14,11 +14,7 @@ import { trpc } from '../../../utils/trpc.js';
 // Workflow definitions — drives the Workflows dropdown
 // ─────────────────────────────────────────────────────────────────────────────
 const WORKFLOWS = [
-  { id: 'provider',   label: 'Provider & Billing',   icon: ShieldCheck, columnCount: 2 },
   { id: 'org',        label: 'Org & Orchestration',  icon: Users,       columnCount: 2 },
-  { id: 'datacenter', label: 'Data Center',          icon: Database,    columnCount: 2 },
-  { id: 'settings',   label: 'Settings & Config',    icon: Settings,    columnCount: 1 },
-  { id: 'voice',      label: 'Voice Playground',     icon: Mic,         columnCount: 2 },
 ] as const;
 
 interface GlobalContextBarProps {
@@ -215,14 +211,14 @@ function WorkflowsDropdown() {
             : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-color)] hover:text-[var(--text-primary)] hover:border-[var(--color-primary)]/50'
         )}
       >
-        {activeWf ? <activeWf.icon size={11} /> : <Workflow size={11} />}
-        <span className="hidden md:block">{activeWf?.label ?? 'Workflows'}</span>
+        {activeWf ? <activeWf.icon size={11} /> : <Folder size={11} />}
+        <span className="hidden md:block">{activeWf?.label ?? 'Project Manager'}</span>
         <ChevronDown size={9} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
 
       <DropdownPortal anchorRef={anchorRef} open={open} onClose={close} align="left" width={208}>
         <div className="px-3 py-1 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-          Active Workflows
+          Project Manager
         </div>
         <div className="h-px bg-zinc-700 my-1" />
         {WORKFLOWS.map(wf => (
@@ -291,6 +287,27 @@ function SettingsDropdown({ onToggleTheme, themeOpen }: { onToggleTheme?: () => 
         >
           <Settings size={12} />
           Constitution & Settings
+        </button>
+        <button
+          onClick={() => { useWorkspaceStore.getState().setActiveWorkflow('provider'); close(); }}
+          className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+        >
+          <ShieldCheck size={12} />
+          Provider & Billing
+        </button>
+        <button
+          onClick={() => { useWorkspaceStore.getState().setActiveWorkflow('datacenter'); close(); }}
+          className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+        >
+          <Database size={12} />
+          Data Center
+        </button>
+        <button
+          onClick={() => { useWorkspaceStore.getState().setActiveWorkflow('voice'); close(); }}
+          className="w-full text-left px-3 py-1.5 text-[10px] flex items-center gap-2 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+        >
+          <Mic size={12} />
+          Voice Playground
         </button>
       </DropdownPortal>
     </div>
