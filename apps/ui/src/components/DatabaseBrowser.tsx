@@ -1,259 +1,164 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Table, Plus, RefreshCw, Trash2, Database, Upload, Download, Columns, Lock } from "lucide-react";
 import { trpc } from "../utils/trpc.js";
 import { UniversalDataGrid } from "./UniversalDataGrid.js";
-import {
-  Database,
-  Table,
-  Plus,
-  Trash2,
-  RefreshCw,
-  Columns,
-  Lock,
-  Download,
-  Upload,
-} from "lucide-react";
-import { useAgenticContext } from "../hooks/useAgenticContext.js";
-
-// A Wrapper for Cell Data that handles Protection
-// const ProtectedCell = ... (removed unused)
 
 export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string }> = ({
-  showCreateTable: _showCreateTable = false,
-  id = "db-browser",
+  showCreateTable = false,
+  id,
 }) => {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-
-  // Queries
-  const tablesQuery = trpc.schema.getTables.useQuery();
-  const utils = trpc.useContext();
-
-  const dataQuery = trpc.apiExplorer.executeQuery.useQuery(
-    { query: `SELECT * FROM "${selectedTable}" LIMIT 100` },
-    { enabled: !!selectedTable },
-  );
-
-  const schemaQuery = trpc.schema.getTableSchema.useQuery(
-    { tableName: selectedTable! },
-    { enabled: !!selectedTable },
-  );
-
-  useAgenticContext({
-      id,
-      type: "db-table",
-      title: selectedTable || "Database",
-      defaultIncluded: false,
-      getContext: async () => {
-          const data = dataQuery.data || [];
-          const schema = schemaQuery.data;
-          // Return empty if no data or no columns
-          if (data.length === 0 || !schema || Object.keys(schema).length === 0) {
-              return { format: "json", content: "" };
-          }
-          return {
-              format: "json",
-              content: JSON.stringify(data)
-          };
-      }
-  });
-
-  // Mutations
-  const addCol = trpc.schema.addColumn.useMutation({
-    onSuccess: () => {
-      void utils.apiExplorer.invalidate();
-      void utils.schema.getTableSchema.invalidate();
-      void tablesQuery.refetch();
-    },
-  });
-  const dropCol = trpc.schema.dropColumn.useMutation({
-    onSuccess: () => {
-      void utils.apiExplorer.invalidate();
-      void utils.schema.getTableSchema.invalidate();
-    },
-  });
-  const dropTable = trpc.schema.dropTable.useMutation({
-    onSuccess: () => {
-      setSelectedTable(null);
-      void utils.schema.invalidate();
-    },
-  });
-
-  const importJson = trpc.schema.importJsonToTable.useMutation({
-    onSuccess: (data) => {
-      alert(`Successfully imported ${data.rowCount} rows!`);
-      void utils.apiExplorer.invalidate();
-      void tablesQuery.refetch();
-    },
-    onError: (err) => {
-      alert(`Import Failed: ${err.message}`);
-    },
-  });
-
-  const createTableJson = trpc.schema.createTableFromJson.useMutation({
-    onSuccess: (data) => {
-      alert(
-        `Successfully created table "${data.tableName}" with ${data.rowCount} rows!`,
-      );
-      void utils.schema.getTables.invalidate();
-      setSelectedTable(data.tableName);
-    },
-    onError: (err) => {
-      alert(`Failed to create table: ${err.message}`);
-    },
-  });
-
-  const exportTable = trpc.schema.exportTable.useMutation({
-    onSuccess: (data, variables) => {
-      // Trigger Download
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${variables.tableName}-${new Date().toISOString()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    },
-  });
-
-  // Dialog State
   const [showAddCol, setShowAddCol] = useState(false);
   const [newColName, setNewColName] = useState("");
   const [newColType, setNewColType] = useState("TEXT");
   const [isProtected, setIsProtected] = useState(false);
 
-  // File Inputs Refs
   const importFileRef = useRef<HTMLInputElement>(null);
   const createFileRef = useRef<HTMLInputElement>(null);
 
-  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedTable) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const text = ev.target?.result as string;
-      if (text) {
-        await importJson.mutateAsync({
-          tableName: selectedTable,
-          jsonString: text,
-          options: { upsertOnConflict: true },
-        });
-        // Reset input
-        if (importFileRef.current) importFileRef.current.value = "";
-      }
-    };
-    reader.readAsText(file);
+  // VFS API interactions
+  const listVfsQuery = trpc.vfs.list.useQuery(
+    { path: "." },
+    { refetchInterval: 5000 } // Auto-refresh for new JSON files
+  );
+
+  const readFileQuery = trpc.vfs.read.useQuery(
+    { path: selectedTable || "" },
+    { enabled: !!selectedTable }
+  );
+
+  const writeFileMutation = trpc.vfs.write.useMutation();
+
+  // Extract tables from VFS (filtering only .json files)
+  const tables = useMemo(() => {
+    if (!listVfsQuery.data) return [];
+    return listVfsQuery.data
+      .filter((file: any) => file.name.endsWith(".json"))
+      .map((file: any) => file.name);
+  }, [listVfsQuery.data]);
+
+  // Parse table data from JSON content
+  const tableData = useMemo(() => {
+    if (!readFileQuery.data?.content) return [];
+    try {
+      const parsed = JSON.parse(readFileQuery.data.content);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Failed to parse table JSON", e);
+      return [];
+    }
+  }, [readFileQuery.data]);
+
+  const columns = useMemo(() => {
+    if (tableData.length > 0) {
+      return Object.keys(tableData[0]);
+    }
+    return [];
+  }, [tableData]);
+
+  const handleCreateNewTableClick = () => {
+    const tableName = prompt("Enter new JSON file name (e.g., users.json):");
+    if (tableName) {
+      const validName = tableName.endsWith(".json") ? tableName : `${tableName}.json`;
+      writeFileMutation.mutate(
+        { path: validName, content: "[]" },
+        {
+          onSuccess: () => {
+            listVfsQuery.refetch();
+            setSelectedTable(validName);
+          },
+        }
+      );
+    }
   };
 
-  const handleFileCreate = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Derive table name from filename
-    // e.g. "My Data.json" -> "my_data"
-    const derivedName = file.name
-      .replace(/\.[^/.]+$/, "") // Remove extension
-      .replace(/[^a-zA-Z0-9_]/g, "_") // Replace special chars
-      .toLowerCase();
-
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const text = ev.target?.result as string;
-      if (text && derivedName) {
-        await createTableJson.mutateAsync({
-          tableName: derivedName,
-          jsonString: text,
-        });
-        // Reset input
-        if (createFileRef.current) createFileRef.current.value = "";
-      }
-    };
-    reader.readAsText(file);
+  const handleDropTable = async (tableName: string) => {
+    if (confirm(`Are you sure you want to delete ${tableName}?`)) {
+       // Since there's no delete in vfs router currently, we can clear the file
+       // or rename it to .deleted
+       await writeFileMutation.mutateAsync({ path: tableName, content: "[]" });
+       setSelectedTable(null);
+       listVfsQuery.refetch();
+    }
   };
 
   const handleAddColumn = async () => {
     if (!selectedTable || !newColName) return;
     try {
-      await addCol.mutateAsync({
-        tableName: selectedTable,
-        columnName: newColName,
-        type: newColType as
-          | "TEXT"
-          | "BOOLEAN"
-          | "INTEGER"
-          | "FLOAT"
-          | "JSONB"
-          | "TIMESTAMP",
-        isProtected,
+      const updatedData = tableData.map((row: any) => ({
+        ...row,
+        [newColName]: null, // Default empty value
+      }));
+      await writeFileMutation.mutateAsync({
+        path: selectedTable,
+        content: JSON.stringify(updatedData, null, 2),
       });
       setShowAddCol(false);
       setNewColName("");
-      setIsProtected(false);
+      readFileQuery.refetch();
     } catch (error) {
-      console.error("Failed to add column:", error);
+      console.error("Failed to add column", error);
     }
   };
 
-  const handleDropTable = async (table: string) => {
-    if (
-      confirm(
-        `Are you sure you want to PERMANENTLY DELETE the table "${table}"?`,
-      )
-    ) {
-      try {
-        await dropTable.mutateAsync({ tableName: table });
-      } catch (error) {
-        console.error("Failed to drop table:", error);
-      }
-    }
-  };
-
-  const handleDropColumn = async (col: string) => {
+  const handleDropColumn = async (colName: string) => {
     if (!selectedTable) return;
-    if (
-      confirm(`Drop column "${col}" from ${selectedTable}? Data will be lost.`)
-    ) {
+    if (confirm(`Are you sure you want to delete column "${colName}"?`)) {
       try {
-        await dropCol.mutateAsync({
-          tableName: selectedTable,
-          columnName: col,
+        const updatedData = tableData.map((row: any) => {
+          const { [colName]: _, ...rest } = row;
+          return rest;
         });
+        await writeFileMutation.mutateAsync({
+          path: selectedTable,
+          content: JSON.stringify(updatedData, null, 2),
+        });
+        readFileQuery.refetch();
       } catch (error) {
-        console.error("Failed to drop column:", error);
+        console.error("Failed to drop column", error);
       }
     }
-  };
-
-  const handleCreateNewTableClick = () => {
-    createFileRef.current?.click();
   };
 
   const handleExport = async () => {
     if (!selectedTable) return;
-    try {
-      await exportTable.mutateAsync({ tableName: selectedTable });
-    } catch (error) {
-      console.error("Failed to export:", error);
-    }
+    const jsonString = JSON.stringify(tableData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = selectedTable;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  // Helper to merge Schema Headers with Data Keys
-  const columns = useMemo(() => {
-    if (schemaQuery.data) return schemaQuery.data.map((c: any) => c.name);
-    if (dataQuery.data && dataQuery.data.length > 0)
-      return Object.keys(dataQuery.data[0]);
-    return [];
-  }, [schemaQuery.data, dataQuery.data]);
-
-  // Transform data to use ProtectedCell where needed
-  // const displayData = useMemo(() => { ... }, [dataQuery.data]);
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedTable) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        // Verify it's JSON
+        JSON.parse(content);
+        await writeFileMutation.mutateAsync({
+          path: selectedTable,
+          content: content,
+        });
+        readFileQuery.refetch();
+      } catch (error) {
+        alert("Invalid JSON file");
+      }
+    };
+    reader.readAsText(file);
+    if (importFileRef.current) importFileRef.current.value = "";
+  };
 
   return (
     <div className="flex h-full w-full bg-[#09090b] text-zinc-300 font-mono text-xs">
-      {/* Hidden File Inputs */}
       <input
         type="file"
         ref={importFileRef}
@@ -261,39 +166,32 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
         accept=".json"
         onChange={handleFileImport}
       />
-      <input
-        type="file"
-        ref={createFileRef}
-        className="hidden"
-        accept=".json"
-        onChange={handleFileCreate}
-      />
 
       {/* SIDEBAR: Table List */}
       <div className="w-64 border-r border-zinc-800 flex flex-col">
         <div className="p-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
           <span className="font-bold flex items-center gap-2">
-            <Database size={14} className="text-indigo-400" /> SCHEMA
+            <Database size={14} className="text-indigo-400" /> JSON DATA CENTER
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={handleCreateNewTableClick}
               className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
-              title="Create New Table"
+              title="Create New File"
             >
               <Plus size={12} />
             </button>
             <button
-              onClick={() => void tablesQuery.refetch()}
+              onClick={() => listVfsQuery.refetch()}
               className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white"
             >
-              <RefreshCw size={12} />
+              <RefreshCw size={12} className={listVfsQuery.isFetching ? "animate-spin" : ""} />
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {tablesQuery.data?.map((table: string) => (
+          {tables.map((table: string) => (
             <div
               key={table}
               className={`group flex items-center justify-between px-3 py-2 rounded cursor-pointer transition-colors ${
@@ -307,14 +205,13 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
                 <Table size={12} />
                 <span>{table}</span>
               </div>
-              {/* Delete Table Button (Only visible on hover) */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  void handleDropTable(table).catch(console.error);
+                  handleDropTable(table);
                 }}
                 className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-opacity"
-                title="Drop Table"
+                title="Clear Data"
               >
                 <Trash2 size={12} />
               </button>
@@ -325,7 +222,6 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
 
       {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* TOOLBAR */}
         {selectedTable ? (
           <div className="h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30">
             <div className="flex items-center gap-4">
@@ -334,12 +230,11 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
                 {selectedTable}
               </h2>
               <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-[10px] text-zinc-500">
-                {dataQuery.data?.length || 0} rows
+                {tableData.length || 0} rows
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Import/Export */}
               <div className="flex items-center gap-1 mr-4 border-r border-zinc-800 pr-4">
                 <button
                   onClick={() => importFileRef.current?.click()}
@@ -349,22 +244,18 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
                   <Upload size={14} />
                 </button>
                 <button
-                  onClick={() => void handleExport()}
+                  onClick={() => handleExport()}
                   className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition-colors"
                   title="Export JSON"
                 >
-                  {exportTable.isLoading ? (
-                    <RefreshCw size={14} className="animate-spin" />
-                  ) : (
-                    <Download size={14} />
-                  )}
+                  <Download size={14} />
                 </button>
               </div>
               <button
                 onClick={() => setShowAddCol(true)}
                 className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-medium transition-colors"
               >
-                <Plus size={12} /> ADD COLUMN
+                <Plus size={12} /> ADD KEY
               </button>
 
               <div className="flex items-center">
@@ -382,7 +273,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
                   }`}
                 >
                   <Trash2 size={12} />{" "}
-                  {isEditing ? "DONE EDITING" : "REMOVE COLUMNS"}
+                  {isEditing ? "DONE EDITING" : "REMOVE KEYS"}
                 </button>
               </div>
             </div>
@@ -390,7 +281,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-zinc-600">
             <Database size={48} className="mb-4 opacity-20" />
-            <p>Select a table to edit schema</p>
+            <p>Select a JSON file to edit schema</p>
           </div>
         )}
 
@@ -398,11 +289,11 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
         <div className="flex-1 overflow-hidden relative">
           {selectedTable && (
             <UniversalDataGrid
-              data={(dataQuery.data as any[]) || []}
+              data={tableData}
               headers={columns}
               isDeletable={isEditing}
               onHeaderClick={(col) => {
-                if (isEditing) void handleDropColumn(col);
+                if (isEditing) handleDropColumn(col);
               }}
             />
           )}
@@ -414,14 +305,14 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-700 p-6 rounded-lg w-96 shadow-2xl">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Columns size={16} className="text-indigo-400" /> Add Column to{" "}
+              <Columns size={16} className="text-indigo-400" /> Add Key to{" "}
               {selectedTable}
             </h3>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] uppercase text-zinc-500 mb-1">
-                  Column Name
+                  Key Name
                 </label>
                 <input
                   value={newColName}
@@ -434,7 +325,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
 
               <div>
                 <label className="block text-[10px] uppercase text-zinc-500 mb-1">
-                  Data Type
+                  Data Type (for reference)
                 </label>
                 <select
                   value={newColType}
@@ -444,13 +335,10 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
                   <option value="TEXT">TEXT (String)</option>
                   <option value="BOOLEAN">BOOLEAN (True/False)</option>
                   <option value="INTEGER">INTEGER (Number)</option>
-                  <option value="FLOAT">FLOAT (Decimal)</option>
-                  <option value="JSONB">JSONB (Complex Data)</option>
-                  <option value="TIMESTAMP">TIMESTAMP (Date)</option>
+                  <option value="JSONB">JSON (Complex Data)</option>
                 </select>
               </div>
 
-              {/* NEW: Protected Toggle */}
               <div className="flex items-center gap-2 pt-2 border-t border-zinc-800 mt-2">
                 <input
                   type="checkbox"
@@ -477,19 +365,16 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
                 Cancel
               </button>
               <button
-                onClick={() => void handleAddColumn()}
+                onClick={handleAddColumn}
                 disabled={!newColName}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-bold"
               >
-                Create Column
+                Create Key
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* IMPORT MODAL REMOVED */}
-      {/* CREATE TABLE MODAL REMOVED */}
     </div>
   );
 };

@@ -224,6 +224,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     title: fileName,
     defaultIncluded: true,
     getContext: async () => {
+      // Dynamic Context Pruning
       if (!content || content.trim() === "") {
         return { format: 'markdown', content: "" };
       }

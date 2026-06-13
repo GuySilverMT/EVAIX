@@ -60,6 +60,9 @@ model Workspace {
   id           String          @id @default(cuid())
   name         String
   rootPath     String
+  projectType  ProjectType @default(CODE)
+  defaultModelId String?
+  targetPlatform String?
   systemPrompt String?
   codeRules    String?
   glossary     Json?           @default("{}")
@@ -501,4 +504,12 @@ enum ProviderClass {
   AGGREGATOR
   INFERENCE_ENGINE
   LOCAL
+}
+
+
+enum ProjectType {
+  CODE
+  WRITE
+  RESEARCH
+  DEPLOY
 }

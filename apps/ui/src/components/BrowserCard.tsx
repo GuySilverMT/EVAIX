@@ -138,7 +138,8 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
       title: url,
       defaultIncluded: false,
       getContext: async () => {
-          if (!url || url.trim() === "") {
+          // Dynamic Context Pruning
+          if (!url || url.trim() === "" || url === "about:blank") {
               return { format: 'markdown', content: "" };
           }
           return {

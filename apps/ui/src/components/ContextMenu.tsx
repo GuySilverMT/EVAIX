@@ -26,9 +26,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const [menuItems, setMenuItems] = useState<ContextMenuItem[]>([]);
 
   useEffect(() => {
-    const isInput = targetElement instanceof HTMLInputElement || 
-                    targetElement instanceof HTMLTextAreaElement ||
-                    targetElement.contentEditable === 'true';
+    const activeEl = document.activeElement;
+    const target = (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement || (activeEl as HTMLElement)?.contentEditable === 'true')
+      ? activeEl
+      : targetElement;
+
+    const isInput = target instanceof HTMLInputElement ||
+                    target instanceof HTMLTextAreaElement ||
+                    (target as HTMLElement).contentEditable === 'true';
 
     const items: ContextMenuItem[] = [];
 
@@ -86,7 +91,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
       // Voice input
       items.push({
-        label: 'Voice Input',
+        label: 'Voice Type',
         icon: <Mic className="w-4 h-4 text-red-500" />,
         action: () => {
           onVoiceInput();
