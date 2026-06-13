@@ -12,10 +12,14 @@ export class CodeGenerator {
       ? tree.imports.join('\n')
       : `import React from 'react';\nimport { Button, Card, Input, Label, Slider } from '@/components/ui';`;
 
+    const logicStr = root.meta?.logic || '';
+
     return `
 ${imports}
 
 export default function GeneratedPage() {
+${logicStr}
+
   return (
     ${jsx}
   );
@@ -83,6 +87,16 @@ export default function GeneratedPage() {
              propStrings.push(`${key}={${JSON.stringify(value)}}`);
         }
     });
+
+    // Serialize custom meta keys back to output component attributes
+    if (node.meta) {
+       const metaKeys = ['aiHints', 'codingProcesses', 'embeddedState'];
+       metaKeys.forEach(mk => {
+           if (node.meta && node.meta[mk]) {
+               propStrings.push(`${mk}={${JSON.stringify(node.meta[mk])}}`);
+           }
+       });
+    }
 
     const propsStr = propStrings.length > 0 ? ' ' + propStrings.join(' ') : '';
 

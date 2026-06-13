@@ -117,6 +117,8 @@ export interface NebulaNode {
     source?: "ai-gen" | "ai-gen-batch" | "human" | "imported";
     aiDescription?: string; // "A blue card for user profile"
     aiConfig?: { defaultRole?: string };
+    logic?: string;
+    [key: string]: any; // Allow custom metadata attributes like aiHints, codingProcesses
   };
 }
 

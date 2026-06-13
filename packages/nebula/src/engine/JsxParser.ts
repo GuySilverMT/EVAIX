@@ -6,6 +6,7 @@
 export interface ParsedElement {
   tag: string;
   props: Record<string, any>;
+  meta?: Record<string, any>;
   children: (ParsedElement | string)[];
   isSelfClosing: boolean;
 }
@@ -81,6 +82,7 @@ export class JsxParser {
     
     // Parse attributes
     const props: Record<string, any> = {};
+    const meta: Record<string, any> = {};
     while (pos < jsx.length && jsx[pos] !== '>' && jsx[pos] !== '/') {
       // Skip whitespace
       while (pos < jsx.length && /\s/.test(jsx[pos])) pos++;
@@ -123,7 +125,11 @@ export class JsxParser {
         }
       }
       
-      props[attrName] = attrValue;
+      if (['aiHints', 'codingProcesses', 'logic', 'embeddedState'].includes(attrName)) {
+          meta[attrName] = attrValue;
+      } else {
+          props[attrName] = attrValue;
+      }
     }
     
     // Check for self-closing
@@ -133,7 +139,7 @@ export class JsxParser {
       pos++; // Skip >
       console.log('[JsxParser.parseElement] Self-closing tag:', tagName);
       return {
-        element: { tag: tagName, props, children: [], isSelfClosing: true },
+        element: { tag: tagName, props, meta, children: [], isSelfClosing: true },
         endPos: pos
       };
     }
@@ -168,7 +174,7 @@ export class JsxParser {
         
         console.log('[JsxParser.parseElement] Finished parsing', tagName, 'with', children.length, 'children');
         return {
-          element: { tag: tagName, props, children, isSelfClosing: false },
+          element: { tag: tagName, props, meta, children, isSelfClosing: false },
           endPos: pos
         };
       }
@@ -195,7 +201,7 @@ export class JsxParser {
     // If we get here, we didn't find a closing tag
     console.warn('[JsxParser] No closing tag found for:', tagName);
     return {
-      element: { tag: tagName, props, children, isSelfClosing: false },
+      element: { tag: tagName, props, meta, children, isSelfClosing: false },
       endPos: pos
     };
   }
