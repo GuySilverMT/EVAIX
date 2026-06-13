@@ -11,12 +11,9 @@ export class LocalProvider implements IVfsProvider {
   }
 
   private resolvePath(relativePath: string): string {
-    // 1. If it's already an absolute path that is within our root, trust it
+    // 1. If it's already an absolute path, trust it and return it directly
     if (path.isAbsolute(relativePath)) {
-      const resolved = path.resolve(relativePath);
-      if (resolved.startsWith(this.rootPath)) {
-        return resolved;
-      }
+      return path.resolve(relativePath);
     }
 
     // 2. Otherwise, treat it as relative to rootPath for VFS scoping

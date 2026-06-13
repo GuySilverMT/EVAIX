@@ -4,16 +4,16 @@ import type { VFile } from '../stores/FileSystemTypes.js';
 
 import { useWorkspaceStore } from '../stores/workspace.store.js';
 
-export const useCardVFS = (cardId: string, initialPath: string = '/home/guy/mono') => {
-  const activeWorkspaceId = useWorkspaceStore(s => s.activeWorkspaceId);
+export const useCardVFS = (cardId: string, initialPath: string = '/home/guy') => {
+  const activeWorkspacePath = useWorkspaceStore(s => s.activeWorkspacePath);
   // State
-  const [currentPath, setCurrentPath] = useState<string>(activeWorkspaceId || initialPath);
+  const [currentPath, setCurrentPath] = useState<string>(activeWorkspacePath || initialPath);
   
   useEffect(() => {
-    if (activeWorkspaceId) {
-      setCurrentPath(activeWorkspaceId);
+    if (activeWorkspacePath) {
+      setCurrentPath(activeWorkspacePath);
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspacePath]);
   const [provider, setProvider] = useState<'local' | 'ssh'>('local');
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   

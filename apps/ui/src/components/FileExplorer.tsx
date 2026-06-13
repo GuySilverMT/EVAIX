@@ -7,6 +7,7 @@ import {
 import type { VFile } from '../stores/FileSystemTypes.js';
 import { cn } from '@/lib/utils.js';
 import { SuperAiButton } from './ui/SuperAiButton.js';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
 
 interface FileExplorerProps {
   files: VFile[];
@@ -146,6 +147,7 @@ export const FileExplorer: FC<FileExplorerProps> = ({
   files, onSelect, className, currentPath, onNavigate,
   onCreateNode, onRefresh, onEmbedDir, onLoadChildren, activeContent, onSaveContent
 }) => {
+  const activeWorkspacePath = useWorkspaceStore(s => s.activeWorkspacePath);
   const [pathInput, setPathInput] = useState(currentPath || '');
   const [showHidden, setShowHidden] = useState(false);
   const [isCreating, setIsCreating] = useState<'file' | 'folder' | 'save' | null>(null);
@@ -153,7 +155,15 @@ export const FileExplorer: FC<FileExplorerProps> = ({
 
   useEffect(() => { setPathInput(currentPath || ''); }, [currentPath]);
 
-  const handleNavigate = () => onNavigate?.(pathInput);
+  const handleNavigate = () => {
+    if (activeWorkspacePath && !pathInput.startsWith(activeWorkspacePath)) {
+      setPathInput(currentPath || activeWorkspacePath);
+      return;
+    }
+    onNavigate?.(pathInput);
+  };
+
+  const canGoUp = currentPath && (!activeWorkspacePath || (currentPath !== activeWorkspacePath && currentPath.startsWith(activeWorkspacePath)));
   
   const handleCreateSubmit = () => {
       if (newNodeName.trim()) {
@@ -172,12 +182,14 @@ export const FileExplorer: FC<FileExplorerProps> = ({
     <div className={cn("flex flex-col h-full bg-zinc-950", className)}>
        <div className="flex flex-col gap-2 p-2 border-b border-zinc-800 bg-zinc-900/50">
           <div className="flex items-center gap-1">
-             <button onClick={() => {
-                 const parent = currentPath?.split('/').slice(0, -1).join('/') || '/';
-                 onNavigate?.(parent);
-             }} className="p-1 hover:bg-white/10 rounded text-zinc-400">
-                <ArrowUp size={14} />
-             </button>
+             {canGoUp && (
+               <button onClick={() => {
+                   const parent = currentPath?.split('/').slice(0, -1).join('/') || '/';
+                   onNavigate?.(parent);
+               }} className="p-1 hover:bg-white/10 rounded text-zinc-400">
+                  <ArrowUp size={14} />
+               </button>
+             )}
              <div className="flex-1 relative group">
                 <input 
                   className="w-full bg-black/40 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300 focus:border-purple-500 outline-none font-mono"

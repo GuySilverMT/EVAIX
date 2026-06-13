@@ -34,12 +34,14 @@ export interface WorkspaceState {
   // Workspace Loading
   activeWorkspace: string | null;
   activeWorkspaceId: string | null;
+  activeWorkspacePath: string | null;
   projectName: string | null;
   projectType: string | null;
   activeModelId: string | null;
   recentProjects: string[];
   loadWorkspace: (id: string) => void;
   setActiveWorkspaceId: (id: string | null) => void;
+  setActiveWorkspacePath: (path: string | null) => void;
   setProjectName: (name: string | null) => void;
   setProjectType: (type: string | null) => void;
   setActiveModelId: (id: string | null) => void;
@@ -108,12 +110,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       activeWorkspace: null,
       activeWorkspaceId: null,
+      activeWorkspacePath: null,
       projectName: null,
       projectType: null,
       activeModelId: null,
       recentProjects: [],
       loadWorkspace: (id: string) => set({ activeWorkspace: id }),
-      setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
+      setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id, activeWorkspacePath: id }),
+      setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
       setProjectName: (name) => set({ projectName: name }),
       setProjectType: (type) => set({ projectType: type }),
       setActiveModelId: (id) => set({ activeModelId: id }),
@@ -179,6 +183,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         cards: state.cards,
         activeScreenspaceId: state.activeScreenspaceId,
         activeWorkspaceId: state.activeWorkspaceId,
+        activeWorkspacePath: state.activeWorkspacePath,
         projectName: state.projectName,
         projectType: state.projectType,
         activeModelId: state.activeModelId,

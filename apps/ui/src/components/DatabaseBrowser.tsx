@@ -16,8 +16,8 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
   const [newColType, setNewColType] = useState("TEXT");
   const [isProtected, setIsProtected] = useState(false);
 
-  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
-  const dataPath = useMemo(() => (activeWorkspaceId ? `${activeWorkspaceId}/.evaix/data` : "."), [activeWorkspaceId]);
+  const activeWorkspacePath = useWorkspaceStore((s) => s.activeWorkspacePath);
+  const dataPath = useMemo(() => (activeWorkspacePath ? `${activeWorkspacePath}/.evaix/data` : "."), [activeWorkspacePath]);
 
   const importFileRef = useRef<HTMLInputElement>(null);
   const createFileRef = useRef<HTMLInputElement>(null);
