@@ -90,8 +90,37 @@ export class AstTransformer {
 
     const defaultExport = findDefaultExport(file);
 
+    let logicBlocks: string[] = [];
+
     // 2. If we found a default export, search for JSX inside it
     if (defaultExport) {
+      // Extract logic blocks (hooks, functions, vars) before return
+      if (TS.isFunctionDeclaration(defaultExport) && defaultExport.body) {
+         defaultExport.body.statements.forEach((stmt) => {
+            if (!TS.isReturnStatement(stmt)) {
+               // Only grab variable declarations, function declarations, expression statements
+               if (TS.isVariableStatement(stmt) || TS.isFunctionDeclaration(stmt) || TS.isExpressionStatement(stmt)) {
+                   logicBlocks.push(stmt.getText());
+               }
+            }
+         });
+      } else if (TS.isVariableStatement(defaultExport)) {
+         // handle arrow function default exports like `const App = () => { ... }`
+         const decl = defaultExport.declarationList.declarations[0];
+         if (decl && decl.initializer && (TS.isArrowFunction(decl.initializer) || TS.isFunctionExpression(decl.initializer))) {
+            const body = decl.initializer.body;
+            if (TS.isBlock(body)) {
+               body.statements.forEach((stmt) => {
+                  if (!TS.isReturnStatement(stmt)) {
+                     if (TS.isVariableStatement(stmt) || TS.isFunctionDeclaration(stmt) || TS.isExpressionStatement(stmt)) {
+                         logicBlocks.push(stmt.getText());
+                     }
+                  }
+               });
+            }
+         }
+      }
+
       const findInnerJsx = (n: ts.Node): ts.Node | null => {
         if (
           TS.isJsxElement(n) ||
@@ -154,6 +183,10 @@ export class AstTransformer {
 
     if (!rootNode) {
       throw new Error("Failed to parse JSX: Root node processing failed.");
+    }
+
+    if (logicBlocks.length > 0) {
+        rootNode.meta = { ...rootNode.meta, logic: logicBlocks.join('\n\n') };
     }
 
     return {

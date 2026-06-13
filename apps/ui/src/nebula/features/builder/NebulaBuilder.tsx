@@ -26,10 +26,39 @@ const flattenTree = (node: any, nodes: Record<string, any> = {}): string => {
     return id;
 };
 
+const mapBadBuilderToNebula = (node: any): any => {
+    const mapped = { ...node };
+    if (node.role) {
+        if (node.role === 'cell') mapped.type = 'Box';
+        else if (node.role === 'text') mapped.type = 'Text';
+        else if (node.role === 'icon') mapped.type = 'Icon';
+        else if (node.role === 'dropdown') mapped.type = 'Component';
+        else if (node.role === 'input') mapped.type = 'Input';
+        else mapped.type = 'Box'; // Fallback
+
+        // Preserve visual/layout constraints as props/style mappings if needed here
+        if (!mapped.props) mapped.props = {};
+        if (node.role === 'dropdown') mapped.componentName = 'Dropdown';
+    }
+    if (Array.isArray(node.children)) {
+        mapped.children = node.children.map(mapBadBuilderToNebula);
+    }
+    return mapped;
+};
+
 const normalizeProject = (project: any): NebulaTree => {
     if (project.rootId && project.nodes) return project as NebulaTree;
+
+    // Check if Bad Builder schema array
+    let rootNode = project;
+    if (Array.isArray(project) || project.role) {
+        rootNode = { id: 'root', type: 'Box', children: Array.isArray(project) ? project : [project] };
+    }
+
+    rootNode = mapBadBuilderToNebula(rootNode);
+
     const nodes: Record<string, any> = {};
-    const rootId = flattenTree(project, nodes);
+    const rootId = flattenTree(rootNode, nodes);
     return { rootId, nodes } as NebulaTree;
 };
 
