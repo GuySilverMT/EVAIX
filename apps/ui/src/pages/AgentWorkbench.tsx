@@ -3,6 +3,8 @@ import { Plus } from 'lucide-react';
 import { useHotkeys } from '../hooks/useHotkeys.js';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
+import { useBuilderStore } from '../stores/builder.store.js';
+import layoutData from '../../../badbuilder/agentworkbench.layout.json';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
 import { Button } from '../components/ui/button.js';
 import { cn } from '../lib/utils.js';
@@ -63,10 +65,56 @@ function WorkflowFallback({ name }: { name: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AgentWorkbench({ className }: { className?: string }) {
   const {
-    columns, cards, setCards, addCard,
+    setCards, addCard,
     activeWorkspace, activeScreenspaceId, loadWorkspace, initializeFromWorkspace,
     activeWorkflow,
   } = useWorkspaceStore();
+
+  const { loadProject, currentTree } = useBuilderStore();
+
+  useEffect(() => {
+    loadProject(layoutData);
+  }, [loadProject]);
+
+  const treeNodes = currentTree?.nodes;
+  const rootNode = currentTree ? currentTree.nodes[currentTree.rootId] : null;
+
+  // Extract columns (cells) from the loaded layout
+  const builderColumns = useMemo(() => {
+    if (!rootNode || !treeNodes) return [];
+    const childrenIds = Array.isArray(rootNode.children) ? rootNode.children : [];
+    return childrenIds.map(id => treeNodes[id as string]).filter(node => node?.role === 'cell' || node?.type === 'Box' || node?.type === 'Flex');
+  }, [rootNode, treeNodes]);
+
+  const columns = builderColumns.length || 1;
+
+  // Extract cards mapping
+  const cardsByColumn = useMemo(() => {
+    const buckets: Record<number, any[]> = {};
+    for (let i = 0; i < columns; i++) buckets[i] = [];
+
+    if (builderColumns.length > 0 && treeNodes) {
+        builderColumns.forEach((col, idx) => {
+            const childIds = Array.isArray(col.children) ? col.children : [];
+            childIds.forEach(childId => {
+                const childNode = treeNodes[childId as string];
+                if (childNode) {
+                    buckets[idx].push({
+                        id: childNode.id,
+                        roleId: childNode.roleId || childNode.name || childNode.id,
+                        screenspaceId: activeScreenspaceId || 1,
+                        column: idx
+                    });
+                }
+            });
+        });
+    }
+    return buckets;
+  }, [builderColumns, treeNodes, columns, activeScreenspaceId]);
+
+  const cards = useMemo(() => {
+     return Object.values(cardsByColumn).flat();
+  }, [cardsByColumn]);
 
   const { data: roles } = trpc.roles.list.useQuery();
   const availableRoles = Array.isArray(roles) ? roles : [];
@@ -95,20 +143,6 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns]);
-
-  const filteredCards = useMemo(() => {
-    const spaceId = activeScreenspaceId || 1;
-    return cards.filter(c => (c.screenspaceId || 1) === spaceId);
-  }, [cards, activeScreenspaceId]);
-
-  const cardsByColumn = useMemo(() => {
-    const buckets: { [key: number]: typeof cards } = {};
-    for (let i = 0; i < columns; i++) buckets[i] = [];
-    filteredCards.forEach(card => {
-      if (buckets[card.column]) buckets[card.column].push(card);
-    });
-    return buckets;
-  }, [filteredCards, columns]);
 
   const handleSpawnCard = (columnIndex: number) => {
     if (availableRoles.length === 0) {

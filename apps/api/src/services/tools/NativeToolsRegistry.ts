@@ -14,7 +14,7 @@ import { roleArchitectTools } from '../../tools/roleArchitectTools.js';
 import { orchestrationTools } from '../../tools/orchestrationTools.js';
 import { typescriptInterpreterTool } from '../../tools/typescriptInterpreter.js';
 import { themeEditorTool } from '../../tools/themeEditor.js';
-import { prisma } from '../../db.js';
+import { julesTools } from '../../tools/jules_tools.js';
 
 export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof createFsTools>): ToolDefinition[] {
      return [
@@ -246,6 +246,14 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
                     lines: { type: 'number', description: 'Number of lines to fetch (default 100)' }
                 }
             }
-        }
-     ];
+        },
+
+         // Jules Tools
+         ...julesTools.map(t => ({
+             name: t.name,
+             handler: t.handler as (args: unknown) => unknown,
+             description: t.description,
+             input_schema: (t.inputSchema as any) as Record<string, unknown> // Zod schema needs to be passed or converted appropriately, assuming similar handling as other tools
+         })),
+    ];
 }
