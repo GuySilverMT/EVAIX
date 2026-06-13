@@ -34,12 +34,17 @@ export interface WorkspaceState {
   // Workspace Loading
   activeWorkspace: string | null;
   activeWorkspaceId: string | null;
+  projectName: string | null;
   projectType: string | null;
   activeModelId: string | null;
+  recentProjects: string[];
   loadWorkspace: (id: string) => void;
   setActiveWorkspaceId: (id: string | null) => void;
+  setProjectName: (name: string | null) => void;
   setProjectType: (type: string | null) => void;
   setActiveModelId: (id: string | null) => void;
+  setRecentProjects: (paths: string[]) => void;
+  addRecentProject: (path: string) => void;
   initializeFromWorkspace: (projectType: string) => void;
 
   // AI Context (Application Wide)
@@ -103,12 +108,20 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       activeWorkspace: null,
       activeWorkspaceId: null,
+      projectName: null,
       projectType: null,
       activeModelId: null,
+      recentProjects: [],
       loadWorkspace: (id: string) => set({ activeWorkspace: id }),
       setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
+      setProjectName: (name) => set({ projectName: name }),
       setProjectType: (type) => set({ projectType: type }),
       setActiveModelId: (id) => set({ activeModelId: id }),
+      setRecentProjects: (paths) => set({ recentProjects: paths }),
+      addRecentProject: (path) => set((state) => {
+        const next = state.recentProjects.filter(p => p !== path);
+        return { recentProjects: [path, ...next].slice(0, 10) }; // Keep top 10
+      }),
 
       initializeFromWorkspace: (projectType: string) => set((state) => {
         let initialCards: CardData[] = [];
@@ -166,8 +179,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         cards: state.cards,
         activeScreenspaceId: state.activeScreenspaceId,
         activeWorkspaceId: state.activeWorkspaceId,
+        projectName: state.projectName,
         projectType: state.projectType,
         activeModelId: state.activeModelId,
+        recentProjects: state.recentProjects,
         // Do NOT persist activeWorkflow — always start fresh
       }),
     }

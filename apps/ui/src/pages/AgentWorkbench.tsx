@@ -54,27 +54,76 @@ function WorkflowFallback({ name }: { name: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AgentWorkbench({ className }: { className?: string }) {
   const { id } = useParams<{ id: string }>();
-  const { data: getWorkspaceData } = trpc.workspace.get.useQuery({ id: id || '' }, { enabled: !!id });
-  const { data: currentWorkspaceData } = trpc.workspace.getCurrent.useQuery(undefined, { enabled: !id });
-  const workspaceData = id ? getWorkspaceData : currentWorkspaceData;
+  const decodedPath = useMemo(() => id ? decodeURIComponent(id) : null, [id]);
 
   const {
     setCards, addCard,
-    activeWorkspace, activeScreenspaceId, loadWorkspace, initializeFromWorkspace,
+    activeWorkspace, activeScreenspaceId, loadWorkspace,
     activeWorkflow,
-    setActiveWorkspaceId, setProjectType, projectType, activeWorkspaceId, cards
+    setActiveWorkspaceId, setProjectType, setProjectName, projectType, activeWorkspaceId, cards,
+    columns, setColumns
   } = useWorkspaceStore();
 
-  const [lastLoadedWorkspaceId, setLastLoadedWorkspaceId] = useState<string | null>(null);
+  const [columnWidths, setColumnWidths] = useState<number[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load project configuration from local file system
+  const vfsReadQuery = trpc.vfs.read.useQuery(
+    { path: decodedPath ? `${decodedPath}/.evaix/project.json` : '' },
+    { enabled: !!decodedPath }
+  );
 
   useEffect(() => {
-    if (workspaceData && workspaceData.id !== lastLoadedWorkspaceId) {
-        setActiveWorkspaceId(workspaceData.id);
-        setProjectType(workspaceData.projectType);
-        initializeFromWorkspace(workspaceData.projectType);
-        setLastLoadedWorkspaceId(workspaceData.id);
+    if (decodedPath && decodedPath !== activeWorkspaceId) {
+      setActiveWorkspaceId(decodedPath);
     }
-  }, [workspaceData, lastLoadedWorkspaceId, setActiveWorkspaceId, setProjectType, initializeFromWorkspace]);
+  }, [decodedPath, activeWorkspaceId, setActiveWorkspaceId]);
+
+  useEffect(() => {
+    if (vfsReadQuery.data?.content) {
+      try {
+        const config = JSON.parse(vfsReadQuery.data.content);
+        if (config.projectType) setProjectType(config.projectType);
+        if (config.name) setProjectName(config.name);
+        if (typeof config.columns === 'number') setColumns(config.columns);
+        if (Array.isArray(config.cards)) setCards(config.cards);
+      } catch (e) {
+        console.error("Failed to parse project.json from VFS", e);
+      }
+    }
+  }, [vfsReadQuery.data?.content, setProjectType, setProjectName, setColumns, setCards]);
+
+  // Debounced Save project state to project.json
+  const vfsWriteMutation = trpc.vfs.write.useMutation();
+  const serializedState = useMemo(() => {
+    if (!activeWorkspaceId || !projectType) return null;
+    return {
+      name: useWorkspaceStore.getState().projectName || 'Unnamed Project',
+      projectType,
+      columns,
+      cards: cards.map(c => ({
+        id: c.id,
+        roleId: c.roleId,
+        column: c.column,
+        screenspaceId: c.screenspaceId,
+        title: c.title,
+        type: c.type,
+        metadata: c.metadata
+      }))
+    };
+  }, [projectType, columns, cards, activeWorkspaceId]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId || !serializedState) return;
+    const timer = setTimeout(() => {
+      vfsWriteMutation.mutate({
+        path: `${activeWorkspaceId}/.evaix/project.json`,
+        content: JSON.stringify(serializedState, null, 2),
+        provider: 'local'
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [serializedState, activeWorkspaceId]);
 
   const { loadProject, currentTree } = useBuilderStore();
 
@@ -85,16 +134,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   const treeNodes = currentTree?.nodes;
   const rootNode = currentTree ? currentTree.nodes[currentTree.rootId] : null;
 
-  // Extract columns (cells) from the loaded layout
-  const builderColumns = useMemo(() => {
-    if (!rootNode || !treeNodes) return [];
-    const childrenIds = Array.isArray(rootNode.children) ? rootNode.children : [];
-    return childrenIds.map(id => treeNodes[id as string]).filter(node => node?.role === 'cell' || node?.type === 'Box' || node?.type === 'Flex');
-  }, [rootNode, treeNodes]);
-
-  const columns = builderColumns.length || 1;
-
-  // Extract cards mapping (pull from workspace store cards)
+  // Extract columns mapping (pull from workspace store cards)
   const cardsByColumn = useMemo(() => {
     const buckets: Record<number, any[]> = {};
     for (let i = 0; i < columns; i++) buckets[i] = [];
@@ -119,6 +159,11 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   const [focusedCardIndex, setFocusedCardIndex] = useState<{ [key: number]: number }>({});
   const { setColumnFocus } = useColumnFocus(columns);
   const prevColumnsRef = useRef(columns);
+
+  // Initialize or reset column widths when columns count changes
+  useEffect(() => {
+    setColumnWidths(new Array(columns).fill(100 / columns));
+  }, [columns]);
 
   // Redistribute cards when column count changes
   useEffect(() => {
@@ -191,160 +236,145 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   // ── Free-grid mode (default, no active workflow) ───────────────────────────
   return (
     <div className={cn('h-full w-full flex flex-col overflow-hidden relative', className)}>
-      <div className="flex-1 flex overflow-hidden bg-zinc-950">
+      <div ref={containerRef} className="flex-1 flex overflow-hidden bg-zinc-950">
         {Array.from({ length: columns }).map((_, columnIndex) => {
           const columnCards = cardsByColumn[columnIndex] || [];
           const currentFocusIndex = focusedCardIndex[columnIndex] || 0;
           const currentCard = columnCards[currentFocusIndex];
+          const width = columnWidths[columnIndex] ?? (100 / columns);
 
           return (
-            <div
-              key={columnIndex}
-              className="flex-1 flex flex-col overflow-hidden bg-[var(--color-background-secondary)] border-r border-[var(--color-border)] last:border-r-0"
-            >
-              {/* Cards above the focused one (clickable breadcrumbs) */}
-              {currentFocusIndex > 0 && (
-                <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
-                  {columnCards.slice(0, currentFocusIndex).map((c, idx) => (
-                    <Button
-                      key={c.id}
-                      onClick={() => scrollToCardIndex(columnIndex, idx)}
-                      variant="outline"
-                      size="icon"
-                      className="w-6 h-6 text-[10px] font-bold hover:bg-[var(--color-primary)] hover:text-black hover:border-[var(--color-primary)]"
-                      title={`Go to card ${idx + 1}`}
-                    >
-                      {idx + 1}
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              {/* Active card */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                {currentCard ? (
-                  <div
-                    id={`card-${currentCard.id}`}
-                    className="h-full"
-                    onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
-                  >
-                    <SwappableCard key={currentCard.id} id={currentCard.id} />
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
-                    No cards in this column
+            <React.Fragment key={columnIndex}>
+              <div
+                className="flex-1 flex flex-col overflow-hidden bg-[var(--color-background-secondary)]"
+                style={{ width: `${width}%`, flexGrow: 0, flexShrink: 0 }}
+              >
+                {/* Cards above the focused one (clickable breadcrumbs) */}
+                {currentFocusIndex > 0 && (
+                  <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
+                    {columnCards.slice(0, currentFocusIndex).map((c, idx) => (
+                      <Button
+                        key={c.id}
+                        onClick={() => scrollToCardIndex(columnIndex, idx)}
+                        variant="outline"
+                        size="icon"
+                        className="w-6 h-6 text-[10px] font-bold hover:bg-[var(--color-primary)] hover:text-black hover:border-[var(--color-primary)]"
+                        title={`Go to card ${idx + 1}`}
+                      >
+                        {idx + 1}
+                      </Button>
+                    ))}
                   </div>
                 )}
-              </div>
 
-              {/* Column navigation footer */}
-              <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
-                {columnCards.length > 0 ? (
-                  <div className="h-full flex items-center justify-between px-3">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
-                        disabled={currentFocusIndex === 0}
-                        variant="ghost" size="sm"
-                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                      >
-                        ↑ Prev
-                      </Button>
-                      <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
-                        {currentFocusIndex + 1}/{columnCards.length}
-                      </span>
-                      <Button
-                        onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
-                        disabled={currentFocusIndex === columnCards.length - 1}
-                        variant="ghost" size="sm"
-                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                      >
-                        Next ↓
-                      </Button>
+                {/* Active card */}
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {currentCard ? (
+                    <div
+                      id={`card-${currentCard.id}`}
+                      className="h-full"
+                      onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
+                    >
+                      <SwappableCard key={currentCard.id} id={currentCard.id} />
                     </div>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
+                      No cards in this column
+                    </div>
+                  )}
+                </div>
 
-                    {/* Spawn tools inside footer when cards are present */}
-                    {activeWorkspaceId && (
+                {/* Column navigation footer */}
+                <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
+                  {columnCards.length > 0 ? (
+                    <div className="h-full flex items-center justify-between px-3">
                       <div className="flex items-center gap-1">
-                        {projectType === 'CODE' && (
-                          <Button
-                            onClick={() => handleSpawnTool(columnIndex, 'builder')}
-                            variant="outline"
-                            className="h-5 px-1.5 bg-indigo-950/20 border-indigo-900/50 hover:bg-indigo-900/40 text-[8px] font-bold text-indigo-400 uppercase rounded-sm"
-                          >
-                            + Builder
-                          </Button>
-                        )}
-                        {(projectType === 'CODE' || projectType === 'DEPLOY') && (
-                          <Button
-                            onClick={() => handleSpawnTool(columnIndex, 'terminal')}
-                            variant="outline"
-                            className="h-5 px-1.5 bg-rose-950/20 border-rose-900/50 hover:bg-rose-900/40 text-[8px] font-bold text-rose-400 uppercase rounded-sm"
-                          >
-                            + Terminal
-                          </Button>
-                        )}
                         <Button
-                          onClick={() => handleSpawnTool(columnIndex, 'editor')}
-                          variant="outline"
-                          className="h-5 px-1.5 bg-cyan-950/20 border-cyan-900/50 hover:bg-cyan-900/40 text-[8px] font-bold text-cyan-400 uppercase rounded-sm"
+                          onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
+                          disabled={currentFocusIndex === 0}
+                          variant="ghost" size="sm"
+                          className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                         >
-                          + Editor
+                          ↑ Prev
                         </Button>
+                        <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
+                          {currentFocusIndex + 1}/{columnCards.length}
+                        </span>
                         <Button
-                          onClick={() => handleSpawnTool(columnIndex, 'databrowser')}
-                          variant="outline"
-                          className="h-5 px-1.5 bg-emerald-950/20 border-emerald-900/50 hover:bg-emerald-900/40 text-[8px] font-bold text-emerald-400 uppercase rounded-sm"
+                          onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
+                          disabled={currentFocusIndex === columnCards.length - 1}
+                          variant="ghost" size="sm"
+                          className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                         >
-                          + Data
+                          Next ↓
                         </Button>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center gap-1.5">
-                    {activeWorkspaceId ? (
-                      <>
-                        {projectType === 'CODE' && (
+
+                      {/* Spawn tools inside footer when cards are present */}
+                      {activeWorkspaceId && (
+                        <div className="flex items-center gap-1">
                           <Button
-                            onClick={() => handleSpawnTool(columnIndex, 'builder')}
+                            onClick={() => handleSpawnCard(columnIndex)}
                             variant="outline"
-                            className="h-6 px-2.5 bg-indigo-950/30 border-indigo-900/50 hover:bg-indigo-900/50 text-[9px] font-bold text-indigo-400 uppercase rounded-sm"
+                            className="h-5 px-2 bg-indigo-950/20 border-indigo-900/50 hover:bg-indigo-900/40 text-[8px] font-bold text-indigo-400 uppercase rounded-sm flex items-center gap-0.5"
                           >
-                            + Spawn BadBuilder
+                            <Plus size={8} /> Card
                           </Button>
-                        )}
-                        {(projectType === 'CODE' || projectType === 'DEPLOY') && (
-                          <Button
-                            onClick={() => handleSpawnTool(columnIndex, 'terminal')}
-                            variant="outline"
-                            className="h-6 px-2.5 bg-rose-950/30 border-rose-900/50 hover:bg-rose-900/50 text-[9px] font-bold text-rose-400 uppercase rounded-sm"
-                          >
-                            + Spawn Terminal
-                          </Button>
-                        )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="h-full flex items-center justify-center gap-1.5">
+                      {activeWorkspaceId ? (
                         <Button
-                          onClick={() => handleSpawnTool(columnIndex, 'editor')}
+                          onClick={() => handleSpawnCard(columnIndex)}
                           variant="outline"
-                          className="h-6 px-2.5 bg-cyan-950/30 border-cyan-900/50 hover:bg-cyan-900/50 text-[9px] font-bold text-cyan-400 uppercase rounded-sm"
+                          className="h-6 px-3 bg-indigo-950/30 border-indigo-900/50 hover:bg-indigo-900/50 text-[9px] font-bold text-indigo-400 uppercase rounded-sm flex items-center gap-1"
                         >
-                          + Spawn SmartEditor
+                          <Plus size={10} /> Add Card
                         </Button>
-                        <Button
-                          onClick={() => handleSpawnTool(columnIndex, 'databrowser')}
-                          variant="outline"
-                          className="h-6 px-2.5 bg-emerald-950/30 border-emerald-900/50 hover:bg-emerald-900/50 text-[9px] font-bold text-emerald-400 uppercase rounded-sm"
-                        >
-                          + Spawn DataBrowser
-                        </Button>
-                      </>
-                    ) : (
-                      <span className="text-[10px] text-zinc-500 font-mono">Select workspace to spawn tools</span>
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        <span className="text-[10px] text-zinc-500 font-mono">Select workspace to spawn tools</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+              {columnIndex < columns - 1 && (
+                <div
+                  className="w-[3px] hover:w-[5px] bg-zinc-800/80 hover:bg-indigo-500 cursor-col-resize transition-all h-full z-30 shrink-0 self-stretch"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const initialWidths = [...columnWidths];
+                    const container = containerRef.current;
+                    if (!container) return;
+                    const containerWidth = container.getBoundingClientRect().width;
+
+                    const handleMouseMove = (moveEvent: MouseEvent) => {
+                      const deltaX = moveEvent.clientX - startX;
+                      const deltaPercent = (deltaX / containerWidth) * 100;
+                      const newWidths = [...initialWidths];
+                      const totalTwo = (newWidths[columnIndex] || 0) + (newWidths[columnIndex + 1] || 0);
+                      const minWidth = 15; // minimum width in percent
+                      const targetWidth = Math.max(minWidth, Math.min(totalTwo - minWidth, (newWidths[columnIndex] || 0) + deltaPercent));
+                      
+                      newWidths[columnIndex] = targetWidth;
+                      newWidths[columnIndex + 1] = totalTwo - targetWidth;
+                      setColumnWidths(newWidths);
+                    };
+
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
+              )}
+            </React.Fragment>
           );
         })}
       </div>

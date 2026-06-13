@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Table, Plus, RefreshCw, Trash2, Database, Upload, Download, Columns, Lock } from "lucide-react";
 import { trpc } from "../utils/trpc.js";
 import { UniversalDataGrid } from "./UniversalDataGrid.js";
+import { useWorkspaceStore } from "../stores/workspace.store.js";
+import { ErrorBoundary } from "./ErrorBoundary.js";
 
 export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string }> = ({
   showCreateTable = false,
@@ -14,17 +16,20 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
   const [newColType, setNewColType] = useState("TEXT");
   const [isProtected, setIsProtected] = useState(false);
 
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const dataPath = useMemo(() => (activeWorkspaceId ? `${activeWorkspaceId}/.evaix/data` : "."), [activeWorkspaceId]);
+
   const importFileRef = useRef<HTMLInputElement>(null);
   const createFileRef = useRef<HTMLInputElement>(null);
 
   // VFS API interactions
   const listVfsQuery = trpc.vfs.list.useQuery(
-    { path: "." },
+    { path: dataPath },
     { refetchInterval: 5000 } // Auto-refresh for new JSON files
   );
 
   const readFileQuery = trpc.vfs.read.useQuery(
-    { path: selectedTable || "" },
+    { path: selectedTable ? `${dataPath}/${selectedTable}` : "" },
     { enabled: !!selectedTable }
   );
 
@@ -33,7 +38,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
   // Extract tables from VFS (filtering only .json files)
   const tables = useMemo(() => {
     if (!listVfsQuery.data) return [];
-    return listVfsQuery.data
+    return (listVfsQuery.data as any[])
       .filter((file: any) => file.name.endsWith(".json"))
       .map((file: any) => file.name);
   }, [listVfsQuery.data]);
@@ -62,7 +67,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
     if (tableName) {
       const validName = tableName.endsWith(".json") ? tableName : `${tableName}.json`;
       writeFileMutation.mutate(
-        { path: validName, content: "[]" },
+        { path: `${dataPath}/${validName}`, content: "[]" },
         {
           onSuccess: () => {
             listVfsQuery.refetch();
@@ -77,7 +82,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
     if (confirm(`Are you sure you want to delete ${tableName}?`)) {
        // Since there's no delete in vfs router currently, we can clear the file
        // or rename it to .deleted
-       await writeFileMutation.mutateAsync({ path: tableName, content: "[]" });
+       await writeFileMutation.mutateAsync({ path: `${dataPath}/${tableName}`, content: "[]" });
        setSelectedTable(null);
        listVfsQuery.refetch();
     }
@@ -91,7 +96,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
         [newColName]: null, // Default empty value
       }));
       await writeFileMutation.mutateAsync({
-        path: selectedTable,
+        path: `${dataPath}/${selectedTable}`,
         content: JSON.stringify(updatedData, null, 2),
       });
       setShowAddCol(false);
@@ -111,7 +116,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
           return rest;
         });
         await writeFileMutation.mutateAsync({
-          path: selectedTable,
+          path: `${dataPath}/${selectedTable}`,
           content: JSON.stringify(updatedData, null, 2),
         });
         readFileQuery.refetch();
@@ -145,7 +150,7 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
         // Verify it's JSON
         JSON.parse(content);
         await writeFileMutation.mutateAsync({
-          path: selectedTable,
+          path: `${dataPath}/${selectedTable}`,
           content: content,
         });
         readFileQuery.refetch();
@@ -279,24 +284,35 @@ export const DatabaseBrowser: React.FC<{ showCreateTable?: boolean; id?: string 
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-zinc-600">
-            <Database size={48} className="mb-4 opacity-20" />
-            <p>Select a JSON file to edit schema</p>
+          <div className="h-12 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30">
+            <div className="flex items-center gap-4">
+              <span className="font-bold flex items-center gap-2 text-zinc-400">
+                <Database size={14} className="text-zinc-500" /> NO TABLE SELECTED
+              </span>
+            </div>
           </div>
         )}
 
         {/* DATA GRID AREA */}
         <div className="flex-1 overflow-hidden relative">
-          {selectedTable && (
-            <UniversalDataGrid
-              data={tableData}
-              headers={columns}
-              isDeletable={isEditing}
-              onHeaderClick={(col) => {
-                if (isEditing) handleDropColumn(col);
-              }}
-            />
-          )}
+          <ErrorBoundary>
+            {selectedTable ? (
+              <UniversalDataGrid
+                data={tableData}
+                headers={columns}
+                isDeletable={isEditing}
+                onHeaderClick={(col) => {
+                  if (isEditing) handleDropColumn(col);
+                }}
+              />
+            ) : (
+              <UniversalDataGrid
+                data={[]}
+                headers={[]}
+                onCreateTable={handleCreateNewTableClick}
+              />
+            )}
+          </ErrorBoundary>
         </div>
       </div>
 

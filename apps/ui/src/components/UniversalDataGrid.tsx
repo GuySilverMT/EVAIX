@@ -9,6 +9,7 @@ interface GridProps {
   onHeaderClick?: (column: string) => void;
   headers?: string[]; // For empty tables, show schema headers
   isDeletable?: boolean;
+  onCreateTable?: () => void;
 }
 
 export const UniversalDataGrid: React.FC<GridProps> = ({
@@ -17,6 +18,8 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
   onColumnMapChange,
   onHeaderClick,
   headers = [],
+  isDeletable = false,
+  onCreateTable,
 }) => {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [resizing, setResizing] = useState<{
@@ -90,8 +93,19 @@ export const UniversalDataGrid: React.FC<GridProps> = ({
 
   if (!hasData && columns.length === 0)
     return (
-      <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-secondary)] bg-zinc-900/20 border border-zinc-800/50 rounded-lg m-2">
-        <span className="text-xs font-mono">NO DATA & NO SCHEMA</span>
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-500 bg-zinc-900/10 border border-dashed border-zinc-800 rounded-lg m-2 p-6">
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <span className="text-xs font-black uppercase tracking-wider text-zinc-400">Empty State: No Data Found</span>
+          <span className="text-[10px] font-mono text-zinc-600">This grid has no active schema or records loaded.</span>
+        </div>
+        {onCreateTable && (
+          <button
+            onClick={onCreateTable}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold uppercase tracking-wider transition-all"
+          >
+            Create New JSON Table
+          </button>
+        )}
       </div>
     );
 

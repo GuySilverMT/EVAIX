@@ -12,6 +12,7 @@ import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { trpc } from '../../utils/trpc.js';
 import type { TerminalMessage } from '@repo/common/agent';
 import CompactRoleSelector from '../CompactRoleSelector.js';
+import { ErrorBoundary } from '../ErrorBoundary.js';
 
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
@@ -340,17 +341,44 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         "bg-[var(--color-background)]"
                     )}
                 >
-                    {showFileNamePrompt && (
-                        <div className="absolute inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-sm shadow-2xl space-y-4">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-wide">Create New Document</h3>
-                                <p className="text-[10px] text-[var(--text-muted)]">Please provide a semantic filename for this session.</p>
-                                <input
-                                    autoFocus
-                                    value={newFileName}
-                                    onChange={e => setNewFileName(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' && newFileName.trim()) {
+                    <ErrorBoundary>
+                        {showFileNamePrompt && (
+                            <div className="absolute inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+                                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-sm shadow-2xl space-y-4">
+                                    <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-wide">Create New Document</h3>
+                                    <p className="text-[10px] text-[var(--text-muted)]">Please provide a semantic filename for this session.</p>
+                                    <input
+                                        autoFocus
+                                        value={newFileName}
+                                        onChange={e => setNewFileName(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && newFileName.trim()) {
+                                                const createNamedFile = async () => {
+                                                    let name = newFileName.trim();
+                                                    if (!name.includes('.')) name += '.md';
+
+                                                    const sessionsDir = `${currentPath}/sessions`;
+                                                    const filePath = `${sessionsDir}/${name}`;
+
+                                                    try {
+                                                        await mkdir(sessionsDir);
+                                                    } catch {
+                                                        // Ignore
+                                                    }
+
+                                                    await writeFile(filePath, '');
+                                                    setActiveFile(filePath);
+                                                    setShowFileNamePrompt(false);
+                                                };
+                                                void createNamedFile();
+                                            }
+                                        }}
+                                        placeholder="e.g. system_architecture.md"
+                                        className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)] font-mono"
+                                    />
+                                    <button
+                                        disabled={!newFileName.trim()}
+                                        onClick={() => {
                                             const createNamedFile = async () => {
                                                 let name = newFileName.trim();
                                                 if (!name.includes('.')) name += '.md';
@@ -369,138 +397,113 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                                 setShowFileNamePrompt(false);
                                             };
                                             void createNamedFile();
-                                        }
-                                    }}
-                                    placeholder="e.g. system_architecture.md"
-                                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)] font-mono"
-                                />
-                                <button
-                                    disabled={!newFileName.trim()}
-                                    onClick={() => {
-                                        const createNamedFile = async () => {
-                                            let name = newFileName.trim();
-                                            if (!name.includes('.')) name += '.md';
-
-                                            const sessionsDir = `${currentPath}/sessions`;
-                                            const filePath = `${sessionsDir}/${name}`;
-
-                                            try {
-                                                await mkdir(sessionsDir);
-                                            } catch {
-                                                // Ignore
-                                            }
-
-                                            await writeFile(filePath, '');
-                                            setActiveFile(filePath);
-                                            setShowFileNamePrompt(false);
-                                        };
-                                        void createNamedFile();
-                                    }}
-                                    className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Create File
-                                </button>
+                                        }}
+                                        className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Create File
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                    {viewMode === 'config' && (
-                        <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
-                            <div className="max-w-xs space-y-4">
-                                <Fingerprint size={48} className="mx-auto text-[var(--color-primary)] opacity-50" />
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">Redirecting to DNA Lab</h3>
-                                <p className="text-[10px] text-[var(--text-muted)]">Deep role configuration is now handled in the centralized Agent DNA Lab for a superior editing experience.</p>
-                                <button
-                                    onClick={() => navigate(`/org-structure?roleId=${card?.roleId}`)}
-                                    className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90"
-                                >
-                                    Open DNA Lab
-                                </button>
+                        )}
+                        {viewMode === 'config' && (
+                            <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
+                                <div className="max-w-xs space-y-4">
+                                    <Fingerprint size={48} className="mx-auto text-[var(--color-primary)] opacity-50" />
+                                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Redirecting to DNA Lab</h3>
+                                    <p className="text-[10px] text-[var(--text-muted)]">Deep role configuration is now handled in the centralized Agent DNA Lab for a superior editing experience.</p>
+                                    <button
+                                        onClick={() => navigate(`/org-structure?roleId=${card?.roleId}`)}
+                                        className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90"
+                                    >
+                                        Open DNA Lab
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                    {viewMode === 'editor' && (
-                        <SmartEditor
-                            cardId={id}
-                            fileName={activeFile}
-                            content={content}
-                            onChange={(val) => void handleSave(val)}
-                            onRun={(goal, roleId) => void runAgent(goal || content, roleId)}
-                            roleId={agentConfig.roleId}
-                            onRoleChange={(roleId) => updateCard(id, { roleId: roleId })}
-                            onNavigate={(url) => {
-                                setBrowserUrl(url);
-                                setViewMode('browser');
-                            }}
-                        />
-                    )}
-                    {showHistory && (
-                        <HistoryPanel
-                            activeFile={activeFile}
-                            onRestore={(content) => {
-                                setContent(content);
-                                void writeFile(activeFile, content); // Save restored content immediately
-                            }}
-                            onClose={() => setShowHistory(false)}
-                        />
-                    )}
-                    {viewMode === 'diff' && (
-                        <div className="h-full w-full flex flex-col">
-                            <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between">
-                                <span className="text-xs font-bold text-zinc-400">Diff View: {getBasename(activeFile)}</span>
-                                <button onClick={() => setViewMode('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
+                        )}
+                        {viewMode === 'editor' && (
+                            <SmartEditor
+                                cardId={id}
+                                fileName={activeFile}
+                                content={content}
+                                onChange={(val) => void handleSave(val)}
+                                onRun={(goal, roleId) => void runAgent(goal || content, roleId)}
+                                roleId={agentConfig.roleId}
+                                onRoleChange={(roleId) => updateCard(id, { roleId: roleId })}
+                                onNavigate={(url) => {
+                                    setBrowserUrl(url);
+                                    setViewMode('browser');
+                                }}
+                            />
+                        )}
+                        {showHistory && (
+                            <HistoryPanel
+                                activeFile={activeFile}
+                                onRestore={(content) => {
+                                    setContent(content);
+                                    void writeFile(activeFile, content); // Save restored content immediately
+                                }}
+                                onClose={() => setShowHistory(false)}
+                            />
+                        )}
+                        {viewMode === 'diff' && (
+                            <div className="h-full w-full flex flex-col">
+                                <div className="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between">
+                                    <span className="text-xs font-bold text-zinc-400">Diff View: {getBasename(activeFile)}</span>
+                                    <button onClick={() => setViewMode('editor')} className="text-[10px] text-blue-400 hover:underline">Close Diff</button>
+                                </div>
+                                <div className="flex-1 min-h-0">
+                                    <MonacoDiffEditor
+                                        original={`// Previous version\n${content}`}
+                                        modified={content + '\n// New changes'}
+                                        language="typescript"
+                                    />
+                                </div>
                             </div>
-                            <div className="flex-1 min-h-0">
-                                <MonacoDiffEditor
-                                    original={`// Previous version\n${content}`}
-                                    modified={content + '\n// New changes'}
-                                    language="typescript"
-                                />
-                            </div>
-                        </div>
-                    )}
-                    {viewMode === 'files' && <FileExplorer
-                        files={files}
-                        currentPath={currentPath}
-                        onNavigate={(p) => void navigateTo(p)}
-                        onSelect={(p) => { setActiveFile(p); if (!p.endsWith('/')) setViewMode('editor'); }}
-                        onCreateNode={(t, n) => void createNode(t, n)}
-                        onRefresh={() => void refresh()}
-                        onEmbedDir={(p) => void ingestDirectory(p)}
-                        onLoadChildren={loadChildren}
-                        className="p-2"
-                        activeContent={content}
-                        onSaveContent={(path, text) => {
-                            void (async () => {
-                                await writeFile(path, text);
-                                toast.success("Saved content to " + getBasename(path));
-                                setActiveFile(path);
-                                setViewMode('editor');
-                            })();
-                        }}
-                    />}
-                    {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
-                    {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
-                    {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
-                    {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}
-                    {viewMode === 'data' && <div className="h-full w-full bg-white"><UniversalDataGrid data={[]} /></div>}
-                    {viewMode === 'databrowser' && <DatabaseBrowser id={id} />}
-                    {viewMode === 'builder' && (
-                        <NebulaBuilder
-                            initialTree={{
-                                rootId: 'root',
-                                nodes: {
-                                    root: { id: 'root', type: 'Box', props: {}, children: [] }
-                                },
-                                imports: [],
-                                exports: [],
-                                version: 1
+                        )}
+                        {viewMode === 'files' && <FileExplorer
+                            files={files}
+                            currentPath={currentPath}
+                            onNavigate={(p) => void navigateTo(p)}
+                            onSelect={(p) => { setActiveFile(p); if (!p.endsWith('/')) setViewMode('editor'); }}
+                            onCreateNode={(t, n) => void createNode(t, n)}
+                            onRefresh={() => void refresh()}
+                            onEmbedDir={(p) => void ingestDirectory(p)}
+                            onLoadChildren={loadChildren}
+                            className="p-2"
+                            activeContent={content}
+                            onSaveContent={(path, text) => {
+                                void (async () => {
+                                    await writeFile(path, text);
+                                    toast.success("Saved content to " + getBasename(path));
+                                    setActiveFile(path);
+                                    setViewMode('editor');
+                                })();
                             }}
-                            onSave={(newTree) => {
-                                console.log('Saved card tree:', newTree);
-                                toast.success("Nebula Tree updated");
-                            }}
-                        />
-                    )}
+                        />}
+                        {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
+                        {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
+                        {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
+                        {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}
+                        {viewMode === 'data' && <div className="h-full w-full bg-white"><UniversalDataGrid data={[]} /></div>}
+                        {viewMode === 'databrowser' && <DatabaseBrowser id={id} />}
+                        {viewMode === 'builder' && (
+                            <NebulaBuilder
+                                initialTree={{
+                                    rootId: 'root',
+                                    nodes: {
+                                        root: { id: 'root', type: 'Box', props: {}, children: [] }
+                                    },
+                                    imports: [],
+                                    exports: [],
+                                    version: 1
+                                }}
+                                onSave={(newTree) => {
+                                    console.log('Saved card tree:', newTree);
+                                    toast.success("Nebula Tree updated");
+                                }}
+                            />
+                        )}
+                    </ErrorBoundary>
 
                     {/* [NEW] SupplementaryAgentSlot */}
                     {showSupplementary && (
