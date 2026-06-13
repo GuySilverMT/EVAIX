@@ -21,14 +21,14 @@ import { cn } from '../../lib/utils.js';
 
 type LabTab = 'identity' | 'behavior' | 'cortex' | 'tools' | 'tuning' | 'governance' | 'context' | 'preview';
 
-export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, onRoleChange?: (roleId: string) => void }> = ({ embeddedMode: _embeddedMode = false, roleId, onRoleChange }) => {
+export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, onRoleChange?: (roleId: string) => void }> = ({ embeddedMode = false, roleId, onRoleChange }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
     const [formData, setFormData] = useState<RoleFormState>(DEFAULT_ROLE_FORM_DATA);
     const [activeTab, setActiveTab] = useState<LabTab>('identity');
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [editingTool, setEditingTool] = useState<string | null>(null);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(embeddedMode);
 
     const utils = trpc.useContext();
     const { data: roles, isLoading: rolesLoading } = trpc.roles.list.useQuery();
@@ -216,7 +216,7 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
                     setFormData(DEFAULT_ROLE_FORM_DATA);
                     setActiveTab('identity');
                 }}
-                className={cn("w-64 border-r border-[var(--border-color)]", sidebarCollapsed ? "hidden" : "hidden lg:block")}
+                className={cn("w-64 border-r border-[var(--border-color)] flex-none shrink-0", sidebarCollapsed ? "hidden" : "block")}
             />
 
             {/* 2. MAIN WORKSPACE */}
@@ -273,13 +273,11 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
                     </div>
                 </div>
 
-                <div className="flex px-6 border-b border-[var(--border-color)] bg-[var(--bg-secondary)]/10">
-                    <DNATab active={activeTab === 'identity'} onClick={() => setActiveTab('identity')} icon={Fingerprint} label="Identity" color="blue" />
-                    <DNATab active={activeTab === 'behavior'} onClick={() => setActiveTab('behavior')} icon={Bot} label="Behavior" color="orange" />
+                <div className="flex flex-nowrap overflow-x-auto whitespace-nowrap px-6 border-b border-[var(--border-color)] bg-[var(--bg-secondary)]/10 shrink-0 scrollbar-none select-none">
+                    <DNATab active={activeTab === 'identity'} onClick={() => setActiveTab('identity')} icon={Fingerprint} label="Behavior" color="blue" />
                     <DNATab active={activeTab === 'cortex'} onClick={() => setActiveTab('cortex')} icon={Cpu} label="Cortex" color="purple" />
                     <DNATab active={activeTab === 'tools'} onClick={() => setActiveTab('tools')} icon={Wrench} label="Tools" color="orange" />
                     <DNATab active={activeTab === 'tuning'} onClick={() => setActiveTab('tuning')} icon={Sparkles} label="Neural Tuning" color="cyan" />
-                    <DNATab active={activeTab === 'governance'} onClick={() => setActiveTab('governance')} icon={Shield} label="Governance" color="red" />
                     <DNATab active={activeTab === 'context'} onClick={() => setActiveTab('context')} icon={Globe} label="Environment" color="green" />
                     <DNATab active={activeTab === 'preview'} onClick={() => setActiveTab('preview')} icon={Eye} label="Preview" color="blue" />
                 </div>
@@ -289,30 +287,71 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
 
                         {activeTab === 'identity' && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold uppercase text-[var(--text-muted)] tracking-widest pl-1">Codename Persona</label>
-                                        <input
-                                            value={formData.dna.identity.personaName}
-                                            onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, personaName: e.target.value } } })}
-                                            className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded p-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
-                                            placeholder="e.g. Architect Prime"
-                                        />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[var(--bg-secondary)]/30 border border-[var(--border-color)] rounded-lg p-4">
+                                    {/* Persona & Style */}
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold uppercase text-[var(--text-muted)] tracking-widest pl-1">Codename Persona</label>
+                                            <input
+                                                value={formData.dna.identity.personaName}
+                                                onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, personaName: e.target.value } } })}
+                                                className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded p-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
+                                                placeholder="e.g. Architect Prime"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold uppercase text-[var(--text-muted)] tracking-widest pl-1">Style Vector</label>
+                                            <select
+                                                value={formData.dna.identity.style}
+                                                onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, style: e.target.value } } })}
+                                                className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded p-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
+                                            >
+                                                <option value="PROFESSIONAL_CONCISE">Professional & Concise</option>
+                                                <option value="SOCRATIC">Socratic (Questioning)</option>
+                                                <option value="FRIENDLY_HELPFUL">Friendly & Helpful</option>
+                                                <option value="ACADEMIC_FORMAL">Academic & Formal</option>
+                                                <option value="CREATIVE">Creative (Unconventional)</option>
+                                                <option value="AGGRESSIVE_AUDITOR">Aggressive Auditor</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold uppercase text-[var(--text-muted)] tracking-widest pl-1">Style Vector</label>
-                                        <select
-                                            value={formData.dna.identity.style}
-                                            onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, style: e.target.value } } })}
-                                            className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded p-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
-                                        >
-                                            <option value="PROFESSIONAL_CONCISE">Professional & Concise</option>
-                                            <option value="SOCRATIC">Socratic (Questioning)</option>
-                                            <option value="FRIENDLY_HELPFUL">Friendly & Helpful</option>
-                                            <option value="ACADEMIC_FORMAL">Academic & Formal</option>
-                                            <option value="CREATIVE">Creative (Unconventional)</option>
-                                            <option value="AGGRESSIVE_AUDITOR">Aggressive Auditor</option>
-                                        </select>
+
+                                    {/* Thinking & Behavior */}
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold uppercase text-[var(--text-muted)] tracking-widest pl-1">Thinking Process</label>
+                                            <select
+                                                value={formData.dna.identity.thinkingProcess}
+                                                onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, thinkingProcess: e.target.value } } })}
+                                                className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded p-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
+                                            >
+                                                <option value="SOLO">Solo (Single-Shot)</option>
+                                                <option value="CHAIN_OF_THOUGHT">Chain of Thought</option>
+                                                <option value="CRITIC_LOOP">Critic Loop (Self-Correcting)</option>
+                                                <option value="MULTI_STEP_PLANNING">Multi-Step Planning</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col gap-2 pt-2">
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.dna.identity.reflectionEnabled}
+                                                    onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, reflectionEnabled: e.target.checked } } })}
+                                                    className="w-4 h-4 rounded appearance-none border border-[var(--border-color)] checked:bg-[var(--color-primary)] transition-all"
+                                                />
+                                                <span className="text-xs font-bold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Self-Reflection Mode</span>
+                                            </label>
+
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.dna.behavior?.silenceConfirmation}
+                                                    onChange={e => setFormData({ ...formData, dna: { ...formData.dna, behavior: { ...formData.dna.behavior, silenceConfirmation: e.target.checked } } })}
+                                                    className="w-4 h-4 rounded appearance-none border border-[var(--border-color)] checked:bg-[var(--color-primary)] transition-all"
+                                                />
+                                                <span className="text-xs font-bold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Silence Confirmation (Autonomous)</span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -357,50 +396,6 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
                                         className="flex-1 w-full min-h-[300px] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg p-4 font-mono text-sm leading-relaxed focus:border-[var(--color-primary)] outline-none"
                                         placeholder="Define the personality, rules, and core logic..."
                                     />
-                                </section>
-                            </div>
-                        )}
-
-                        {activeTab === 'behavior' && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                <section className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-6 space-y-8">
-                                    <div className="grid grid-cols-2 gap-8">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold uppercase text-[var(--text-muted)] tracking-widest block">Thinking Process</label>
-                                            <select
-                                                value={formData.dna.identity.thinkingProcess}
-                                                onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, thinkingProcess: e.target.value } } })}
-                                                className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded p-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
-                                            >
-                                                <option value="SOLO">Solo (Single-Shot)</option>
-                                                <option value="CHAIN_OF_THOUGHT">Chain of Thought</option>
-                                                <option value="CRITIC_LOOP">Critic Loop (Self-Correcting)</option>
-                                                <option value="MULTI_STEP_PLANNING">Multi-Step Planning</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-4 pt-6">
-                                            <label className="flex items-center gap-3 cursor-pointer group">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.dna.identity.reflectionEnabled}
-                                                    onChange={e => setFormData({ ...formData, dna: { ...formData.dna, identity: { ...formData.dna.identity, reflectionEnabled: e.target.checked } } })}
-                                                    className="w-4 h-4 rounded appearance-none border border-[var(--border-color)] checked:bg-[var(--color-primary)] transition-all"
-                                                />
-                                                <span className="text-xs font-bold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Self-Reflection Mode</span>
-                                            </label>
-
-                                            <label className="flex items-center gap-3 cursor-pointer group">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.dna.behavior?.silenceConfirmation}
-                                                    onChange={e => setFormData({ ...formData, dna: { ...formData.dna, behavior: { ...formData.dna.behavior, silenceConfirmation: e.target.checked } } })}
-                                                    className="w-4 h-4 rounded appearance-none border border-[var(--border-color)] checked:bg-[var(--color-primary)] transition-all"
-                                                />
-                                                <span className="text-xs font-bold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">Silence Confirmation (Autonomous)</span>
-                                            </label>
-                                        </div>
-                                    </div>
                                 </section>
                             </div>
                         )}
@@ -531,38 +526,35 @@ export const AgentDNAlab: React.FC<{ embeddedMode?: boolean, roleId?: string, on
                             </div>
                         )}
 
-                        {activeTab === 'governance' && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                <div className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-6">
-                                    <FileAttachmentList
-                                        files={formData.dna.governance.attachedFiles || []}
-                                        onUpdate={(files) => setFormData({
-                                            ...formData,
-                                            dna: {
-                                                ...formData.dna,
-                                                governance: { ...formData.dna.governance, attachedFiles: files }
-                                            }
-                                        })}
-                                        label="Governance & Policy Nodes"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
                         {activeTab === 'context' && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                <div className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-6">
-                                    <FileAttachmentList
-                                        files={formData.dna.context.attachedFiles || []}
-                                        onUpdate={(files) => setFormData({
-                                            ...formData,
-                                            dna: {
-                                                ...formData.dna,
-                                                context: { ...formData.dna.context, attachedFiles: files }
-                                            }
-                                        })}
-                                        label="Environment Strategy & Knowledge"
-                                    />
+                                <div className="flex flex-col gap-6">
+                                    <div className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-6">
+                                        <FileAttachmentList
+                                            files={formData.dna.context.attachedFiles || []}
+                                            onUpdate={(files) => setFormData({
+                                                ...formData,
+                                                dna: {
+                                                    ...formData.dna,
+                                                    context: { ...formData.dna.context, attachedFiles: files }
+                                                }
+                                            })}
+                                            label="Environment Strategy & Knowledge"
+                                        />
+                                    </div>
+                                    <div className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-6">
+                                        <FileAttachmentList
+                                            files={formData.dna.governance.attachedFiles || []}
+                                            onUpdate={(files) => setFormData({
+                                                ...formData,
+                                                dna: {
+                                                    ...formData.dna,
+                                                    governance: { ...formData.dna.governance, attachedFiles: files }
+                                                }
+                                            })}
+                                            label="Governance & Policy Nodes"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -635,7 +627,7 @@ const DNATab = ({ active, onClick, icon: Icon, label, color }: { active: boolean
         type="button"
         onClick={onClick}
         className={cn(
-            "flex items-center gap-2 px-4 py-3 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2",
+            "flex items-center gap-2 px-4 py-3 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 shrink-0",
             active
                 ? `border-[var(--color-${color},var(--color-primary))] text-[var(--color-${color},var(--color-primary))] bg-[var(--bg-primary)]/50`
                 : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"

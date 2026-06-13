@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, Dna, LayoutTemplate, Database } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, Dna, LayoutTemplate, Database, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -91,6 +91,20 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const [showFileNamePrompt, setShowFileNamePrompt] = useState(false);
     const [newFileName, setNewFileName] = useState('');
     const abortController = useRef<AbortController | null>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        if (!menuOpen) return;
+        function handleClickOutside(e: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [menuOpen]);
 
     // Sync header filename with active file
     useEffect(() => {
@@ -256,23 +270,67 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
             {/* 1. Header with Clean Filename Display */}
             <div className="h-9 border-b border-[var(--border-color)] flex items-center px-2 bg-[var(--bg-secondary)] gap-2">
-                <select
-                    value={viewMode || ''}
-                    onChange={(e) => {
-                        const val = e.target.value;
-                        setViewModeAndStore(val ? (val as any) : null);
-                    }}
-                    className="bg-[var(--bg-primary)] text-[10px] text-[var(--text-primary)] border border-[var(--border-color)] rounded px-1.5 py-0.5 outline-none font-mono focus:border-[var(--color-primary)] h-6 shrink-0"
-                >
-                    <option value="">Select Tool...</option>
-                    <option value="files">File Explorer</option>
-                    <option value="editor">Code Editor</option>
-                    <option value="terminal">Smart Terminal</option>
-                    <option value="browser">Web Browser</option>
-                    <option value="dna-lab">Agent DNA Lab</option>
-                    <option value="preview">Live Preview</option>
-                    <option value="databrowser">Database Grid</option>
-                </select>
+                {/* Custom Tool Icon Dropdown */}
+                <div className="relative shrink-0 font-sans" ref={menuRef}>
+                    <button
+                        type="button"
+                        onClick={() => setMenuOpen(!menuOpen)}
+                        className="flex items-center justify-center gap-1 px-1.5 h-6 rounded bg-[var(--bg-primary)] hover:bg-zinc-800 text-[var(--text-primary)] border border-[var(--border-color)] transition-all"
+                        title="Select Tool"
+                    >
+                        {(() => {
+                            const activeTool = [
+                                { id: 'files', icon: Folder },
+                                { id: 'editor', icon: Code },
+                                { id: 'terminal', icon: Terminal },
+                                { id: 'browser', icon: Globe },
+                                { id: 'role', icon: Fingerprint },
+                                { id: 'dna-lab', icon: Dna },
+                                { id: 'preview', icon: LayoutTemplate },
+                                { id: 'databrowser', icon: Database }
+                            ].find(t => t.id === viewMode);
+                            const IconComp = activeTool?.icon || Folder;
+                            return <IconComp size={12} className={activeTool ? "text-[var(--color-primary)]" : "text-zinc-500"} />;
+                        })()}
+                        <ChevronDown size={8} className="text-zinc-500" />
+                    </button>
+
+                    {menuOpen && (
+                        <div className="absolute left-0 top-7 z-50 bg-zinc-900 border border-zinc-700 rounded shadow-xl py-1 flex flex-col gap-0.5 min-w-[36px] items-center p-1">
+                            {[
+                                { id: 'files', icon: Folder, label: 'File Explorer' },
+                                { id: 'editor', icon: Code, label: 'Code Editor' },
+                                { id: 'terminal', icon: Terminal, label: 'Smart Terminal' },
+                                { id: 'browser', icon: Globe, label: 'Web Browser' },
+                                { id: 'role', icon: Fingerprint, label: 'Agent Role' },
+                                { id: 'dna-lab', icon: Dna, label: 'Agent DNA Lab' },
+                                { id: 'preview', icon: LayoutTemplate, label: 'Live Preview' },
+                                { id: 'databrowser', icon: Database, label: 'Database Grid' }
+                            ].map(t => (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => {
+                                        if (t.id === 'role') {
+                                            setShowRolePicker(!showRolePicker);
+                                        } else {
+                                            setViewModeAndStore(t.id as any);
+                                            setShowRolePicker(false);
+                                        }
+                                        setMenuOpen(false);
+                                    }}
+                                    title={t.label}
+                                    className={cn(
+                                        "p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center w-7 h-7 transition-colors",
+                                        (viewMode === t.id || (t.id === 'role' && showRolePicker)) && "text-[var(--color-primary)] bg-zinc-800"
+                                    )}
+                                >
+                                    <t.icon size={13} />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 <div className="flex-1 flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6" title={activeFile}>
                     <FileText size={10} className="text-[var(--text-muted)] mr-1.5" />
@@ -311,35 +369,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 </div>
 
                 <div className="flex gap-0.5">
-                    {[
-                        { id: 'files', icon: Folder },
-                        { id: 'editor', icon: Code },
-                        { id: 'terminal', icon: Terminal },
-                        { id: 'browser', icon: Globe },
-                        { id: 'role', icon: Fingerprint },
-                        { id: 'dna-lab', icon: Dna },
-                        { id: 'preview', icon: LayoutTemplate },
-                        { id: 'databrowser', icon: Database }
-                    ].map(t => (
-                        <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => {
-                                if (t.id === 'role') {
-                                    setShowRolePicker(!showRolePicker);
-                                } else {
-                                    setViewModeAndStore(t.id as any);
-                                    setShowRolePicker(false);
-                                }
-                            }}
-                            className={cn(
-                                "p-1 rounded hover:bg-[var(--bg-primary)] text-[var(--text-muted)]",
-                                (viewMode === t.id || (t.id === 'role' && showRolePicker)) && "text-[var(--color-primary)] bg-[var(--bg-primary)]"
-                            )}
-                        >
-                            <t.icon size={12} />
-                        </button>
-                    ))}
                     <button
                         onClick={() => setShowSupplementary(!showSupplementary)}
                         className={cn(
