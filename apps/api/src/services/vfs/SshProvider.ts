@@ -53,7 +53,8 @@ export class SshProvider implements IVfsProvider {
     await this.client.put(contentBuffer, fullPath);
 
     // Emit the file write event for ingestion
-    emitFileWriteEvent(this, filePath, contentBuffer);
+    // Avoid blocking since it does async lookup now
+    void emitFileWriteEvent(this, filePath, contentBuffer);
   }
 
   async mkdir(dirPath: string): Promise<void> {

@@ -42,7 +42,7 @@ export class ParallelTaskRunner {
 
             // 2. Initialize Agent Runtime in the worktree
             // Note: We run as 'Worker' tier to allow execution
-            const runtime = await AgentRuntime.create(worktreePath, ['read_file', 'write_file', 'execute_task_logic'], 'Worker');
+            const runtime = await AgentRuntime.create(worktreePath, ['read_file', 'write_file', 'patch_file', 'execute_task_logic'], 'Worker');
 
             // 3. Inject System Prompt (Identity)
             // We wrap the generate logic to include our specific persona

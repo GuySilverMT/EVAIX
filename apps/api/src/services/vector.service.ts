@@ -18,6 +18,8 @@ interface DbVectorResult {
 export class PgVectorStore {
   async add(vectors: Vector[]) {
     for (const v of vectors) {
+      const workspaceId = v.metadata.workspaceId as string | undefined || null;
+
       try {
         await prisma.vectorEmbedding.upsert({
           where: { id: v.id },
@@ -25,6 +27,7 @@ export class PgVectorStore {
             vector: v.vector,
             content: v.metadata.chunk as string || '',
             metadata: v.metadata as any,
+            workspaceId: workspaceId,
           },
           create: {
             id: v.id,
@@ -32,6 +35,7 @@ export class PgVectorStore {
             content: v.metadata.chunk as string || '',
             filePath: v.metadata.filePath as string || '',
             metadata: v.metadata as any,
+            workspaceId: workspaceId,
           }
         });
       } catch (err) {
@@ -39,37 +43,56 @@ export class PgVectorStore {
         // Fallback to raw SQL if Prisma model is not yet recognized
         const vectorArray = `{${v.vector.join(',')}}`;
         await prisma.$executeRawUnsafe(
-          `INSERT INTO "VectorEmbedding" ("id", "vector", "content", "filePath", "metadata")
-           VALUES ($1, $2::float8[], $3, $4, $5)
+          `INSERT INTO "VectorEmbedding" ("id", "vector", "content", "filePath", "metadata", "workspaceId")
+           VALUES ($1, $2::float8[], $3, $4, $5, $6)
            ON CONFLICT ("id") DO UPDATE SET
            "vector" = EXCLUDED."vector",
            "content" = EXCLUDED."content",
-           "metadata" = EXCLUDED."metadata"`,
+           "metadata" = EXCLUDED."metadata",
+           "workspaceId" = EXCLUDED."workspaceId"`,
           v.id,
           vectorArray,
           v.metadata.chunk || '',
           v.metadata.filePath || '',
-          v.metadata
+          v.metadata,
+          workspaceId
         );
       }
     }
     console.log(`Added ${vectors.length} vectors to PG store.`);
   }
 
-  async search(queryVector: number[], topK: number): Promise<Vector[]> {
+  async search(queryVector: number[], topK: number, filters?: { workspaceId?: string }): Promise<Vector[]> {
+    const workspaceId = filters?.workspaceId;
+
     try {
       // 1. Try pgvector first
       const vectorString = `[${queryVector.join(',')}]`;
-      const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
-        `SELECT "id", "content", "filePath", "metadata", 
-                1 - ("vector" <=> $1::vector) as similarity
-         FROM "VectorEmbedding"
-         ORDER BY "vector" <=> $1::vector
-         LIMIT $2`,
-        vectorString,
-        topK
-      );
-      return this.mapResults(results);
+      if (workspaceId) {
+        const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+          `SELECT "id", "content", "filePath", "metadata",
+                  1 - ("vector" <=> $1::vector) as similarity
+           FROM "VectorEmbedding"
+           WHERE "workspaceId" = $3
+           ORDER BY "vector" <=> $1::vector
+           LIMIT $2`,
+          vectorString,
+          topK,
+          workspaceId
+        );
+        return this.mapResults(results);
+      } else {
+        const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+          `SELECT "id", "content", "filePath", "metadata",
+                  1 - ("vector" <=> $1::vector) as similarity
+           FROM "VectorEmbedding"
+           ORDER BY "vector" <=> $1::vector
+           LIMIT $2`,
+          vectorString,
+          topK
+        );
+        return this.mapResults(results);
+      }
     } catch (err: any) {
       // 2. Fallback to standard SQL if pgvector extension is missing
       if (err.message?.includes('vector') || err.message?.includes('<=>')) {
@@ -77,11 +100,22 @@ export class PgVectorStore {
 
         // This is a crude dot product fallback for standard arrays. 
         // For production without pgvector, fetching and calculating in JS or using a specialized function is better.
-        const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
-          `SELECT "id", "content", "filePath", "metadata", 0 as similarity
-           FROM "VectorEmbedding"
-           LIMIT 1000` // Limit scan for performance
-        );
+        let results;
+        if (workspaceId) {
+           results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+            `SELECT "id", "content", "filePath", "metadata", 0 as similarity
+             FROM "VectorEmbedding"
+             WHERE "workspaceId" = $1
+             LIMIT 1000`, // Limit scan for performance
+             workspaceId
+          );
+        } else {
+           results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+            `SELECT "id", "content", "filePath", "metadata", 0 as similarity
+             FROM "VectorEmbedding"
+             LIMIT 1000` // Limit scan for performance
+          );
+        }
 
         // Sort in memory for the fallback
         return this.mapResults(results.slice(0, topK));

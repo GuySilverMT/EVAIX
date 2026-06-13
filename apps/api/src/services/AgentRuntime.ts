@@ -100,7 +100,7 @@ export class AgentRuntime {
       
       // ... existing tool loading logic ...
       const nativeToolNames = [
-        "read_file", "write_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
+        "read_file", "write_file", "patch_file", "list_files", "browse", "research.web_scrape", "analysis.complexity",
         "terminal_execute", "search_codebase", "list_files_tree", "scan_ui_components", 
         "ui_architect_tree_inspect", "ui_architect_node_mutate", "ui_factory_layout_generate",
         "role_registry_list", "role_variant_evolve", "role_config_patch"
@@ -700,9 +700,24 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
       Access files via 'env.fs' or standard 'fs' if permitted.
       ALWAYS wrap logic in try/catch.
       RETURN final status via console.log.
+
+      To modify existing code, you MUST use the patch_file tool. Provide the exact block of code to search for, and the exact replacement. Do not rewrite the entire file unless creating a brand new one.
+
+      EXAMPLE OF PATCH_FILE:
+      \`\`\`json
+      {
+        "name": "patch_file",
+        "arguments": {
+          "path": "src/index.ts",
+          "search_string": "const a = 1;",
+          "replace_string": "const a = 2;"
+        }
+      }
+      \`\`\`
       
       AVAILABLE TOOLS:
       - volcano.execute_task_logic: USE THIS to commit your work.
+      - patch_file: USE THIS to modify existing files.
     `;
 
     const result = await this.client.callToolChain(

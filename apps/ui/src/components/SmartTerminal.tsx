@@ -61,7 +61,10 @@ export const SmartTerminal = ({ logs = [], workingDirectory, onInput = () => {} 
              termRef.current = term as ExtendedTerminal;
              registerContext(() => {
                  const xterm = term as ExtendedTerminal;
-                 const log = xterm.getBufferLog?.() ?? "Terminal not ready"; 
+                 const log = xterm.getBufferLog?.() ?? "";
+                 if (!log || log.trim() === "") {
+                     return "";
+                 }
                  return log;
              });
           }}

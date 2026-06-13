@@ -369,7 +369,7 @@ process.stdout.write(JSON.stringify(__result));
         Select the necessary tools.
         Intent: ${intent.description}
 
-        Available Options: ["read_file", "write_file", "terminal_execute", "browse", "role_variant_evolve", "role_registry_list", "search_codebase", "ui_architect_tree_inspect", "ui_factory_layout_generate"]
+        Available Options: ["read_file", "write_file", "patch_file", "terminal_execute", "browse", "role_variant_evolve", "role_registry_list", "search_codebase", "ui_architect_tree_inspect", "ui_factory_layout_generate"]
 
         ## JSON Schema:
         {

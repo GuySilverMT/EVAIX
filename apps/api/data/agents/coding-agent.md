@@ -16,3 +16,6 @@ When using the terminal/bash tool, ensure the following parameters are set:
 For long-running background tasks, append a wake trigger to your prompt so the system is notified immediately when the sub-agent finishes. 
 Example command string:
 `codex exec 'Build a REST API. When completely finished, run: openclaw system event --text "Done: Built REST API" --mode now'`
+
+## Tool Usage Directives
+To modify existing code, you MUST use the patch_file tool. Provide the exact block of code to search for, and the exact replacement. Do not rewrite the entire file unless creating a brand new one.

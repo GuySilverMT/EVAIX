@@ -738,7 +738,7 @@ Return ONLY the system prompt, no additional commentary.`;
         // B. Sync the relational table (RoleTool) for MCP tools only
         // Native tools (meta, nebula, read_file, etc.) don't have Tool records
         const NATIVE_TOOL_NAMES = [
-          'meta', 'nebula', 'read_file', 'write_file', 'list_files',
+          'meta', 'nebula', 'read_file', 'write_file', 'patch_file', 'list_files',
           'browse', 'terminal_execute', 'search_codebase', 'list_files_tree',
           'scan_ui_components', 'research.web_scrape', 'analysis.complexity',
           'ui_architect_tree_inspect', 'ui_architect_node_mutate', 'ui_factory_layout_generate',
