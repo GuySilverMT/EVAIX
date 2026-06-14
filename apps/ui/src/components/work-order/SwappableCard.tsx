@@ -35,6 +35,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
     const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
     const updateCard = useWorkspaceStore(s => s.updateCard);
+    const activeWorkspacePath = useWorkspaceStore(s => s.activeWorkspacePath) || '';
     const navigate = useNavigate();
 
     const startSessionMutation = trpc.agent.startSession.useMutation();
@@ -61,7 +62,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | null>(() => {
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | null>(() => {
         if (card?.activeTool === null) return null;
         if (card?.activeTool) return card.activeTool as any;
         const meta = card?.metadata as { viewMode?: string } | undefined;
@@ -286,7 +287,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 { id: 'browser', icon: Globe },
                                 { id: 'role', icon: Fingerprint },
                                 { id: 'dna-lab', icon: Dna },
-                                { id: 'preview', icon: LayoutTemplate },
+                                { id: 'BadBuilder', icon: LayoutTemplate },
                                 { id: 'databrowser', icon: Database }
                             ].find(t => t.id === viewMode);
                             const IconComp = activeTool?.icon || Folder;
@@ -297,14 +298,14 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
                     {menuOpen && (
                         <div className="absolute left-0 top-7 z-50 bg-zinc-900 border border-zinc-700 rounded shadow-xl py-1 flex flex-col gap-0.5 min-w-[36px] items-center p-1">
-                            {[
+                             {[
                                 { id: 'files', icon: Folder, label: 'File Explorer' },
                                 { id: 'editor', icon: Code, label: 'Code Editor' },
                                 { id: 'terminal', icon: Terminal, label: 'Smart Terminal' },
                                 { id: 'browser', icon: Globe, label: 'Web Browser' },
                                 { id: 'role', icon: Fingerprint, label: 'Agent Role' },
                                 { id: 'dna-lab', icon: Dna, label: 'Agent DNA Lab' },
-                                { id: 'preview', icon: LayoutTemplate, label: 'Live Preview' },
+                                { id: 'BadBuilder', icon: LayoutTemplate, label: 'BadBuilder' },
                                 { id: 'databrowser', icon: Database, label: 'Database Grid' }
                             ].map(t => (
                                 <button
@@ -552,6 +553,12 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
                         {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
                         {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}
+                        {viewMode === 'BadBuilder' && (
+                            <iframe
+                                src={`http://localhost:4000/badbuilder/index.html?workspace=${encodeURIComponent(activeWorkspacePath)}`}
+                                className="w-full h-full border-none bg-zinc-950"
+                            />
+                        )}
                         {viewMode === 'data' && <div className="h-full w-full bg-white"><UniversalDataGrid data={[]} /></div>}
                         {viewMode === 'databrowser' && <DatabaseBrowser id={id} />}
                         {viewMode === 'builder' && (

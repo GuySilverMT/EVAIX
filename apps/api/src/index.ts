@@ -4,11 +4,16 @@ import { appRouter } from './routers/index.js';
 import './services/IngestionService.js';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
 import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
 import { shutdownDb } from './db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
@@ -64,6 +69,50 @@ async function startServer() {
     })
   );
   app.use(express.json({ limit: '50mb' }));
+  app.use('/badbuilder', express.static(path.join(__dirname, '../../badbuilder')));
+
+  // REST wrapper for VFS write
+  app.post('/api/vfs/write', async (req, res) => {
+    try {
+      const { path: filePath, content } = req.body;
+      if (!filePath || content === undefined) {
+        return res.status(400).json({ error: 'Missing path or content' });
+      }
+      const fs = await import('fs/promises');
+      const pathModule = await import('path');
+      
+      await fs.mkdir(pathModule.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, typeof content === 'string' ? content : JSON.stringify(content, null, 2), 'utf-8');
+      
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('[REST VFS Write Error]:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // REST wrapper for VFS read
+  app.get('/api/vfs/read', async (req, res) => {
+    try {
+      const filePath = req.query.path as string;
+      if (!filePath) {
+        return res.status(400).json({ error: 'Missing path parameter' });
+      }
+      const fs = await import('fs/promises');
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        res.json({ content });
+      } catch (err: any) {
+        if (err.code === 'ENOENT') {
+          return res.status(404).json({ error: 'File not found' });
+        }
+        throw err;
+      }
+    } catch (err: any) {
+      console.error('[REST VFS Read Error]:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // Setup tRPC endpoint
   app.use(

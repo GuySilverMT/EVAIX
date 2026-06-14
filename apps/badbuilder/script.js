@@ -1226,13 +1226,59 @@ function saveProjectAs() {
   _doSave(name);
 }
 
+function loadLayoutData(d) {
+  if (d && d.state && d.state.blocks) {
+    if (d.vars) state.variables = d.vars;
+    state.blocks = d.state.blocks;
+    state._uid = d.state._uid || state._uid;
+    state.selection = [];
+    renderVars();
+    renderAllDropdowns();
+    renderCanvas();
+    renderSidebar();
+    renderTree();
+    renderStateTabs();
+    applyZoom();
+  }
+}
+
 function _doSave(name) {
   const data = {
     meta: { tool: 'layout-designer-v4', savedAt: new Date().toISOString(), name },
     vars: JSON.parse(JSON.stringify(state.variables)),
     state: { blocks: state.blocks, _uid: state._uid },
   };
-  download(JSON.stringify(data, null, 2), name.replace(/\s+/g, '-') + '.layout.json'); showToast('Saved: ' + name);
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const workspacePath = urlParams.get('workspace');
+  if (workspacePath) {
+    const layoutPath = workspacePath + '/.evaix/layouts/badbuilderpage.layout.json';
+    console.log('[BadBuilder] Saving layout to VFS:', layoutPath);
+    fetch('/api/vfs/write', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        path: layoutPath,
+        content: JSON.stringify(data, null, 2)
+      })
+    })
+    .then(r => {
+      if (!r.ok) throw new Error('Save API returned error');
+      return r.json();
+    })
+    .then(() => {
+      showToast('Saved: ' + name);
+    })
+    .catch(err => {
+      console.error('[BadBuilder] VFS Save failed:', err);
+      showToast('VFS Save failed: ' + err.message);
+    });
+  } else {
+    download(JSON.stringify(data, null, 2), name.replace(/\s+/g, '-') + '.layout.json');
+    showToast('Saved: ' + name);
+  }
 }
 
 function openProject() {
@@ -1244,10 +1290,8 @@ function openProject() {
       try {
         const d = JSON.parse(ev.target.result);
         if (d.state && d.state.blocks) {
-          if (d.vars) state.variables = d.vars;
-          state.blocks = d.state.blocks; state._uid = d.state._uid || state._uid; state.selection = [];
+          loadLayoutData(d);
           currentProjectName = d.meta?.name || file.name.replace('.layout.json', '');
-          renderVars(); renderAllDropdowns(); renderCanvas(); renderSidebar(); renderTree();
           showToast('Opened: ' + currentProjectName);
         } else { showToast('Not a valid layout file'); }
       } catch { showToast('Invalid file'); }
@@ -1440,5 +1484,27 @@ function init() {
   renderCanvas();
   renderStateTabs();
   applyZoom();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const workspacePath = urlParams.get('workspace');
+  if (workspacePath) {
+    const layoutPath = workspacePath + '/.evaix/layouts/badbuilderpage.layout.json';
+    console.log('[BadBuilder] Loading layout from VFS:', layoutPath);
+    fetch(`/api/vfs/read?path=${encodeURIComponent(layoutPath)}`)
+      .then(r => {
+        if (!r.ok) throw new Error('Not found or read error');
+        return r.json();
+      })
+      .then(data => {
+        if (data && data.content) {
+          const parsed = JSON.parse(data.content);
+          loadLayoutData(parsed);
+          showToast('Loaded workspace layout');
+        }
+      })
+      .catch(err => {
+        console.warn('[BadBuilder] Failed to load workspace layout, using default:', err);
+      });
+  }
 }
 init();
