@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, LayoutTemplate, Database, ChevronDown, Plus } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, LayoutTemplate, Database, ChevronDown, Settings, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -64,6 +64,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const updateCard = useWorkspaceStore(s => s.updateCard);
     const activeWorkspacePath = useWorkspaceStore(s => s.activeWorkspacePath) || '';
     const projectType = useWorkspaceStore(s => s.projectType);
+    const navigate = useNavigate();
 
     const availableTools = useMemo(() => {
         const baseTools = [
@@ -71,8 +72,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             { id: 'browser', name: 'Native Browser', icon: Globe },
             { id: 'files', name: 'Files', icon: Folder },
             { id: 'data', name: 'Data', icon: Database },
-            // Promoted Agent DNA Lab directly into the top-level tools
-            { id: 'dna-lab', name: 'Agent DNA Lab', icon: Fingerprint }
+            { id: 'settings', name: 'Settings', icon: Settings }
         ];
 
         if (projectType === 'coding') {
@@ -82,6 +82,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
         return baseTools;
     }, [projectType]);
+
 
     const startSessionMutation = trpc.agent.startSession.useMutation();
 
@@ -107,25 +108,21 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    
-    type ViewMode = 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'badbuilder' | 'ai-chat' | null;
-    
-    const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'settings' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | 'badbuilder' | 'ai-chat' | null>(() => {
         if (card?.activeTool === null) return 'editor';
         if (card?.activeTool) {
-            // Gracefully migrate legacy settings/config states to dna-lab
-            if (card.activeTool === 'config' || card.activeTool === 'settings') return 'dna-lab';
+            if (card.activeTool === 'config') return 'settings';
             if (card.activeTool === 'BadBuilder') return 'badbuilder';
-            return card.activeTool as ViewMode;
+            return card.activeTool as any;
         }
         const meta = card?.metadata as { viewMode?: string } | undefined;
         const mode = meta?.viewMode;
-        if (mode === 'config' || mode === 'settings') return 'dna-lab';
+        if (mode === 'config') return 'settings';
         if (mode === 'BadBuilder') return 'badbuilder';
-        return (mode as ViewMode) || 'editor';
+        return (mode as any) || 'editor';
     });
 
-    const setViewModeAndStore = useCallback((mode: ViewMode) => {
+    const setViewModeAndStore = useCallback((mode: typeof viewMode) => {
         setViewMode(mode);
         updateCard(id, { 
             activeTool: mode,
@@ -141,7 +138,6 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             setViewModeAndStore('editor');
         }
     }, [viewMode, setViewModeAndStore]);
-
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -202,16 +198,21 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     }, [activeFile, browserUrl, id, updateCard]);
 
 
+    // 🟢 GOOD: Robust Default File Creation (No Crashes)
     useEffect(() => {
+        // [PATH MIGRATION] If activeFile is pointing to hidden .nebula or chat folders, move it to sessions.
         if (activeFile && (activeFile.includes('/.nebula/sessions/') || activeFile.includes('/chat/') || activeFile.includes('/chats/'))) {
             const basename = getBasename(activeFile);
             const migratedPath = `${currentPath}/sessions/${basename}`;
+            console.log(`[VFS] Migrating stale path: ${activeFile} -> ${migratedPath}`);
             setActiveFile(migratedPath);
             return;
         }
 
+        // [PATH FIX] Ensure card-id prefix for session files
         if (activeFile && activeFile.includes('/sessions/') && !getBasename(activeFile).startsWith('card-')) {
             const migratedPath = `${currentPath}/sessions/card-${id}.md`;
+            console.log(`[VFS] Fixing malformed session path: ${activeFile} -> ${migratedPath}`);
             setActiveFile(migratedPath);
             return;
         }
@@ -251,6 +252,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         }
     }, [activeFile, viewMode, id, currentPath, writeFile, mkdir, readFile]);
 
+    // Auto-switch view logic & Error Handling for Missing Files
     useEffect(() => {
         if (activeFile) {
             if (activeFile.startsWith('http')) {
@@ -276,7 +278,9 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 void readFile(activeFile)
                     .then(setContent)
                     .catch(async (err: any) => {
+                        // If file is missing (ENOENT), and it's a session file, create it!
                         if (err.message?.includes('ENOENT') && activeFile.includes('/sessions/')) {
+                            console.warn(`[VFS] File missing, auto-creating: ${activeFile}`);
                             await writeFile(activeFile, '');
                             setContent('');
                         } else {
@@ -292,9 +296,11 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         setContent(val);
         if (!activeFile) return;
 
+        // Determine target path
         const dir = activeFile.substring(0, activeFile.lastIndexOf('/'));
         const targetPath = headerFilename ? `${dir}/${headerFilename}` : activeFile;
 
+        // Main Save
         try {
             await writeFile(targetPath, val);
             if (targetPath !== activeFile) {
@@ -306,13 +312,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             return;
         }
 
+        // 🟢 Versioning (External)
+        // Only for documents (.md, .txt)
         if (/\.(md|txt)$/i.test(targetPath)) {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const versionFilename = `${getBasename(targetPath)}.${timestamp}.md`;
             const versionPath = `/home/guy/nebula-docs-versions/${versionFilename}`;
-            void writeFile(versionPath, val).catch(() => { });
+
+            // Fire-and-forget version save
+            void writeFile(versionPath, val).catch(() => { /* Silent fail on versioning is ok */ });
         }
 
+        // Legacy Backup (Optional, keeping for safety)
         const backupPath = `${currentPath}/.nebula/backups/${getBasename(targetPath)}.bak`;
         void writeFile(backupPath, val).catch(() => { });
     }, [activeFile, writeFile, currentPath, headerFilename]);
@@ -361,7 +372,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         const effectiveRoleId = roleIdOverride || agentConfig.roleId;
         if (!effectiveRoleId) {
             toast.error("Role Required", { description: "Select a role first." });
-            setViewModeAndStore('dna-lab');
+            setViewModeAndStore('config');
             return;
         }
 
@@ -391,6 +402,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             if (session.logs) {
                 setTerminalLogs(p => [...p, ...session.logs.map((l: string) => ({ message: l, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage))]);
             }
+            // Auto-refresh content after agent run
             if (activeFile) {
                 void refresh().then(() => readFile(activeFile)).then(setContent).catch(() => { });
             }
@@ -411,11 +423,14 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             setIsRunning(false);
             abortController.current = null;
         }
-    }, [id, agentConfig, startSessionMutation, currentPath, sessionId, isRunning, activeFile, readFile, refresh, setViewModeAndStore, card?.metadata]);
+    }, [id, agentConfig, startSessionMutation, currentPath, sessionId, isRunning, activeFile, readFile, refresh]);
 
     return (
         <div className="flex h-full w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] overflow-hidden relative flex-col">
+
+            {/* 1. Header with Clean Filename Display */}
             <div className="h-9 border-b border-[var(--border-color)] flex items-center px-2 bg-[var(--bg-secondary)] gap-2">
+                {/* Custom Tool Icon Dropdown */}
                 <div className="relative shrink-0 font-sans" ref={menuRef}>
                     <button
                         type="button"
@@ -460,6 +475,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         value={headerFilename}
                         onChange={(e) => setHeaderFilename(e.target.value)}
                         onBlur={() => {
+                            // If user cleared it, revert to current basename
                             if (!headerFilename) setHeaderFilename(getBasename(activeFile));
                         }}
                         onKeyDown={(e) => {
@@ -594,6 +610,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                 </div>
             </div>
 
+            {/* 2. Content Split */}
             <div className="flex-1 flex overflow-hidden relative select-text">
                 <div
                     className={cn(
@@ -610,6 +627,21 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                             </div>
                         )}
 
+                        {(viewMode === 'config' || viewMode === 'settings') && (
+                            <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
+                                <div className="max-w-xs space-y-4">
+                                    <Fingerprint size={48} className="mx-auto text-[var(--color-primary)] opacity-50" />
+                                    <h3 className="text-sm font-bold text-[var(--text-primary)]">Redirecting to DNA Lab</h3>
+                                    <p className="text-[10px] text-[var(--text-muted)]">Deep role configuration is now handled in the centralized Agent DNA Lab for a superior editing experience.</p>
+                                    <button
+                                        onClick={() => navigate(`/org-structure?roleId=${card?.roleId}`)}
+                                        className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90"
+                                    >
+                                        Open DNA Lab
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         {viewMode === 'editor' && (
                             <SmartEditor
                                 cardId={id}
@@ -632,7 +664,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 activeFile={activeFile}
                                 onRestore={(content) => {
                                     setContent(content);
-                                    void writeFile(activeFile, content);
+                                    void writeFile(activeFile, content); // Save restored content immediately
                                 }}
                                 onClose={() => setShowHistory(false)}
                             />
@@ -680,14 +712,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 isRunning={isRunning}
                             />
                         )}
-                        {/* Removed screenspaceId from SmartBrowser */}
-                        {viewMode === 'browser' && <SmartBrowser cardId={id} url={browserUrl} onUrlChange={setBrowserUrl} />}
-                        
-                        {/* DNA Lab is now a first-class citizen! */}
+                        {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
                         {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
-                        
                         {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}
-                        {viewMode === 'badbuilder' && (
+                        {(viewMode === 'BadBuilder' || viewMode === 'badbuilder') && (
                             <iframe
                                 src={`http://localhost:4000/badbuilder/index.html?workspace=${encodeURIComponent(activeWorkspacePath)}`}
                                 className="w-full h-full border-none bg-zinc-950"
@@ -730,6 +758,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         )}
                     </ErrorBoundary>
 
+                    {/* [NEW] SupplementaryAgentSlot */}
                     {showSupplementary && (
                         <div className="absolute right-0 top-0 bottom-0 w-[30%] min-w-[200px] border-l border-[var(--border-color)] bg-zinc-950 flex flex-col z-[40] animate-in slide-in-from-right duration-300">
                             <div className="h-8 border-b border-zinc-900 bg-zinc-900/50 flex items-center px-4 justify-between">
@@ -741,6 +770,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                     workingDirectory={currentPath}
                                     logs={supplementaryLogs}
                                     onInput={(msg) => {
+                                        // Worker logic: Start a separate session or delegate
                                         setSupplementaryLogs(p => [...p, { message: `Queuing: ${msg}`, type: 'info', timestamp: new Date().toISOString() } as TerminalMessage]);
                                     }}
                                 />
@@ -803,8 +833,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                             </div>
                         </div>
                     )}
-                </div>
-            </div>
+                </div> {/* End Main Content Area */}
+            </div> {/* End Content Split */}
         </div>
     );
 });

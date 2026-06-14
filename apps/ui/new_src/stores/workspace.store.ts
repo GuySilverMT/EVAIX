@@ -1,0 +1,198 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+export interface CardData {
+  id: string;
+  roleId: string;
+  column: number;
+  title?: string;
+  type?: string;
+  activeTool?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface WorkspaceState {
+  columns: number;
+  setColumns: (columns: number) => void;
+  showSidebar: boolean;
+  toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
+  
+  // Cards State (Application Wide)
+  cards: CardData[];
+  setCards: (cards: CardData[]) => void;
+  addCard: (card: CardData) => void;
+  removeCard: (id: string) => void;
+  updateCard: (id: string, updates: Partial<CardData>) => void;
+  
+  // Workspace Loading
+  activeWorkspace: string | null;
+  activeWorkspaceId: string | null;
+  activeWorkspacePath: string | null;
+  projectName: string | null;
+  projectType: string | null;
+  activeProject: { name: string | null; type: string | null } | null;
+  activeModelId: string | null;
+  recentProjects: string[];
+  loadWorkspace: (id: string) => void;
+  setActiveWorkspaceId: (id: string | null) => void;
+  setActiveWorkspacePath: (path: string | null) => void;
+  setProjectName: (name: string | null) => void;
+  setProjectType: (type: string | null) => void;
+  setActiveModelId: (id: string | null) => void;
+  setRecentProjects: (paths: string[]) => void;
+  addRecentProject: (path: string) => void;
+  initializeFromWorkspace: (projectType: string) => void;
+  addPanel: (columnId: string) => void;
+
+  // AI Context (Application Wide)
+  aiContext: {
+    scope: string; // 'Global', 'Workspace', 'Card:ID'
+    isLimiting: boolean;
+    injectedState: boolean;
+    contextBuffer: string[];
+  };
+  setAiContext: (context: Partial<WorkspaceState['aiContext']>) => void;
+  appendContextBuffer: (markdown: string) => void;
+
+  // Zero-Trust Control Plane
+  showControlPlane: boolean;
+  toggleControlPlane: () => void;
+
+  // Workflow system
+  activeWorkflow: string | null;
+  setActiveWorkflow: (workflow: string | null) => void;
+}
+
+export const useWorkspaceStore = create<WorkspaceState>()(
+  persist(
+    (set) => ({
+      columns: 3,
+      setColumns: (columns) => set({ columns: Math.max(1, Math.min(4, columns)) }),
+      showSidebar: false,
+      toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
+      setSidebarOpen: (open) => set({ showSidebar: open }),
+      
+      showControlPlane: false,
+      toggleControlPlane: () => set((state) => ({ showControlPlane: !state.showControlPlane })),
+      
+      // Clean default state without screenspaces
+      cards: [
+        { id: '1', roleId: '', column: 0 },
+        { id: '2', roleId: '', column: 0 },
+        { id: '3', roleId: '', column: 1 },
+        { id: '4', roleId: '', column: 1 },
+        { id: '5', roleId: '', column: 2 },
+        { id: '6', roleId: '', column: 2 },
+      ],
+      setCards: (cards) => set({ cards }),
+      addCard: (card) => set((state) => ({ cards: [...state.cards, card] })),
+      removeCard: (id) => set((state) => ({ cards: state.cards.filter(c => c.id !== id) })),
+      updateCard: (id, updates) => set((state) => ({
+        cards: state.cards.map(c => c.id === id ? { ...c, ...updates } : c)
+      })),
+
+      activeWorkspace: null,
+      activeWorkspaceId: null,
+      activeWorkspacePath: null,
+      projectName: null,
+      projectType: null,
+      activeProject: { name: null, type: null },
+      activeModelId: null,
+      recentProjects: [],
+      loadWorkspace: (id: string) => set({ activeWorkspace: id }),
+      setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id, activeWorkspacePath: id }),
+      setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
+      setProjectName: (name) => set((state) => ({ projectName: name, activeProject: { name, type: state.projectType } })),
+      setProjectType: (type) => set((state) => ({ projectType: type, activeProject: { name: state.projectName, type } })),
+      setActiveModelId: (id) => set({ activeModelId: id }),
+      setRecentProjects: (paths) => set({ recentProjects: paths }),
+      addRecentProject: (path) => set((state) => {
+        const next = state.recentProjects.filter(p => p !== path);
+        return { recentProjects: [path, ...next].slice(0, 10) }; 
+      }),
+      
+      addPanel: (columnId: string) => set((state) => {
+        const projectName = state.activeProject?.name || state.projectName || 'Document';
+        
+        let columnIndex = 0;
+        if (columnId.startsWith('col-')) {
+          columnIndex = parseInt(columnId.split('-')[1], 10) - 1;
+        } else {
+          columnIndex = parseInt(columnId, 10);
+        }
+        if (isNaN(columnIndex)) columnIndex = 0;
+        
+        const newName = `${projectName} C${columnIndex}`;
+        
+        const newPanel: CardData = {
+          id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          roleId: '',
+          column: columnIndex,
+          activeTool: 'editor',
+          title: newName,
+          metadata: { viewMode: 'editor' }
+        };
+        
+        return {
+          cards: [...state.cards, newPanel]
+        };
+      }),
+
+      initializeFromWorkspace: (projectType: string) => set(() => {
+        let initialCards: CardData[] = [];
+        if (projectType === 'CODE') {
+           initialCards = [
+             { id: '1', roleId: '', column: 0, metadata: { viewMode: 'files' } },
+             { id: '2', roleId: '', column: 1, metadata: { viewMode: 'editor' } },
+             { id: '3', roleId: '', column: 2, metadata: { viewMode: 'browser' } },
+           ];
+        } else if (projectType === 'DEPLOY') {
+           initialCards = [
+             { id: '1', roleId: '', column: 0, metadata: { viewMode: 'terminal' } },
+             { id: '2', roleId: '', column: 1, metadata: { viewMode: 'terminal' } },
+             { id: '3', roleId: '', column: 2, metadata: { viewMode: 'terminal' } },
+           ];
+        } else {
+           initialCards = [
+             { id: '1', roleId: '', column: 0 },
+             { id: '2', roleId: '', column: 1 },
+             { id: '3', roleId: '', column: 2 },
+           ];
+        }
+        return { cards: initialCards };
+      }),
+
+      aiContext: {
+        scope: 'Global',
+        isLimiting: false,
+        injectedState: false,
+        contextBuffer: []
+      },
+      setAiContext: (ctx) => set((state) => ({ aiContext: { ...state.aiContext, ...ctx } })),
+      appendContextBuffer: (markdown) => set((state) => ({ 
+        aiContext: { 
+          ...state.aiContext, 
+          contextBuffer: [...state.aiContext.contextBuffer, markdown] 
+        } 
+      })),
+
+      activeWorkflow: null,
+      setActiveWorkflow: (workflow) => set({ activeWorkflow: workflow }),
+    }),
+    {
+      name: 'workspace-storage',
+      partialize: (state) => ({
+        columns: state.columns,
+        cards: state.cards,
+        activeWorkspaceId: state.activeWorkspaceId,
+        activeWorkspacePath: state.activeWorkspacePath,
+        projectName: state.projectName,
+        projectType: state.projectType,
+        activeProject: state.activeProject,
+        activeModelId: state.activeModelId,
+        recentProjects: state.recentProjects,
+      }),
+    }
+  )
+);

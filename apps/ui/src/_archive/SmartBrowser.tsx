@@ -1,24 +1,13 @@
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { BrowserCard } from './BrowserCard.js';
 
-export const SmartBrowser = ({ 
-  cardId, 
-  url, 
-  onUrlChange, 
-  billingModeProviderId, 
-  onBillingSessionSaved 
-}: { 
-  cardId: string; 
-  url: string; 
-  onUrlChange?: (url: string) => void; 
-  billingModeProviderId?: string; 
-  onBillingSessionSaved?: () => void 
-}) => {
+export const SmartBrowser = ({ cardId, screenspaceId, url, onUrlChange, billingModeProviderId, onBillingSessionSaved }: { cardId: string; screenspaceId: number; url: string; onUrlChange?: (url: string) => void; billingModeProviderId?: string; onBillingSessionSaved?: () => void }) => {
   return (
     <SmartContainer type="BROWSER" title="Live Preview">
       {(registerContext) => (
         <BrowserCard 
            cardId={cardId}
+           screenspaceId={screenspaceId}
            initialUrl={url}
            hideWrapper
            onLoad={(frameContent: string) => {

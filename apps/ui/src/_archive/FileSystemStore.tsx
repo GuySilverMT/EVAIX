@@ -1,15 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import type { FileSystemProviderType } from './FileSystemTypes.js';
 import { trpc } from '../utils/trpc.js';
+import type { SshConfig } from '../components/SshConnectionModal.js';
 import { FileSystemContext } from './FileSystemContext.js';
-
-export interface SshConfig {
-  host: string;
-  port: number;
-  username: string;
-  password?: string;
-  privateKey?: string;
-}
 
 export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const utils = trpc.useUtils();
@@ -23,7 +16,7 @@ export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const saved = localStorage.getItem('core_fs_currentPath');
       if (saved) return saved;
     }
-    return '/home/guy/mono';
+    return '/home/guy/mono'; // Changed from CORE_Workspace to mono root
   });
 
   // Persist currentPath to localStorage whenever it changes
@@ -42,6 +35,7 @@ export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     retry: false,
     onError: (err) => {
         console.error("VFS List Error:", err);
+        // Optional: fallback to a safe path if needed, but for now just stop the loop
     }
   });
 
@@ -57,11 +51,13 @@ export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const { mutateAsync: connectSshMutateAsync } = trpc.vfs.connectSsh.useMutation();
 
   // --- ACTIONS ---
+
   const refresh = useCallback(() => {
      listQuery.refetch();
   }, [listQuery]);
 
   const readFile = useCallback(async (path: string) => {
+    // We use the direct client to fetch on demand
     const result = await utils.client.vfs.read.query({
         path,
         provider: currentProvider,

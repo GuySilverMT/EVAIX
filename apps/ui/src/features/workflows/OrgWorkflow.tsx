@@ -19,7 +19,7 @@ export const OrgWorkflow = () => {
 
       {/* RIGHT COLUMN: The Unified Role Manager (with Built-in Architect) */}
       <div className="h-full flex flex-col gap-4">
-        <UniversalCardWrapper 
+        <UniversalCardWrapper
           id="role-creator"
           title="Role Creator"
           icon={Fingerprint}

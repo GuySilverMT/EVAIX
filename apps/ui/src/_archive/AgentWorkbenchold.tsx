@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useHotkeys } from '../hooks/useHotkeys.js';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
-import { useWorkspaceStore, type CardData } from '../stores/workspace.store.js';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { useBuilderStore } from '../stores/builder.store.js';
 import layoutData from '../../../badbuilder/agentworkbench.layout.json';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
@@ -58,7 +58,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
 
   const {
     setCards, addCard, addPanel,
-    activeWorkspace, loadWorkspace,
+    activeWorkspace, activeScreenspaceId, loadWorkspace,
     activeWorkflow,
     setActiveWorkspaceId, setProjectType, setProjectName, projectType, activeWorkspaceId, cards,
     columns, setColumns
@@ -123,6 +123,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
                 id: c.id,
                 roleId: c.roleId || '',
                 column: colIndex,
+                screenspaceId: c.screenspaceId || activeScreenspaceId,
                 activeTool: c.activeTool !== undefined ? c.activeTool : (c.metadata?.viewMode || null),
                 metadata: {
                   ...c.metadata,
@@ -141,7 +142,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
         console.error("Failed to parse project.json from VFS", e);
       }
     }
-  }, [vfsReadQuery.data?.content, setProjectType, setProjectName, setColumns, setCards]);
+  }, [vfsReadQuery.data?.content, setProjectType, setProjectName, setColumns, setCards, activeScreenspaceId]);
 
   // Debounced Save project state to project.json
   const vfsWriteMutation = trpc.vfs.write.useMutation();
@@ -193,18 +194,18 @@ export default function AgentWorkbench({ className }: { className?: string }) {
 
   // Extract columns mapping (pull from workspace store cards)
   const cardsByColumn = useMemo(() => {
-    const buckets: Record<number, CardData[]> = {};
+    const buckets: Record<number, any[]> = {};
     for (let i = 0; i < columns; i++) buckets[i] = [];
 
     if (Array.isArray(cards)) {
         cards.forEach(card => {
-            if (typeof card.column === 'number' && card.column < columns) {
+            if (card.screenspaceId === activeScreenspaceId && typeof card.column === 'number' && card.column < columns) {
                 buckets[card.column].push(card);
             }
         });
     }
     return buckets;
-  }, [columns, cards]);
+  }, [columns, cards, activeScreenspaceId]);
 
   const { data: roles } = trpc.roles.list.useQuery();
   const availableRoles = Array.isArray(roles) ? roles : [];
@@ -216,9 +217,9 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   };
 
   const handleRemoveColumn = (colIndexToRemove: number) => {
-    const remainingCards = cards.filter(c => c.column !== colIndexToRemove);
+    const remainingCards = cards.filter(c => c.column !== colIndexToRemove || c.screenspaceId !== activeScreenspaceId);
     const shiftedCards = remainingCards.map(c => {
-      if (c.column > colIndexToRemove) {
+      if (c.screenspaceId === activeScreenspaceId && c.column > colIndexToRemove) {
         return { ...c, column: c.column - 1 };
       }
       return c;
@@ -244,6 +245,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
       id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       roleId,
       column: columnIndex,
+      screenspaceId: activeScreenspaceId,
       metadata: { viewMode }
     });
     toast.success(`Spawned ${viewMode} tool`);

@@ -91,6 +91,7 @@ const isElectron = () => {
 interface BrowserCardProps {
   id?: string;
   cardId?: string;
+  screenspaceId?: number;
   headerEnd?: React.ReactNode;
   initialUrl?: string;
   onLoad?: (content: string) => void;
@@ -102,6 +103,7 @@ interface BrowserCardProps {
 export const BrowserCard: React.FC<BrowserCardProps> = ({
   id = "browser-default",
   cardId, 
+  screenspaceId, 
   headerEnd, 
   initialUrl = 'https://www.google.com', 
   onLoad, 
@@ -116,14 +118,17 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
   const [input, setInput] = useState(initialUrl);
   const [isSelectingDOM, setIsSelectingDOM] = useState(false);
   
+  // Ref map for multiple webviews
   const webviewRefs = useRef<Map<string, HTMLWebViewElement>>(new Map());
   
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
   const url = activeTab.url;
   const isReady = activeTab.isReady;
   
+  // Stores
   const appendContextBuffer = useWorkspaceStore(state => state.appendContextBuffer);
   
+  // Reader Mode State
   const [isReaderMode, setIsReaderMode] = useState(false);
   const [readerContent, setReaderContent] = useState<string>('');
 
@@ -133,6 +138,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
       title: url,
       defaultIncluded: false,
       getContext: async () => {
+          // Dynamic Context Pruning
           if (!url || url.trim() === "" || url === "about:blank") {
               return { format: 'markdown', content: "" };
           }
@@ -143,10 +149,11 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
       }
   });
 
+  // tRPC
   const utils = trpc.useContext();
   const extractMutation = trpc.browser.extractMarkdown.useMutation();
   const { data: folders } = trpc.bookmark.listFolders.useQuery();
-  
+  // Bookmark Popover State
   const [showBookmarkPopover, setShowBookmarkPopover] = useState(false);
   const [bookmarkTitle, setBookmarkTitle] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -186,9 +193,9 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
     const webview = webviewRefs.current.get(activeTabId);
     if (!billingModeProviderId || !webview) return;
     try {
-      // @ts-ignore
+      // @ts-ignore Electron webview method
       const currentUrl = await webview.executeJavaScript('window.location.href');
-      // @ts-ignore
+      // @ts-ignore Electron webview method
       const cookieStr = await webview.executeJavaScript('document.cookie');
       
       const parsedCookies = cookieStr ? cookieStr.split('; ').map((c: string) => {
@@ -217,6 +224,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
       const toastId = toast.loading("Extracting clean context for AI...");
       const result = await extractMutation.mutateAsync({ url });
       
+      // Dispatch to global context buffer
       appendContextBuffer(`[Extracted from ${result.url}]\n\n# ${result.title}\n\n${result.markdown}`);
       
       setReaderContent(`# ${result.title}\n\n${result.markdown}`);
@@ -261,6 +269,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
 
   const handleDomSelection = () => {
     toast.info("DOM Selector Mode active. Click an element to extract its path.");
+    // Placeholder for handleDomSelection
   };
 
   useEffect(() => {
@@ -269,6 +278,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
     }
   }, [isSelectingDOM]);
 
+  // Sync URL/Content to context
   useEffect(() => {
     if (onLoad) {
         if (isReaderMode) onLoad(readerContent);
@@ -276,17 +286,19 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
     }
   }, [url, onLoad, isReaderMode, readerContent]);
 
+  // Update input when active tab changes
   useEffect(() => {
     setInput(activeTab.url);
   }, [activeTabId, activeTab.url]);
 
+  // Sync internal state with external prop updates
   useEffect(() => {
     if (initialUrl && !tabs.some(t => t.url === initialUrl)) {
         const newId = `tab-${Date.now()}`;
         setTabs(prev => [...prev, { id: newId, url: initialUrl, title: 'External Link', isReady: false }]);
         setActiveTabId(newId);
     }
-  }, [initialUrl, tabs]); 
+  }, [initialUrl]); 
 
   const [showDebugView, setShowDebugView] = useState(false);
   const [blockAds, setBlockAds] = useState(true);
@@ -357,7 +369,6 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
     
     setTabs(prev => prev.map(t => t.id === id ? { ...t, isReady: true, title: title || t.title } : t));
   }, []);
-  
   const onFail = useCallback((e: any) => {
     console.warn('WebView failed to load:', e);
     if (e.errorCode !== -3) {
@@ -438,6 +449,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
          
          {!showDebugView && (
             <div className="flex flex-col shrink-0 bg-background border-b border-border z-30 shadow-sm">
+                {/* Compact Tab Bar */}
                 <div className="h-9 flex items-center bg-muted/20 border-b border-border/50 overflow-x-auto no-scrollbar px-1">
                   {tabs.map(tab => (
                     <div 
@@ -468,6 +480,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                   </button>
                 </div>
 
+                {/* Main Toolbar */}
                 <div className="h-10 flex items-center px-2 space-x-2">
                     <div className="flex items-center space-x-0.5">
                         <button type="button" onClick={handleBack} disabled={!isReady} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground disabled:opacity-20">
@@ -481,6 +494,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                         </button>
                     </div>
                     
+                    {/* Draggable URL Input */}
                     <div 
                       className="flex-1 relative group"
                       draggable
@@ -513,6 +527,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                           </button>
                         </div>
 
+                        {/* Bookmark Popover */}
                         {showBookmarkPopover && (
                           <div className="absolute top-full right-0 mt-2 w-64 bg-zinc-950 border border-border shadow-2xl rounded-lg p-4 z-50 flex flex-col space-y-3">
                             <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Add Bookmark</h4>
@@ -600,6 +615,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                     </div>
                 </div>
 
+                {/* Bookmarks Bar */}
                 <div className="h-8 border-t border-border/50 bg-card/30 flex items-center px-3 space-x-4 overflow-x-auto no-scrollbar">
                   {folders?.map((folder: any) => (
                     <div key={folder.id} className="group relative flex items-center space-x-1.5 text-[10px] font-bold text-muted-foreground hover:text-foreground cursor-pointer whitespace-nowrap py-1">
@@ -607,6 +623,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
                       <span>{folder.name}</span>
                       <ChevronDown size={10} className="opacity-50" />
                       
+                      {/* Simple Dropdown Mock */}
                       <div className="absolute top-full left-0 mt-0 hidden group-hover:block z-[100] bg-zinc-900 border border-zinc-800 rounded shadow-2xl py-1 min-w-[140px]">
                         {folder.bookmarks?.map((bm: any) => (
                           <div 
@@ -631,6 +648,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
             </div>
          )}
 
+        {/* BROWSER CONTENT */}
         <div className="flex-1 relative bg-white overflow-hidden">
             {isReaderMode && (
                 <div className="absolute inset-0 z-40 bg-[var(--bg-background)] overflow-y-auto p-8 custom-scrollbar">
@@ -671,7 +689,7 @@ export const BrowserCard: React.FC<BrowserCardProps> = ({
 
             {showDebugView ? (
                 <div className="w-full h-full bg-card">
-                    <ResearchBrowser key={`research-${cardId}`} cardId={cardId} initialUrl={url} />
+                    <ResearchBrowser key={`research-${cardId}-${screenspaceId}`} cardId={cardId} screenspaceId={screenspaceId} initialUrl={url} />
                 </div>
             ) : (
                 <>

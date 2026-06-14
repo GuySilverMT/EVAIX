@@ -4,10 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LAYOUT/ v4</title>
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;800&display=swap"
-    rel="stylesheet">
+  <title>LAYOUT/ v5 (Atomic Tables)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -15,7 +15,7 @@
 <body>
 
   <div id="topbar">
-    <div class="tb-logo">LAYOUT/ v4</div>
+    <div class="tb-logo">LAYOUT/ v5</div>
     <div class="tb-frames" id="frame-tabs" style="display:flex"></div>
     <div class="tb-actions">
       <button class="tb-btn" onclick="undo()" title="Undo (Ctrl+Z)">↶</button>
@@ -39,10 +39,10 @@
       <div class="left-top">
         <div class="sec-label" style="padding:10px 10px 6px">Layout</div>
         <div style="padding:0 8px 8px">
-          <button class="tool-btn-full" onclick="addBlock('container')">+ Container</button>
+          <button class="tool-btn-full" onclick="addBlock('container')">+ Container Box</button>
         </div>
         <div style="font-size:9px;color:var(--text3);padding:0 10px 10px;line-height:1.6">
-          Right-click any block to nest elements inside it.
+          Right-click any block to nest Elements or Tables inside it.
         </div>
       </div>
 
@@ -58,32 +58,26 @@
 
       <div class="left-pane" id="lpane-components">
         <div style="padding:6px 8px 4px">
-          <input type="file" id="import-input-hidden" accept=".component.json,.json" style="display:none"
-            onchange="handleImport(event)">
-          <button class="tb-btn" style="width:100%;font-size:8px;margin-bottom:6px" onclick="triggerImport()">+ Import
-            .json</button>
+          <input type="file" id="import-input-hidden" accept=".component.json,.json" style="display:none" onchange="handleImport(event)">
+          <button class="tb-btn" style="width:100%;font-size:8px;margin-bottom:6px" onclick="triggerImport()">+ Import .json</button>
           <div id="comp-list"></div>
         </div>
       </div>
 
       <div class="left-pane" id="lpane-vars">
         <div class="var-group">
-          <div class="var-group-header"><span class="var-group-title">Colors</span><button class="var-add-btn"
-              onclick="addVar('colors')">+ Add</button></div>
+          <div class="var-group-header"><span class="var-group-title">Colors</span><button class="var-add-btn" onclick="addVar('colors')">+ Add</button></div>
           <div id="left-var-list-colors"></div>
         </div>
         <div class="var-group">
-          <div class="var-group-header"><span class="var-group-title">Fonts</span><button class="var-add-btn"
-              onclick="addVar('fonts')">+ Add</button></div>
+          <div class="var-group-header"><span class="var-group-title">Fonts</span><button class="var-add-btn" onclick="addVar('fonts')">+ Add</button></div>
           <div id="left-var-list-fonts"></div>
         </div>
         <div class="var-group">
-          <div class="var-group-header"><span class="var-group-title">Font Sizes</span><button class="var-add-btn"
-              onclick="addVar('sizes')">+ Add</button></div>
+          <div class="var-group-header"><span class="var-group-title">Font Sizes</span><button class="var-add-btn" onclick="addVar('sizes')">+ Add</button></div>
           <div id="left-var-list-sizes"></div>
         </div>
-        <div class="var-group-header"><span class="var-group-title">Icon Styles</span><button class="var-add-btn"
-            onclick="addVar('icons')">+ Add</button></div>
+        <div class="var-group-header"><span class="var-group-title">Icon Styles</span><button class="var-add-btn" onclick="addVar('icons')">+ Add</button></div>
         <div id="left-var-list-icons"></div>
       </div>
 
@@ -96,8 +90,7 @@
       </div>
     </div>
 
-    <div id="canvas-wrap" onmousedown="onCanvasDown(event)" onmousemove="onCanvasMove(event)"
-      onmouseup="onCanvasUp(event)">
+    <div id="canvas-wrap" onmousedown="onCanvasDown(event)" onmousemove="onCanvasMove(event)" onmouseup="onCanvasUp(event)">
       <div id="canvas">
         <div class="canvas-dots"></div>
         <div id="marquee"></div>
@@ -112,20 +105,26 @@
       <div class="right-pane active" id="rpane-props">
 
         <div id="no-sel" class="r-section">
-          <div class="ns-title">Properties</div>
-          <div style="color:var(--text3);font-size:10px;line-height:1.7">Click a block to edit. <b>Double-click</b>
-            text to type. Shift/⌘+click to multi-select. Right-click to nest elements.</div>
+          <div class="ns-title">Global Project Settings</div>
+          <div style="color:var(--text3);font-size:10px;line-height:1.7;margin-bottom:12px">
+            Click a block to edit its properties, or define global instructions for the AI below.
+          </div>
+          <div class="r-label">Global AI Prompt / File Notes</div>
+          <textarea class="ai-notes" id="global-ai-notes" style="height: 180px;"
+            placeholder="e.g., Use Next.js, Tailwind CSS, and Framer Motion. Create a dark mode toggle. Extract icons from lucide-react..."
+            onchange="state.globalAiNotes = this.value; saveHistory();"></textarea>
+          <div style="font-size:8px;color:var(--text3);margin-top:6px;line-height:1.4">
+            These notes will wrap your exported JSON tree, giving the LLM strict instructions on how to compile your TSX file.
+          </div>
         </div>
 
         <div id="multi-sel-panel" style="display:none">
           <div class="r-section">
-            <div id="multi-count"
-              style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--accent2)">0</div>
+            <div id="multi-count" style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--accent2)">0</div>
             <div style="color:var(--text3);font-size:10px;margin-top:2px">blocks selected</div>
             <div style="display:flex;gap:5px;margin-top:10px">
               <button class="tb-btn" style="flex:1" onclick="copySelected()">Copy</button>
-              <button class="tb-btn" style="flex:1;color:var(--red);border-color:var(--red)"
-                onclick="deleteSelected()">Delete</button>
+              <button class="tb-btn" style="flex:1;color:var(--red);border-color:var(--red)" onclick="deleteSelected()">Delete</button>
             </div>
           </div>
         </div>
@@ -141,23 +140,27 @@
             <div class="r-row">
               <span class="r-lbl">Role</span>
               <select class="r-select" id="p-role" onchange="setProp('role',this.value)">
-                <option value="container">Container</option>
-                <option value="navbar">Navbar</option>
-                <option value="sidebar">Sidebar</option>
-                <option value="hero">Hero</option>
-                <option value="card">Card</option>
-                <option value="modal">Modal</option>
-                <option value="button">Button</option>
-                <option value="input">Input</option>
-                <option value="dropdown">Dropdown</option>
-                <option value="table">Table</option>
+                <option value="container">Container (Box)</option>
+                <option value="table">Table (Grid)</option>
                 <option value="cell">Cell</option>
-                <option value="text">Text</option>
-                <option value="image">Image</option>
-                <option value="icon">Icon</option>
+                <option value="object">Object (Content)</option>
               </select>
             </div>
+            <div class="r-row" style="margin-top: 8px;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:10px; color:var(--text2);">
+                <input type="checkbox" id="p-isComponent" onchange="setProp('isComponent', this.checked)" style="accent-color: var(--accent);">
+                <span>Export as isolated Sub-Component</span>
+              </label>
+            </div>
             <div class="role-hint" id="role-hint"></div>
+          </div>
+
+          <div class="r-section" id="rs-layout-flow" style="display:none">
+            <div class="r-label">Layout Flow</div>
+            <select class="r-select" id="p-layoutFlow" onchange="setProp('layoutFlow',this.value)">
+              <option value="relative">Flow (Bumps siblings)</option>
+              <option value="absolute">Overlay (Floats above)</option>
+            </select>
           </div>
 
           <div class="r-section" id="rs-container-presets" style="display:none">
@@ -166,22 +169,18 @@
             <div id="rs-custom-wh" style="display:none;margin-top:6px">
               <div class="r-row">
                 <span class="r-lbl">W / H</span>
-                <input class="r-input" type="number" id="p-cw" style="width:52px;flex:none"
-                  onchange="applyCustomContainerSize()">
-                <input class="r-input" type="number" id="p-ch" style="width:52px;flex:none"
-                  onchange="applyCustomContainerSize()">
+                <input class="r-input" type="number" id="p-cw" style="width:52px;flex:none" onchange="applyCustomContainerSize()">
+                <input class="r-input" type="number" id="p-ch" style="width:52px;flex:none" onchange="applyCustomContainerSize()">
               </div>
             </div>
           </div>
 
           <div class="r-section" id="rs-position" style="display:none">
-            <div class="r-label">Position</div>
+            <div class="r-label">Position (Absolute)</div>
             <div class="r-row">
               <span class="r-lbl">X / Y</span>
-              <input class="r-input" type="number" id="p-x" style="width:52px;flex:none"
-                onchange="setProp('x',+this.value)">
-              <input class="r-input" type="number" id="p-y" style="width:52px;flex:none"
-                onchange="setProp('y',+this.value)">
+              <input class="r-input" type="number" id="p-x" style="width:52px;flex:none" onchange="setProp('x',+this.value)">
+              <input class="r-input" type="number" id="p-y" style="width:52px;flex:none" onchange="setProp('y',+this.value)">
             </div>
           </div>
 
@@ -193,16 +192,91 @@
           <div class="r-section" id="rs-border">
             <div class="r-label">Border</div>
             <div class="r-row">
-              <span class="r-lbl">Color</span>
-              <select class="r-select" id="p-borderColor"
-                onchange="setPropFromSelect('borderColor',this.value)"></select>
-            </div>
-            <div class="r-row">
-              <span class="r-lbl">Width</span>
-              <input class="r-input" type="number" id="p-border-w" min="0" max="20" style="width:50px;flex:none"
-                onchange="setProp('borderWidth',+this.value)">
+              <select class="r-select" id="p-borderStyle" onchange="setProp('borderStyle',this.value)">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+              <input class="r-input" type="number" id="p-border-w" min="0" max="20" style="width:50px;flex:none" onchange="setProp('borderWidth',+this.value)">
               <span style="color:var(--text3);font-size:9px">px</span>
             </div>
+            <div class="r-row">
+              <span class="r-lbl">Color</span>
+              <select class="r-select" id="p-borderColor" onchange="setPropFromSelect('borderColor',this.value)"></select>
+            </div>
+          </div>
+
+          <div class="r-section" id="rs-table-styling" style="display:none">
+            <div class="r-label">Outer Border</div>
+            <div class="r-row">
+              <select class="r-select" id="p-tableBorderStyle" onchange="setProp('borderStyle', this.value)">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+              <input class="r-input" type="number" id="p-table-border-w" min="0" max="20" style="width:40px;flex:none" onchange="setProp('borderWidth', +this.value)" placeholder="W">
+              <span style="color:var(--text3);font-size:9px">px</span>
+            </div>
+            <div class="r-row">
+              <span class="r-lbl">Color</span>
+              <select class="r-select" id="p-tableBorderColor" onchange="setPropFromSelect('borderColor', this.value)"></select>
+            </div>
+  
+            <div class="r-label" style="margin-top:12px">Inner Gridlines</div>
+            <div class="r-row">
+               <select class="r-select" id="p-gridPattern" onchange="setProp('gridPattern', this.value)">
+                <option value="all">All Gridlines</option>
+                <option value="horizontal">Horizontal Only</option>
+                <option value="vertical">Vertical Only</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+            <div class="r-row">
+              <select class="r-select" id="p-innerGridStyle" onchange="setProp('innerGridStyle', this.value)">
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+              <input class="r-input" type="number" id="p-innerGridWidth" min="0" max="20" style="width:40px;flex:none" onchange="setProp('innerGridWidth', +this.value)" placeholder="W">
+              <span style="color:var(--text3);font-size:9px">px</span>
+            </div>
+            <div class="r-row">
+              <span class="r-lbl">Color</span>
+              <select class="r-select" id="p-innerGridColor" onchange="setPropFromSelect('innerGridColor', this.value)"></select>
+            </div>
+          </div>
+
+          <div class="r-section" id="rs-object-config" style="display:none">
+            <div class="r-label">Object Content</div>
+            
+            <div class="r-row" style="margin-bottom: 10px;">
+              <select class="r-select" id="p-contentType" onchange="setProp('contentType',this.value)">
+                <option value="text">Text Only</option>
+                <option value="icon">Icon Only</option>
+                <option value="both">Text + Icon</option>
+              </select>
+            </div>
+
+            <div id="obj-text-group">
+              <div class="r-row">
+                <span class="r-lbl">Text</span>
+                <input class="r-input" id="p-textContent" placeholder="Label..." style="flex:1" onchange="setProp('text',this.value)">
+              </div>
+            </div>
+
+            <div id="obj-icon-group" style="margin-top:8px">
+              <div class="r-row">
+                <span class="r-lbl">Icon</span>
+                <input class="r-input" id="p-iconName" placeholder="lucide name..." style="flex:1" onchange="setPropAndPreview('iconName',this.value)">
+              </div>
+              <div id="icon-preview" style="display:flex;align-items:center;justify-content:center;height:32px;margin-top:4px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)"></div>
+            </div>
+
+            <div class="r-label" style="margin-top:12px">Tooltip / Hover</div>
+            <textarea class="ai-notes" id="p-tooltip" placeholder="Text to show on hover..." style="height:40px" onchange="setProp('tooltip',this.value)"></textarea>
+
+            <div class="r-label" style="margin-top:12px">Action / Link (Makes Button)</div>
+            <input class="r-input" id="p-action" placeholder="URL or action intent..." style="width:100%" onchange="setProp('action',this.value)">
           </div>
 
           <div class="r-section" id="rs-text-color">
@@ -211,7 +285,7 @@
           </div>
 
           <div class="r-section" id="rs-typography">
-            <div class="r-label">Typography</div>
+            <div class="r-label">Typography & Icon Style</div>
             <div class="r-row">
               <span class="r-lbl">Font</span>
               <select class="r-select" id="p-fontId" onchange="setProp('fontId',this.value)"></select>
@@ -220,7 +294,11 @@
               <span class="r-lbl">Size</span>
               <select class="r-select" id="p-sizeId" onchange="setProp('sizeId',this.value)"></select>
             </div>
-            <div class="r-row" style="margin-top:4px">
+            <div class="r-row">
+              <span class="r-lbl">Icon Set</span>
+              <select class="r-select" id="p-iconStyle" onchange="updateIconStyle(this.value)"></select>
+            </div>
+            <div class="r-row" style="margin-top:8px">
               <span class="r-lbl">Align H</span>
               <button class="align-btn" id="ah-left" onclick="setProp('alignH','left')">⬤</button>
               <button class="align-btn" id="ah-center" onclick="setProp('alignH','center')">◎</button>
@@ -234,56 +312,19 @@
             </div>
           </div>
 
-          <div class="r-section" id="rs-text-content">
-            <div class="r-label">Text Content</div>
-            <textarea id="p-text" placeholder="Type label, heading…" onchange="setProp('text',this.value)"></textarea>
-            <div style="font-size:8px;color:var(--text3);margin-top:3px">Double-click block on canvas to edit inline
-            </div>
-          </div>
-
-          <div class="r-section" id="rs-icon" style="display:none">
-            <div class="r-label">Icon</div>
-            <div class="r-row">
-              <span class="r-lbl">Name</span>
-              <input class="r-input" id="p-icon" placeholder="camera, user, home…" style="flex:1"
-                onchange="setPropAndPreview('iconName',this.value)">
-            </div>
-            <div id="icon-preview"
-              style="display:flex;align-items:center;justify-content:center;height:48px;margin-top:4px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
-            </div>
-
-            <div class="r-label" style="margin-top:10px">Icon Style</div>
-            <div class="r-row">
-              <select class="r-select" id="p-iconStyle" onchange="updateIconStyle(this.value)"></select>
-            </div>
-
-            <div class="r-row">
-              <span class="r-lbl">Color</span>
-              <select class="r-select" id="p-iconColor" onchange="setPropFromSelect('iconColor',this.value)"></select>
-            </div>
-
-            <a href="https://lucide.dev/icons/" target="_blank"
-              style="color:var(--accent);font-size:9px;text-decoration:none;display:inline-block;margin-top:4px">Browse
-              all icons ↗</a>
-          </div>
-
           <div class="r-section" id="rs-opacity">
             <div class="r-label">Opacity</div>
             <div class="opacity-row">
-              <input type="range" class="opacity-slider" id="p-opacity" min="0" max="100" value="100"
-                oninput="setProp('opacity',+this.value);document.getElementById('opacity-val').textContent=this.value+'%'">
+              <input type="range" class="opacity-slider" id="p-opacity" min="0" max="100" value="100" oninput="setProp('opacity',+this.value);document.getElementById('opacity-val').textContent=this.value+'%'">
               <span id="opacity-val" style="color:var(--text2);font-size:10px;width:34px;text-align:right">100%</span>
             </div>
           </div>
 
           <div class="r-section" id="rs-bgimage">
             <div class="r-label">Background Image</div>
-            <div class="img-drop-zone" id="img-drop-zone" onclick="document.getElementById('img-input').click()">Click
-              to upload</div>
+            <div class="img-drop-zone" id="img-drop-zone" onclick="document.getElementById('img-input').click()">Click to upload</div>
             <input type="file" id="img-input" accept="image/*" style="display:none" onchange="handleBgImage(event)">
-            <button class="tb-btn" style="width:100%;margin-top:4px;font-size:9px" onclick="clearBgImage()">Clear
-              Image</button>
-
+            <button class="tb-btn" style="width:100%;margin-top:4px;font-size:9px" onclick="clearBgImage()">Clear Image</button>
             <div class="r-row" style="margin-top:10px">
               <span class="r-lbl">Size</span>
               <select class="r-select" id="p-bgSize" onchange="setProp('bgSize',this.value)">
@@ -294,21 +335,8 @@
             </div>
             <div class="r-row">
               <span class="r-lbl">Scale</span>
-              <input type="range" class="opacity-slider" id="p-bgScale" min="10" max="400" value="100"
-                oninput="setProp('bgScale',+this.value); this.nextElementSibling.textContent=this.value+'%'">
+              <input type="range" class="opacity-slider" id="p-bgScale" min="10" max="400" value="100" oninput="setProp('bgScale',+this.value); this.nextElementSibling.textContent=this.value+'%'">
               <span style="font-size:9px;color:var(--text3);width:30px;text-align:right">100%</span>
-            </div>
-            <div class="r-row">
-              <span class="r-lbl">Pos X</span>
-              <input type="range" class="opacity-slider" id="p-bgPosX" min="-100" max="200" value="50"
-                oninput="setProp('bgPosX',+this.value); this.nextElementSibling.textContent=this.value+'%'">
-              <span style="font-size:9px;color:var(--text3);width:30px;text-align:right">50%</span>
-            </div>
-            <div class="r-row">
-              <span class="r-lbl">Pos Y</span>
-              <input type="range" class="opacity-slider" id="p-bgPosY" min="-100" max="200" value="50"
-                oninput="setProp('bgPosY',+this.value); this.nextElementSibling.textContent=this.value+'%'">
-              <span style="font-size:9px;color:var(--text3);width:30px;text-align:right">50%</span>
             </div>
           </div>
 
@@ -321,26 +349,21 @@
               <input class="r-input" type="number" id="g-rows" style="width:45px">
               <button class="tb-btn" onclick="applyGrid()">Apply</button>
             </div>
-
             <div style="margin-top:10px">
               <div class="r-label" style="font-size:9px; opacity:0.6">Column Widths (%)</div>
               <div id="grid-col-inputs" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px"></div>
-
               <div class="r-label" style="font-size:9px; opacity:0.6; margin-top:8px">Row Heights (%)</div>
               <div id="grid-row-inputs" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px"></div>
             </div>
           </div>
 
           <div class="r-section" id="rs-notes">
-            <div class="r-label">AI Notes</div>
-            <textarea class="ai-notes" id="p-notes"
-              placeholder="Describe behavior, states, interactions, hover effects…"
-              onchange="setProp('aiNotes',this.value)"></textarea>
+            <div class="r-label">Component AI Notes</div>
+            <textarea class="ai-notes" id="p-notes" placeholder="Describe logic, states, or interactions for this specific block..." onchange="setProp('aiNotes',this.value)"></textarea>
           </div>
 
           <div class="r-section">
-            <button class="tb-btn" style="width:100%;color:var(--red);border-color:var(--red)"
-              onclick="deleteSelected()">Delete Block</button>
+            <button class="tb-btn" style="width:100%;color:var(--red);border-color:var(--red)" onclick="deleteSelected()">Delete Block</button>
           </div>
 
         </div>
@@ -352,21 +375,9 @@
   <div id="ctx-menu">
     <div class="ctx-item ctx-submenu-wrap">Add Element Inside ▸
       <div class="ctx-submenu">
-        <div class="ctx-sub-label">Layout</div>
-        <div class="ctx-item" onclick="ctxAddBlock('navbar')">Navbar</div>
-        <div class="ctx-item" onclick="ctxAddBlock('sidebar')">Sidebar</div>
-        <div class="ctx-item" onclick="ctxAddBlock('hero')">Hero</div>
-        <div class="ctx-item" onclick="ctxAddBlock('card')">Card</div>
-        <div class="ctx-item" onclick="ctxAddBlock('modal')">Modal</div>
-        <div class="ctx-sep"></div>
-        <div class="ctx-sub-label">Elements</div>
-        <div class="ctx-item" onclick="ctxAddBlock('button')">Button</div>
-        <div class="ctx-item" onclick="ctxAddBlock('text')">Text</div>
-        <div class="ctx-item" onclick="ctxAddBlock('input')">Input</div>
-        <div class="ctx-item" onclick="ctxAddBlock('dropdown')">Dropdown</div>
-        <div class="ctx-item" onclick="ctxAddBlock('image')">Image</div>
-        <div class="ctx-item" onclick="ctxAddBlock('icon')">Icon</div>
-        <div class="ctx-item" onclick="ctxAddBlock('table')">Table</div>
+        <div class="ctx-item" onclick="ctxAddBlock('container')">Container</div>
+        <div class="ctx-item" onclick="ctxAddBlock('table')">Table Grid</div>
+        <div class="ctx-item" onclick="ctxAddBlock('object')">Object (Text/Icon)</div>
       </div>
     </div>
     <div class="ctx-sep"></div>

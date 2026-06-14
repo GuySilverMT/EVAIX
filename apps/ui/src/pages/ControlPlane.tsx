@@ -21,7 +21,7 @@ export const ControlPlane: React.FC = () => {
           </Link>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 shadow-[0_0_20px_rgba(79,70,229,0.15)]">
-                <ShieldCheck size={20} className="text-indigo-400" />
+              <ShieldCheck size={20} className="text-indigo-400" />
             </div>
             <div>
               <h1 className="text-sm font-black uppercase tracking-[0.2em] text-white">Zero-Trust Control Plane</h1>
@@ -29,10 +29,10 @@ export const ControlPlane: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <div className="flex bg-zinc-900/80 p-1 rounded-xl border border-zinc-800/50">
-            <button 
+            <button
               onClick={() => setActiveTab('registry')}
               className={cn(
                 "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
@@ -41,7 +41,7 @@ export const ControlPlane: React.FC = () => {
             >
               <LayoutGrid size={12} /> Registry
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('analytics')}
               className={cn(
                 "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
@@ -65,8 +65,8 @@ export const ControlPlane: React.FC = () => {
       <main className="flex-1 flex overflow-hidden relative">
         {/* Subtle Background Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
-           <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px]" />
-           <div className="absolute bottom-[10%] -right-[5%] w-[30%] h-[30%] bg-emerald-500/10 rounded-full blur-[120px]" />
+          <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[10%] -right-[5%] w-[30%] h-[30%] bg-emerald-500/10 rounded-full blur-[120px]" />
         </div>
 
         {/* Left Sidebar: Context & Logs */}
@@ -105,8 +105,8 @@ export const ControlPlane: React.FC = () => {
                   <div key={i} className="text-[10px] font-mono p-2.5 rounded-lg bg-zinc-900/30 border border-zinc-800/50 flex gap-3 transition-colors hover:bg-zinc-800/30">
                     <span className="text-zinc-600">[{log.time}]</span>
                     <span className={cn(
-                        "font-medium",
-                        log.type === 'success' ? 'text-emerald-400/80' :
+                      "font-medium",
+                      log.type === 'success' ? 'text-emerald-400/80' :
                         log.type === 'warning' ? 'text-amber-400/80' : 'text-indigo-400/80'
                     )}>{log.msg}</span>
                   </div>
@@ -114,44 +114,44 @@ export const ControlPlane: React.FC = () => {
               </div>
             </section>
           </div>
-          
+
           <div className="mt-auto p-6 bg-zinc-900/40 border-t border-zinc-800/50">
             <div className="flex items-center justify-between text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em]">
-                <span>System Status</span>
-                <span className="text-emerald-500 flex items-center gap-1">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500" /> Nominal
-                </span>
+              <span>System Status</span>
+              <span className="text-emerald-500 flex items-center gap-1">
+                <div className="w-1 h-1 rounded-full bg-emerald-500" /> Nominal
+              </span>
             </div>
           </div>
         </aside>
 
         {/* Content Area */}
         <div className="flex-1 p-8 overflow-y-auto bg-transparent z-10 custom-scrollbar">
-            <div className="max-w-[1400px] mx-auto h-full flex flex-col">
-                {activeTab === 'registry' ? (
-                  <div className="flex-1 flex flex-col space-y-6">
-                    <header className="flex justify-between items-end">
-                        <div>
-                          <h2 className="text-2xl font-black tracking-tighter text-white">Provider Registry</h2>
-                          <p className="text-zinc-500 text-sm mt-1 font-medium">Manage connectivity, financial guardrails, and discovery settings for all AI providers.</p>
-                        </div>
-                    </header>
-                    <div className="flex-1 min-h-0">
-                      <ProviderManagementGrid />
-                    </div>
+          <div className="max-w-[1400px] mx-auto h-full flex flex-col">
+            {activeTab === 'registry' ? (
+              <div className="flex-1 flex flex-col space-y-6">
+                <header className="flex justify-between items-end">
+                  <div>
+                    <h2 className="text-2xl font-black tracking-tighter text-white">Provider Registry</h2>
+                    <p className="text-zinc-500 text-sm mt-1 font-medium">Manage connectivity, financial guardrails, and discovery settings for all AI providers.</p>
                   </div>
-                ) : (
-                  <div className="flex-1 flex flex-col space-y-6">
-                    <header>
-                        <h2 className="text-2xl font-black tracking-tighter text-white">Multi-Armed Bandit Analytics</h2>
-                        <p className="text-zinc-500 text-sm mt-1 font-medium">Real-time learning metrics and utility preference ranking across all active providers.</p>
-                    </header>
-                    <div className="flex-1 min-h-[600px] bg-zinc-900/40 rounded-2xl border border-zinc-800/50 p-8 backdrop-blur-sm">
-                        <ProviderHealth />
-                    </div>
-                  </div>
-                )}
-            </div>
+                </header>
+                <div className="flex-1 min-h-0">
+                  <ProviderManagementGrid />
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col space-y-6">
+                <header>
+                  <h2 className="text-2xl font-black tracking-tighter text-white">Multi-Armed Bandit Analytics</h2>
+                  <p className="text-zinc-500 text-sm mt-1 font-medium">Real-time learning metrics and utility preference ranking across all active providers.</p>
+                </header>
+                <div className="flex-1 min-h-[600px] bg-zinc-900/40 rounded-2xl border border-zinc-800/50 p-8 backdrop-blur-sm">
+                  <ProviderHealth />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>
