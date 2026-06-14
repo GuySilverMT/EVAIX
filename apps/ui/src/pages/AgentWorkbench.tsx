@@ -57,7 +57,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   const decodedPath = useMemo(() => id ? decodeURIComponent(id) : null, [id]);
 
   const {
-    setCards, addCard,
+    setCards, addCard, addPanel,
     activeWorkspace, activeScreenspaceId, loadWorkspace,
     activeWorkflow,
     setActiveWorkspaceId, setProjectType, setProjectName, projectType, activeWorkspaceId, cards,
@@ -213,16 +213,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   const handleAddColumn = () => {
     const newColIndex = columns;
     setColumns(columns + 1);
-    
-    const roleId = availableRoles.length > 0 ? availableRoles[0].id : '';
-    addCard({
-      id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      roleId,
-      column: newColIndex,
-      screenspaceId: activeScreenspaceId,
-      activeTool: null,
-      metadata: { viewMode: null }
-    });
+    addPanel(`col-${newColIndex + 1}`);
   };
 
   const handleRemoveColumn = (colIndexToRemove: number) => {
@@ -261,7 +252,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   };
 
   const handleSpawnCard = (columnIndex: number) => {
-    handleSpawnTool(columnIndex, 'editor');
+    addPanel(`col-${columnIndex + 1}`);
   };
 
   const scrollToCardIndex = (columnIndex: number, cardIndex: number) => {

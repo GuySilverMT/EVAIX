@@ -37,6 +37,7 @@ export const startSessionSchema = z.object({
       targetDir: z.string().optional(),
       targetFile: z.string().optional(),
       screenspaceId: z.string().optional(),
+      collabMode: z.boolean().optional(),
     })
     .optional(),
   sessionId: z.string().optional(),
@@ -88,6 +89,17 @@ export class AgentService {
           include: { workspace: true },
         });
         ctx.projectPrompt = card?.workspace.systemPrompt || undefined;
+        if (inputCtx?.collabMode) {
+          const collabInstruction = `
+\n[COLLABORATION REVIEW MODE ACTIVE]
+When writing or modifying files, you MUST act as a collaborative editor (like Google Docs review mode):
+- Do NOT perform raw replacements.
+- Wrap all additions in <ins>added text</ins>.
+- Wrap all deletions in <del>deleted text</del>.
+- Do not modify unchanged text.
+Keep all ins and del tags correctly structured.\n`;
+          ctx.projectPrompt = (ctx.projectPrompt || '') + collabInstruction;
+        }
 
         ctx.finalUserGoal = userGoal;
         if (inputCtx?.targetDir) {

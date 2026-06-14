@@ -38,6 +38,7 @@ export interface WorkspaceState {
   activeWorkspacePath: string | null;
   projectName: string | null;
   projectType: string | null;
+  activeProject: { name: string | null; type: string | null } | null;
   activeModelId: string | null;
   recentProjects: string[];
   loadWorkspace: (id: string) => void;
@@ -49,6 +50,7 @@ export interface WorkspaceState {
   setRecentProjects: (paths: string[]) => void;
   addRecentProject: (path: string) => void;
   initializeFromWorkspace: (projectType: string) => void;
+  addPanel: (columnId: string) => void;
 
   // AI Context (Application Wide)
   aiContext: {
@@ -114,18 +116,46 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       activeWorkspacePath: null,
       projectName: null,
       projectType: null,
+      activeProject: { name: null, type: null },
       activeModelId: null,
       recentProjects: [],
       loadWorkspace: (id: string) => set({ activeWorkspace: id }),
       setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id, activeWorkspacePath: id }),
       setActiveWorkspacePath: (path) => set({ activeWorkspacePath: path }),
-      setProjectName: (name) => set({ projectName: name }),
-      setProjectType: (type) => set({ projectType: type }),
+      setProjectName: (name) => set((state) => ({ projectName: name, activeProject: { name, type: state.projectType } })),
+      setProjectType: (type) => set((state) => ({ projectType: type, activeProject: { name: state.projectName, type } })),
       setActiveModelId: (id) => set({ activeModelId: id }),
       setRecentProjects: (paths) => set({ recentProjects: paths }),
       addRecentProject: (path) => set((state) => {
         const next = state.recentProjects.filter(p => p !== path);
         return { recentProjects: [path, ...next].slice(0, 10) }; // Keep top 10
+      }),
+      addPanel: (columnId: string) => set((state) => {
+        const projectName = state.activeProject?.name || state.projectName || 'Document';
+        
+        let columnIndex = 0;
+        if (columnId.startsWith('col-')) {
+          columnIndex = parseInt(columnId.split('-')[1], 10) - 1;
+        } else {
+          columnIndex = parseInt(columnId, 10);
+        }
+        if (isNaN(columnIndex)) columnIndex = 0;
+        
+        const newName = `${projectName} C${columnIndex + 1}`;
+        
+        const newPanel = {
+          id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          roleId: '',
+          column: columnIndex,
+          screenspaceId: state.activeScreenspaceId,
+          activeTool: 'editor', // FORCE the default view to be the editor
+          title: newName,
+          metadata: { viewMode: 'editor' }
+        };
+        
+        return {
+          cards: [...state.cards, newPanel]
+        };
       }),
 
       initializeFromWorkspace: (projectType: string) => set((state) => {
@@ -187,6 +217,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         activeWorkspacePath: state.activeWorkspacePath,
         projectName: state.projectName,
         projectType: state.projectType,
+        activeProject: state.activeProject,
         activeModelId: state.activeModelId,
         recentProjects: state.recentProjects,
         // Do NOT persist activeWorkflow — always start fresh

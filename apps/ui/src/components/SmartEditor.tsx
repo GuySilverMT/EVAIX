@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import React, { useEffect, useState } from 'react';
+import { useEditor, EditorContent as TiptapEditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -11,12 +11,120 @@ import Underline from '@tiptap/extension-underline';
 import Typography from '@tiptap/extension-typography';
 import { WritingToolbar } from './WritingToolbar.js';
 import MonacoEditor from './MonacoEditor.js'; 
-import { Bot, Loader2, Play, Copy, Save, RefreshCw } from 'lucide-react';
+import { 
+  Bot, Loader2, Play, Copy, Save, RefreshCw,
+  Bold, Italic, Underline as UnderlineIcon, Strikethrough,
+  Heading1, Heading2, Heading3, List, ListOrdered, Quote, Text
+} from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { useAgenticContext } from '../hooks/useAgenticContext.js';
 import { toast } from 'sonner';
 import { trpc } from '../utils/trpc.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
+import { 
+  EditorRoot, 
+  EditorContent as NovelEditorContent,
+  useEditor as useNovelEditor,
+  EditorBubble,
+  EditorBubbleItem,
+  EditorCommand,
+  EditorCommandItem,
+  EditorCommandEmpty,
+  EditorCommandList,
+  StarterKit as NovelStarterKit,
+  Placeholder as NovelPlaceholder,
+  TiptapUnderline as NovelUnderline,
+  Command as NovelCommand,
+  renderItems as novelRenderItems
+} from 'novel';
+
+const suggestionItems = [
+  {
+    title: "Text",
+    description: "Just start writing with plain text.",
+    icon: <Text size={12} />,
+    command: ({ editor, range }: { editor: any, range: any }) => {
+      editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
+    }
+  },
+  {
+    title: "Heading 1",
+    description: "Big section heading.",
+    icon: <Heading1 size={12} />,
+    command: ({ editor, range }: { editor: any, range: any }) => {
+      editor.chain().focus().deleteRange(range).setNode("heading", { level: 1 }).run();
+    }
+  },
+  {
+    title: "Heading 2",
+    description: "Medium section heading.",
+    icon: <Heading2 size={12} />,
+    command: ({ editor, range }: { editor: any, range: any }) => {
+      editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run();
+    }
+  },
+  {
+    title: "Heading 3",
+    description: "Small section heading.",
+    icon: <Heading3 size={12} />,
+    command: ({ editor, range }: { editor: any, range: any }) => {
+      editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run();
+    }
+  },
+  {
+    title: "Bullet List",
+    description: "Create a simple bulleted list.",
+    icon: <List size={12} />,
+    command: ({ editor, range }: { editor: any, range: any }) => {
+      editor.chain().focus().deleteRange(range).toggleBulletList().run();
+    }
+  },
+  {
+    title: "Numbered List",
+    description: "Create a list with numbering.",
+    icon: <ListOrdered size={12} />,
+    command: ({ editor, range }: { editor: any, range: any }) => {
+      editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+    }
+  },
+  {
+    title: "Quote",
+    description: "Capture a quote.",
+    icon: <Quote size={12} />,
+    command: ({ editor, range }: { editor: any, range: any }) => {
+      editor.chain().focus().deleteRange(range).toggleBlockquote().run();
+    }
+  }
+];
+
+const suggestion = {
+  items: () => suggestionItems,
+  render: novelRenderItems
+};
+
+const writingExtensions = [
+  NovelStarterKit,
+  NovelPlaceholder.configure({
+    placeholder: "Press '/' for commands..."
+  }),
+  NovelUnderline,
+  NovelCommand.configure({ suggestion })
+];
+
+const EditorSync = ({ content, isWritingMode }: { content: string, isWritingMode: boolean }) => {
+  const { editor } = useNovelEditor();
+
+  useEffect(() => {
+    if (editor && !editor.isDestroyed && !editor.isFocused) {
+      const currentVal = isWritingMode ? editor.getHTML() : editor.getText();
+      if (content !== currentVal) {
+        editor.commands.setContent(content); 
+      }
+    }
+  }, [content, editor, isWritingMode]);
+
+  return null;
+};
 
 type AiResponse = string | { 
   content?: string; 
@@ -38,7 +146,39 @@ interface SmartEditorProps {
   onRoleChange?: (roleId: string) => void;
 }
 
-const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate, roleId, onRoleChange, cardId, projectType }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void, roleId?: string | null, onRoleChange?: (roleId: string) => void, cardId?: string, projectType?: string | null }) => {
+const NovelToolbarWrapper = () => {
+  const { editor } = useNovelEditor();
+  if (!editor) return null;
+  return <WritingToolbar editor={editor} />;
+};
+
+const TiptapEditor = ({ 
+  content, 
+  onChange, 
+  isAiTyping, 
+  onRun, 
+  fileName, 
+  onNavigate, 
+  roleId, 
+  onRoleChange, 
+  cardId, 
+  projectType,
+  collabMode,
+  setCollabMode
+}: { 
+  content: string, 
+  onChange: (val: string) => void, 
+  isAiTyping: boolean, 
+  onRun?: (goal?: string, roleIdOverride?: string) => void, 
+  fileName: string, 
+  onNavigate?: (url: string) => void, 
+  roleId?: string | null, 
+  onRoleChange?: (roleId: string) => void, 
+  cardId?: string, 
+  projectType?: string | null,
+  collabMode: boolean,
+  setCollabMode: (val: boolean) => void
+}) => {
   const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
   const utils = trpc.useContext();
   const isWritingMode = projectType?.toLowerCase() === 'writing';
@@ -51,26 +191,12 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       return `<pre><code class="language-markdown">${escaped}</code></pre>`;
   };
 
-  const writingExtensions = [
-    StarterKit,
-    Underline,
-    Typography,
-    TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Image.configure({ inline: true, allowBase64: true }),
-    Table.configure({ resizable: true }),
-    TableRow,
-    TableHeader,
-    TableCell,
-  ];
-
   const editor = useEditor({
-    extensions: isWritingMode ? writingExtensions : [StarterKit],
+    extensions: [StarterKit],
     content: getInitialContent(content),
     editorProps: {
       attributes: {
-        class: isWritingMode 
-            ? 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full' 
-            : 'focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full font-mono whitespace-pre-wrap',
+        class: 'focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full font-mono whitespace-pre-wrap',
       },
       handleDOMEvents: {
         // CRITICAL: Return false to allow contextmenu event to bubble up for voice keyboard
@@ -78,10 +204,8 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       },
     },
     onUpdate: ({ editor }) => {
-      // Only trigger onChange if the update was NOT from an external setContent
-      // We check if the editor is focused to determine if user is typing
-      if (editor.isFocused) {
-        onChange(isWritingMode ? editor.getHTML() : editor.getText());
+      if (editor.isFocused && !isWritingMode) {
+        onChange(editor.getText());
       }
     },
   });
@@ -89,8 +213,8 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
   // Keep Tiptap content synced if content prop changes externally (e.g. AI writes)
   // BUT avoid loops by checking focus - if focussed, we assume the user is typing
   useEffect(() => {
-    if (editor && !editor.isDestroyed && !editor.isFocused) {
-      const currentVal = isWritingMode ? editor.getHTML() : editor.getText();
+    if (!isWritingMode && editor && !editor.isDestroyed && !editor.isFocused) {
+      const currentVal = editor.getText();
       if (content !== currentVal) {
         editor.commands.setContent(getInitialContent(content)); 
       }
@@ -99,7 +223,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
 
   // Handle Cmd+Enter to Run
   useEffect(() => {
-    if (!editor || editor.isDestroyed || !onRun) return;
+    if (isWritingMode || !editor || editor.isDestroyed || !onRun) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       // Support Shift+Enter, Ctrl+Enter, Alt+Enter to run
@@ -115,8 +239,6 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
         const link = target.closest('a');
         if (link && link.href && onNavigate) {
             event.preventDefault();
-            // Clean up standard link behavior if needed
-            // Only internal or valid links
             onNavigate(link.href);
         }
     };
@@ -134,7 +256,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
     } catch (e) {
       console.warn("SmartEditor: Error attaching listeners", e);
     }
-  }, [editor, onRun, onNavigate]);
+  }, [editor, onRun, onNavigate, isWritingMode]);
 
   return (
     <SmartContainer 
@@ -144,7 +266,21 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       selectedRoleId={roleId}
       onRoleSelect={onRoleChange}
       extraActions={
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+             {/* AI Mode Selector Dropdown */}
+             <div className="relative flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 h-6">
+               <select
+                 value={collabMode ? 'collab' : 'standard'}
+                 onChange={(e) => setCollabMode(e.target.value === 'collab')}
+                 className="bg-transparent border-none text-[10px] text-zinc-400 font-mono outline-none cursor-pointer focus:text-white"
+               >
+                 <option value="standard" className="bg-zinc-950 text-zinc-400">Standard AI</option>
+                 <option value="collab" className="bg-zinc-950 text-zinc-400">Collab Review</option>
+               </select>
+             </div>
+             
+             <div className="w-px h-3 bg-zinc-800" />
+
              {/* [NEW] Show Logs Toggle */}
              <button 
                 type="button" 
@@ -154,7 +290,10 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
              >
                 <Bot size={12}/>
              </button>
-             <button type="button" onClick={() => { if(editor) { const text = editor.getHTML(); void navigator.clipboard.writeText(text).then(() => toast.success('Copied')); } }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
+             <button type="button" onClick={() => { 
+                const text = isWritingMode ? content : (editor ? editor.getHTML() : "");
+                void navigator.clipboard.writeText(text).then(() => toast.success('Copied'));
+             }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
               <button 
                 type="button" 
                 onClick={() => { void utils.roles.list.invalidate(); toast.success('Roles refreshed'); }} 
@@ -179,9 +318,6 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
         
         // [LOGIC] Append logs if enabled
         if (showLogs && typeof payload !== 'string' && payload.logs && payload.logs.length > 0) {
-            // Check if logs are objects (some are from AgentRuntime logging objects?)
-            // AgentRuntime logs are string[]
-            
             const logHtml = payload.logs.map(log => {
                 // Formatting for "Thought Process"
                 if (log.startsWith('[Thought Process]')) {
@@ -196,9 +332,13 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
             </section>` + targetContent;
         }
 
-        if(editor && targetContent) {
-          editor.commands.setContent(targetContent);
-          onChange(targetContent);
+        if (targetContent) {
+          if (isWritingMode) {
+            onChange(targetContent);
+          } else if (editor) {
+            editor.commands.setContent(targetContent);
+            onChange(targetContent);
+          }
           
           // Auto-refresh roles if we see a success message
           if (targetContent.includes('✅ Role Variant Created Successfully') || targetContent.includes('biologically spawned')) {
@@ -209,13 +349,14 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       }}
     >
       {(registerContext) => {
-        // ... (rest of render) ...
         // Register context for AI
-        if (editor && !editor.isDestroyed) {
+        if (isWritingMode) {
+          registerContext(() => content);
+        } else if (editor && !editor.isDestroyed) {
           registerContext(() => editor.getText());
         }
 
-        if (!editor) {
+        if (!isWritingMode && !editor) {
           return (
             <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 gap-3">
                <Loader2 className="animate-spin text-purple-500" size={24} />
@@ -234,12 +375,94 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
                 </div>
               )}
 
-            {isWritingMode && editor && <WritingToolbar editor={editor} />}
-            <EditorContent editor={editor} className="flex-1 h-full min-h-0 overflow-y-auto" />
+            {isWritingMode ? (
+              <EditorRoot>
+                <EditorSync content={content} isWritingMode={isWritingMode} />
+                <div className="h-full w-full bg-zinc-900 overflow-y-auto relative flex flex-col group">
+                  <NovelToolbarWrapper />
+                  <NovelEditorContent
+                    className="flex-1 h-full min-h-0 overflow-y-auto"
+                    initialContent={content}
+                    extensions={writingExtensions}
+                    editorProps={{
+                      attributes: {
+                        class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full',
+                      },
+                      handleDOMEvents: {
+                        contextmenu: () => false,
+                        keydown: (view, event) => {
+                          if (event.key === 'Enter' && (event.shiftKey || event.ctrlKey || event.altKey)) {
+                            event.preventDefault();
+                            onRun && onRun();
+                            return true;
+                          }
+                          return false;
+                        },
+                        click: (view, event) => {
+                          const target = event.target as HTMLElement;
+                          const link = target.closest('a');
+                          if (link && link.href && onNavigate) {
+                            event.preventDefault();
+                            onNavigate(link.href);
+                            return true;
+                          }
+                          return false;
+                        }
+                      },
+                    }}
+                    onUpdate={({ editor }) => {
+                      onChange(editor.getHTML());
+                    }}
+                  >
+                    <EditorBubble className="flex w-fit max-w-xs shrink-0 gap-1 rounded border border-zinc-800 bg-zinc-950 p-1 shadow-xl animate-in fade-in zoom-in duration-100">
+                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleBold().run()}>
+                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><Bold size={12} /></button>
+                      </EditorBubbleItem>
+                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleItalic().run()}>
+                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><Italic size={12} /></button>
+                      </EditorBubbleItem>
+                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleUnderline().run()}>
+                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><UnderlineIcon size={12} /></button>
+                      </EditorBubbleItem>
+                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleStrike().run()}>
+                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><Strikethrough size={12} /></button>
+                      </EditorBubbleItem>
+                    </EditorBubble>
+                    
+                    <EditorCommand className="z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border border-zinc-850 bg-zinc-950 px-1 py-2 shadow-2xl transition-all scrollbar-thin">
+                      <EditorCommandEmpty className="px-2 text-zinc-500 text-xs">No results</EditorCommandEmpty>
+                      <EditorCommandList>
+                        {suggestionItems.map((item) => (
+                          <EditorCommandItem
+                            key={item.title}
+                            value={item.title}
+                            onCommand={item.command}
+                            className="flex w-full items-center space-x-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-900 aria-selected:bg-zinc-900 transition-colors cursor-pointer"
+                          >
+                            <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400">
+                              {item.icon}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-zinc-200">{item.title}</p>
+                              <p className="text-[10px] text-zinc-500">{item.description}</p>
+                            </div>
+                          </EditorCommandItem>
+                        ))}
+                      </EditorCommandList>
+                    </EditorCommand>
+                  </NovelEditorContent>
+                </div>
+              </EditorRoot>
+            ) : (
+              <>
+                {isWritingMode && editor && <WritingToolbar editor={editor} />}
+                <TiptapEditorContent editor={editor} className="flex-1 h-full min-h-0 overflow-y-auto" />
+              </>
+            )}
             
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <span className="text-[10px] text-zinc-600 bg-black/40 px-2 py-0.5 rounded border border-zinc-800 uppercase font-bold">
-                Tiptap (Rich Text)
+                {isWritingMode ? 'Novel (Rich Text)' : 'Tiptap (Plain Text)'}
               </span>
             </div>
           </div>
@@ -252,7 +475,18 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
 const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate, roleId, onRoleChange, cardId }) => {
   const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
   const projectType = useWorkspaceStore(s => s.projectType);
-
+  const card = useWorkspaceStore(s => s.cards.find(c => c.id === cardId));
+  const updateCard = useWorkspaceStore(s => s.updateCard);
+  
+  const collabMode = (card?.metadata as any)?.collabMode || false;
+  const setCollabMode = (val: boolean) => {
+    updateCard(cardId || '', {
+      metadata: {
+        ...(card?.metadata || {}),
+        collabMode: val
+      }
+    });
+  };
 
   useAgenticContext({
     id: cardId || fileName,
@@ -334,7 +568,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     );
   }
 
-  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} cardId={cardId} projectType={projectType} />;
+  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} cardId={cardId} projectType={projectType} collabMode={collabMode} setCollabMode={setCollabMode} />;
 };
 
 export default SmartEditor;

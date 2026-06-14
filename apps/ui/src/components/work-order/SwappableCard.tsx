@@ -13,6 +13,7 @@ import { trpc } from '../../utils/trpc.js';
 import type { TerminalMessage } from '@repo/common/agent';
 import CompactRoleSelector from '../CompactRoleSelector.js';
 import { ErrorBoundary } from '../ErrorBoundary.js';
+import { AIChat } from '../AIChat.js';
 
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
@@ -40,6 +41,27 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const projectType = useWorkspaceStore(s => s.projectType);
     const navigate = useNavigate();
 
+    const activeProjectType = useWorkspaceStore(state => state.activeProject?.type);
+
+    const availableTools = useMemo(() => {
+        const baseTools = [
+            { id: 'editor', name: 'Editor', icon: Code }, // EDITOR IS DEFAULT
+            { id: 'ai-chat', name: 'AI Chat', icon: FileText },
+            { id: 'files', name: 'Files', icon: Folder }
+        ];
+
+        // ONLY inject coding tools if we are absolutely in a coding project (case-insensitive check for 'coding' or 'code')
+        const type = activeProjectType?.toLowerCase() || '';
+        if (type === 'coding' || type === 'code') {
+            baseTools.push({ id: 'terminal', name: 'Terminal', icon: Terminal });
+            baseTools.push({ id: 'BadBuilder', name: 'BadBuilder', icon: LayoutTemplate });
+        }
+
+        return baseTools;
+    }, [activeProjectType]);
+
+    const [activeTab, setActiveTab] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | 'ai-chat'>('editor');
+
     const startSessionMutation = trpc.agent.startSession.useMutation();
 
     const agentConfig = useMemo(() => {
@@ -64,11 +86,11 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | null>(() => {
-        if (card?.activeTool === null) return null;
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | 'ai-chat' | null>(() => {
+        if (card?.activeTool === null) return 'editor';
         if (card?.activeTool) return card.activeTool as any;
         const meta = card?.metadata as { viewMode?: string } | undefined;
-        return (meta?.viewMode as any) || null;
+        return (meta?.viewMode as any) || 'editor';
     });
 
     const setViewModeAndStore = useCallback((mode: typeof viewMode) => {
@@ -81,6 +103,15 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             }
         });
     }, [id, updateCard]);
+
+    useEffect(() => {
+        if (viewMode) {
+            setActiveTab(viewMode as any);
+        } else {
+            setViewModeAndStore('editor');
+            setActiveTab('editor');
+        }
+    }, [viewMode, setViewModeAndStore]);
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
@@ -228,6 +259,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         toast.loading("Running Agent...", { id: 'agent-run' });
 
         try {
+            const isCollab = (card?.metadata as any)?.collabMode || false;
             const input = {
                 cardId: id,
                 userGoal: goal,
@@ -238,7 +270,10 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     temperature: agentConfig.temperature,
                     maxTokens: agentConfig.maxTokens
                 },
-                context: { targetDir: currentPath }
+                context: { 
+                    targetDir: currentPath,
+                    collabMode: isCollab
+                }
             };
             const session = await startSessionMutation.mutateAsync(input, { signal: abortController.current.signal } as any);
             toast.success("Done", { id: 'agent-run' });
@@ -282,7 +317,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         title="Select Tool"
                     >
                         {(() => {
-                            const activeTool = getToolsForProjectType(projectType).find(t => t.id === viewMode);
+                            const activeTool = availableTools.find(t => t.id === viewMode);
                             const IconComp = activeTool?.icon || Folder;
                             return <IconComp size={12} className={activeTool ? "text-[var(--color-primary)]" : "text-zinc-500"} />;
                         })()}
@@ -291,23 +326,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
                     {menuOpen && (
                         <div className="absolute left-0 top-7 z-50 bg-zinc-900 border border-zinc-700 rounded shadow-xl py-1 flex flex-col gap-0.5 min-w-[36px] items-center p-1">
-                             {getToolsForProjectType(projectType).map(t => (
+                             {availableTools.map(t => (
                                 <button
                                     key={t.id}
                                     type="button"
                                     onClick={() => {
-                                        if (t.id === 'role') {
-                                            setShowRolePicker(!showRolePicker);
-                                        } else {
-                                            setViewModeAndStore(t.id as any);
-                                            setShowRolePicker(false);
-                                        }
+                                        setViewModeAndStore(t.id as any);
                                         setMenuOpen(false);
                                     }}
-                                    title={t.label}
+                                    title={t.name}
                                     className={cn(
                                         "p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 flex items-center justify-center w-7 h-7 transition-colors",
-                                        (viewMode === t.id || (t.id === 'role' && showRolePicker)) && "text-[var(--color-primary)] bg-zinc-800"
+                                        viewMode === t.id && "text-[var(--color-primary)] bg-zinc-800"
                                     )}
                                 >
                                     <t.icon size={13} />
@@ -534,6 +564,13 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                             }}
                         />}
                         {viewMode === 'terminal' && <SmartTerminal workingDirectory={currentPath} logs={terminalLogs} onInput={(msg) => void runAgent(msg)} />}
+                        {viewMode === 'ai-chat' && (
+                            <AIChat
+                                logs={terminalLogs}
+                                onInput={(msg) => void runAgent(msg)}
+                                isRunning={isRunning}
+                            />
+                        )}
                         {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
                         {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
                         {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}

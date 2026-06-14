@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { AiToolbar } from '../primitives/AiToolbar.js';
 import { cn } from '../../../lib/utils.js';
 
-export type SmartContainerType = 'MONACO' | 'TERMINAL' | 'BROWSER' | 'DOCS';
+export type SmartContainerType = 'MONACO' | 'TERMINAL' | 'BROWSER' | 'DOCS' | 'CHAT';
 
 interface SmartContainerProps {
   type: SmartContainerType;
@@ -23,6 +23,7 @@ const CONFIG_MAP: Record<SmartContainerType, { pos: 'top' | 'bottom', varName: s
   TERMINAL: { pos: 'bottom', varName: 'var(--ai-intent-terminal)' },
   BROWSER:  { pos: 'top',    varName: 'var(--ai-intent-browser)' },
   DOCS:     { pos: 'top',    varName: 'var(--ai-intent-docs)' },
+  CHAT:     { pos: 'top',    varName: 'var(--ai-intent-chat)' },
 };
 
 export const SmartContainer: React.FC<SmartContainerProps> = ({
