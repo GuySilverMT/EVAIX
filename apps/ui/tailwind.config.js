@@ -5,6 +5,7 @@ export default {
     content: [
       './src/**/*.{ts,tsx}',
       './node_modules/flyonui/dist/js/*.js',
+      './node_modules/novel/dist/**/*.js',
     ],
     safelist: [
       'border-t-2', 'border-l-2', 'border-b-2', 'border-r-2',
