@@ -1,20 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useEditor, EditorContent as TiptapEditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import { Table } from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import Image from '@tiptap/extension-image';
-import TextAlign from '@tiptap/extension-text-align';
-import Underline from '@tiptap/extension-underline';
-import Typography from '@tiptap/extension-typography';
-import { WritingToolbar } from './WritingToolbar.js';
-import MonacoEditor from './MonacoEditor.js'; 
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import MonacoEditor from './MonacoEditor.js';
 import { 
-  Bot, Loader2, Play, Copy, Save, RefreshCw,
-  Bold, Italic, Underline as UnderlineIcon, Strikethrough,
-  Heading1, Heading2, Heading3, List, ListOrdered, Quote, Text
+  Bot, Loader2, Play, Copy, Save, RefreshCw, Paperclip, Send, ChevronDown, Sparkles, FileText, User
 } from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { useAgenticContext } from '../hooks/useAgenticContext.js';
@@ -23,105 +10,32 @@ import { trpc } from '../utils/trpc.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { 
   EditorRoot, 
-  EditorContent as NovelEditorContent,
+  EditorContent as Editor, // Import the Editor component from novel
   useEditor as useNovelEditor,
-  EditorBubble,
-  EditorBubbleItem,
-  EditorCommand,
-  EditorCommandItem,
-  EditorCommandEmpty,
-  EditorCommandList,
   StarterKit as NovelStarterKit,
   Placeholder as NovelPlaceholder,
-  TiptapUnderline as NovelUnderline,
-  Command as NovelCommand,
-  renderItems as novelRenderItems
+  TiptapUnderline as NovelUnderline
 } from 'novel';
-
-const suggestionItems = [
-  {
-    title: "Text",
-    description: "Just start writing with plain text.",
-    icon: <Text size={12} />,
-    command: ({ editor, range }: { editor: any, range: any }) => {
-      editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run();
-    }
-  },
-  {
-    title: "Heading 1",
-    description: "Big section heading.",
-    icon: <Heading1 size={12} />,
-    command: ({ editor, range }: { editor: any, range: any }) => {
-      editor.chain().focus().deleteRange(range).setNode("heading", { level: 1 }).run();
-    }
-  },
-  {
-    title: "Heading 2",
-    description: "Medium section heading.",
-    icon: <Heading2 size={12} />,
-    command: ({ editor, range }: { editor: any, range: any }) => {
-      editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run();
-    }
-  },
-  {
-    title: "Heading 3",
-    description: "Small section heading.",
-    icon: <Heading3 size={12} />,
-    command: ({ editor, range }: { editor: any, range: any }) => {
-      editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run();
-    }
-  },
-  {
-    title: "Bullet List",
-    description: "Create a simple bulleted list.",
-    icon: <List size={12} />,
-    command: ({ editor, range }: { editor: any, range: any }) => {
-      editor.chain().focus().deleteRange(range).toggleBulletList().run();
-    }
-  },
-  {
-    title: "Numbered List",
-    description: "Create a list with numbering.",
-    icon: <ListOrdered size={12} />,
-    command: ({ editor, range }: { editor: any, range: any }) => {
-      editor.chain().focus().deleteRange(range).toggleOrderedList().run();
-    }
-  },
-  {
-    title: "Quote",
-    description: "Capture a quote.",
-    icon: <Quote size={12} />,
-    command: ({ editor, range }: { editor: any, range: any }) => {
-      editor.chain().focus().deleteRange(range).toggleBlockquote().run();
-    }
-  }
-];
-
-const suggestion = {
-  items: () => suggestionItems,
-  render: novelRenderItems
-};
 
 const writingExtensions = [
   NovelStarterKit,
   NovelPlaceholder.configure({
-    placeholder: "Press '/' for commands..."
+    placeholder: "Start writing..."
   }),
-  NovelUnderline,
-  NovelCommand.configure({ suggestion })
+  NovelUnderline
 ];
 
-const EditorSync = ({ content, isWritingMode }: { content: string, isWritingMode: boolean }) => {
+const EditorSync = ({ content }: { content: string }) => {
   const { editor } = useNovelEditor();
 
   useEffect(() => {
     if (editor && !editor.isDestroyed && !editor.isFocused) {
-      const currentVal = isWritingMode ? editor.getHTML() : editor.getText();
+      const currentVal = editor.getHTML();
       if (content !== currentVal) {
         editor.commands.setContent(content); 
       }
     }
-  }, [content, editor, isWritingMode]);
+  }, [content, editor]);
 
   return null;
 };
@@ -139,124 +53,149 @@ interface SmartEditorProps {
   fileName: string;
   content: string;
   onChange: (val: string) => void;
-  isAiTyping?: boolean; // New prop to show AI activity
-  onRun?: (goal?: string, roleIdOverride?: string) => void;   // Callback for running the agent (Cmd+Enter)
-  onNavigate?: (url: string) => void; // New: Handle link clicks
+  isAiTyping?: boolean;
+  onRun?: (goal?: string, roleIdOverride?: string) => void;
+  onNavigate?: (url: string) => void;
   roleId?: string | null;
   onRoleChange?: (roleId: string) => void;
 }
 
-const NovelToolbarWrapper = () => {
-  const { editor } = useNovelEditor();
-  if (!editor) return null;
-  return <WritingToolbar editor={editor} />;
-};
-
-const TiptapEditor = ({ 
+const SmartEditor: React.FC<SmartEditorProps> = ({ 
+  fileName, 
   content, 
   onChange, 
-  isAiTyping, 
+  isAiTyping = false, 
   onRun, 
-  fileName, 
   onNavigate, 
   roleId, 
   onRoleChange, 
-  cardId, 
-  projectType,
-  collabMode,
-  setCollabMode
-}: { 
-  content: string, 
-  onChange: (val: string) => void, 
-  isAiTyping: boolean, 
-  onRun?: (goal?: string, roleIdOverride?: string) => void, 
-  fileName: string, 
-  onNavigate?: (url: string) => void, 
-  roleId?: string | null, 
-  onRoleChange?: (roleId: string) => void, 
-  cardId?: string, 
-  projectType?: string | null,
-  collabMode: boolean,
-  setCollabMode: (val: boolean) => void
+  cardId 
 }) => {
-  const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
-  const utils = trpc.useContext();
-  const isWritingMode = projectType?.toLowerCase() === 'writing';
+  const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
+  const card = useWorkspaceStore(s => s.cards.find(c => c.id === cardId));
+  const updateCard = useWorkspaceStore(s => s.updateCard);
   
-  // Format content for code block if not writing mode
-  const getInitialContent = (raw: string) => {
-      if (isWritingMode) return raw;
-      // Bypass Tiptap's HTML parser entirely so markdown/configs load as raw text inside a CodeBlock
-      const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return `<pre><code class="language-markdown">${escaped}</code></pre>`;
+  const collabMode = (card?.metadata as any)?.collabMode || false;
+  const setCollabMode = (val: boolean) => {
+    updateCard(cardId || '', {
+      metadata: {
+        ...(card?.metadata || {}),
+        collabMode: val
+      }
+    });
   };
 
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: getInitialContent(content),
-    editorProps: {
-      attributes: {
-        class: 'focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full font-mono whitespace-pre-wrap',
-      },
-      handleDOMEvents: {
-        // CRITICAL: Return false to allow contextmenu event to bubble up for voice keyboard
-        contextmenu: () => false,
-      },
-    },
-    onUpdate: ({ editor }) => {
-      if (editor.isFocused && !isWritingMode) {
-        onChange(editor.getText());
-      }
-    },
+  const [editorMode, setEditorMode] = useState<'standard' | 'chat' | 'collab'>(() => {
+    if (collabMode) return 'collab';
+    return 'standard';
   });
 
-  // Keep Tiptap content synced if content prop changes externally (e.g. AI writes)
-  // BUT avoid loops by checking focus - if focussed, we assume the user is typing
-  useEffect(() => {
-    if (!isWritingMode && editor && !editor.isDestroyed && !editor.isFocused) {
-      const currentVal = editor.getText();
-      if (content !== currentVal) {
-        editor.commands.setContent(getInitialContent(content)); 
-      }
-    }
-  }, [content, editor, isWritingMode]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Handle Cmd+Enter to Run
   useEffect(() => {
-    if (isWritingMode || !editor || editor.isDestroyed || !onRun) return;
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isAiTyping]);
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Support Shift+Enter, Ctrl+Enter, Alt+Enter to run
-      if (event.key === 'Enter' && (event.shiftKey || event.ctrlKey || event.altKey)) {
-        event.preventDefault();
-        onRun(); // Default run (uses context)
+  // Handle clicking outside dropdown to close it
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
       }
     };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
-    // Intercept Link Clicks
-    const handleClick = (event: MouseEvent) => {
-        const target = event.target as HTMLElement;
-        const link = target.closest('a');
-        if (link && link.href && onNavigate) {
-            event.preventDefault();
-            onNavigate(link.href);
+  const handleSendMessage = (text: string) => {
+    if (!text.trim() || isAiTyping) return;
+    setChatMessages(prev => [...prev, { role: 'user', content: text }]);
+    setChatInput('');
+    if (onRun) {
+      onRun(text);
+    }
+  };
+
+  useAgenticContext({
+    id: cardId || fileName,
+    type: isCode ? 'code-editor' : 'markdown-editor',
+    title: fileName,
+    defaultIncluded: true,
+    getContext: async () => {
+      if (!content || content.trim() === "") {
+        return { format: 'markdown', content: "" };
+      }
+      return {
+        format: 'markdown',
+        content: content
+      };
+    },
+    applyMutation: async (mutation) => {
+      if (mutation.action === 'REWRITE') {
+        onChange(mutation.content);
+        return true;
+      }
+      return false;
+    }
+  });
+
+  if (isCode) {
+    const extension = fileName.split('.').pop() || 'text';
+    return (
+      <SmartContainer 
+        type="MONACO" 
+        title={`Code: ${fileName}`}
+        contextId={fileName}
+        selectedRoleId={roleId}
+        onRoleSelect={onRoleChange}
+        extraActions={
+            <div className="flex items-center gap-1">
+                 <button type="button" onClick={() => { onChange(content); toast.success("Saved"); }} title="Save File (Cmd+S)" className="hover:text-[var(--text-primary)] transition-colors"><Save size={10}/></button>
+                 <button type="button" onClick={() => { void navigator.clipboard.writeText(content).then(() => toast.success('Copied')); }} title="Copy Code" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
+                 <button type="button" onClick={() => onRun && onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>
+            </div>
         }
-    };
-
-    try {
-      if (!editor.isDestroyed && editor.view?.dom) {
-        const dom = editor.view.dom;
-        dom.addEventListener('keydown', handleKeyDown);
-        dom.addEventListener('click', handleClick);
-        return () => {
-            dom.removeEventListener('keydown', handleKeyDown);
-            dom.removeEventListener('click', handleClick);
-        };
-      }
-    } catch (e) {
-      console.warn("SmartEditor: Error attaching listeners", e);
-    }
-  }, [editor, onRun, onNavigate, isWritingMode]);
+        onGenerate={(prompt, options) => onRun && onRun(prompt, options?.roleId)}
+        onAiResponse={(res) => {
+          const payload = res as AiResponse;
+          const code = typeof payload === 'string' ? payload : payload.content || payload.code;
+          if(code) onChange(code);
+        }}
+      >
+        {(registerContext) => (
+          <div className="h-full w-full relative flex flex-col">
+            {isAiTyping && (
+              <div className="absolute top-2 right-4 z-50 flex items-center gap-2 bg-emerald-900/80 text-emerald-400 px-2 py-1 rounded text-xs border border-emerald-700 backdrop-blur-sm animate-pulse shadow-lg">
+                <Bot size={12} />
+                <span className="font-bold">AI Refactoring...</span>
+              </div>
+            )}
+            
+            <MonacoEditor
+              value={content}
+              onChange={(val) => onChange(val || '')}
+              language={extension === 'tsx' ? 'typescript' : extension === 'jsx' ? 'javascript' : extension} 
+              theme="vs-dark"
+              onMount={(editor) => {
+                registerContext(() => editor.getValue());
+              }}
+              options={{
+                minimap: { enabled: true },
+                wordWrap: 'on',
+                readOnly: isAiTyping,
+              }} 
+            />
+          </div>
+        )}
+      </SmartContainer>
+    );
+  }
 
   return (
     <SmartContainer 
@@ -267,126 +206,120 @@ const TiptapEditor = ({
       onRoleSelect={onRoleChange}
       extraActions={
           <div className="flex items-center gap-2">
-             {/* AI Mode Selector Dropdown */}
-             <div className="relative flex items-center bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 h-6">
-               <select
-                 value={collabMode ? 'collab' : 'standard'}
-                 onChange={(e) => setCollabMode(e.target.value === 'collab')}
-                 className="bg-transparent border-none text-[10px] text-zinc-400 font-mono outline-none cursor-pointer focus:text-white"
-               >
-                 <option value="standard" className="bg-zinc-950 text-zinc-400">Standard AI</option>
-                 <option value="collab" className="bg-zinc-950 text-zinc-400">Collab Review</option>
-               </select>
-             </div>
-             
-             <div className="w-px h-3 bg-zinc-800" />
-
-             {/* [NEW] Show Logs Toggle */}
-             <button 
-                type="button" 
-                onClick={() => setShowLogs(!showLogs)} 
-                title="Toggle Agent Thoughts/Logs" 
-                className={`transition-colors ${showLogs ? 'text-purple-400' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
-             >
-                <Bot size={12}/>
-             </button>
              <button type="button" onClick={() => { 
-                const text = isWritingMode ? content : (editor ? editor.getHTML() : "");
-                void navigator.clipboard.writeText(text).then(() => toast.success('Copied'));
+                void navigator.clipboard.writeText(content).then(() => toast.success('Copied'));
              }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
-              <button 
-                type="button" 
-                onClick={() => { void utils.roles.list.invalidate(); toast.success('Roles refreshed'); }} 
-                title="Refresh Role Roster" 
-                className="hover:text-[var(--text-primary)] transition-colors"
-              >
-                <RefreshCw size={10}/>
-              </button>
              <button type="button" onClick={() => onRun && onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>
           </div>
       }
       onGenerate={(prompt, options) => onRun && onRun(prompt, options?.roleId)}
       onAiResponse={(res) => {
         const payload = res as AiResponse;
-        
         let targetContent = "";
         if (typeof payload === 'string') {
             targetContent = payload;
         } else {
             targetContent = payload.result || payload.content || payload.text || "";
         }
-        
-        // [LOGIC] Append logs if enabled
-        if (showLogs && typeof payload !== 'string' && payload.logs && payload.logs.length > 0) {
-            const logHtml = payload.logs.map(log => {
-                // Formatting for "Thought Process"
-                if (log.startsWith('[Thought Process]')) {
-                    return `<div class="mb-2 text-purple-300 font-bold border-l-2 border-purple-500 pl-2 py-1 bg-purple-500/10 rounded-r">${log}</div>`;
-                }
-                return `<div class="text-zinc-500 pl-2 border-l border-zinc-800">${log}</div>`;
-            }).join('');
-            
-            targetContent = `<section class="mb-8 p-4 bg-black/40 rounded border border-zinc-800 text-xs font-mono overflow-x-auto max-h-96">
-                <h4 class="text-zinc-500 uppercase tracking-widest font-bold mb-2 sticky top-0 bg-zinc-950/90 py-1">Agent Logs</h4>
-                ${logHtml}
-            </section>` + targetContent;
-        }
 
         if (targetContent) {
-          if (isWritingMode) {
-            onChange(targetContent);
-          } else if (editor) {
-            editor.commands.setContent(targetContent);
-            onChange(targetContent);
+          if (editorMode === 'chat') {
+            setChatMessages(prev => [...prev, { role: 'assistant', content: "I have updated the document with your changes." }]);
           }
-          
-          // Auto-refresh roles if we see a success message
-          if (targetContent.includes('✅ Role Variant Created Successfully') || targetContent.includes('biologically spawned')) {
-              void utils.roles.list.invalidate();
-              toast.success("New role detected! Roster updated.");
-          }
+          onChange(targetContent);
         }
       }}
     >
       {(registerContext) => {
-        // Register context for AI
-        if (isWritingMode) {
-          registerContext(() => content);
-        } else if (editor && !editor.isDestroyed) {
-          registerContext(() => editor.getText());
-        }
-
-        if (!isWritingMode && !editor) {
-          return (
-            <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 gap-3">
-               <Loader2 className="animate-spin text-purple-500" size={24} />
-               <span className="text-xs font-medium uppercase tracking-widest animate-pulse">Initializing Editor...</span>
-            </div>
-          );
-        }
+        registerContext(() => content);
 
         return (
-          <div className="h-full w-full bg-zinc-900 overflow-y-auto relative flex flex-col group">
-            {/* AI Status Indicator */}
-            {isAiTyping && (
-                <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2 bg-purple-900/80 text-purple-400 px-2 py-1 rounded text-xs border border-purple-700 backdrop-blur-sm shadow-xl animate-in fade-in zoom-in">
-                  <Bot size={12} className="animate-pulse" />
-                  <span className="font-bold">AI Synchronizing...</span>
-                </div>
-              )}
+          <div className="h-full w-full bg-zinc-900 flex flex-col relative group">
+            
+            {/* EditorHeader */}
+            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-4 py-2 text-zinc-300 relative z-30 shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText size={12} className="text-zinc-500" />
+                <span className="text-xs font-bold text-zinc-100 font-mono truncate max-w-[200px]">{fileName}</span>
+              </div>
 
-            {isWritingMode ? (
-              <EditorRoot>
-                <EditorSync content={content} isWritingMode={isWritingMode} />
-                <div className="h-full w-full bg-zinc-900 overflow-y-auto relative flex flex-col group">
-                  <NovelToolbarWrapper />
-                  <NovelEditorContent
-                    className="flex-1 h-full min-h-0 overflow-y-auto"
+              {/* Submenu Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-850 hover:border-zinc-750 px-2.5 py-1 rounded text-xs text-zinc-300 hover:text-white transition-all font-mono"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] animate-pulse" />
+                  <span className="font-semibold uppercase tracking-wider text-[9px]">
+                    {editorMode === 'standard' && "Standard Editing"}
+                    {editorMode === 'chat' && "AI Chat"}
+                    {editorMode === 'collab' && "AI Collab Review"}
+                  </span>
+                  <ChevronDown size={10} className="text-zinc-500" />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-1 w-44 bg-zinc-950 border border-zinc-800 rounded shadow-2xl z-50 overflow-hidden font-mono">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditorMode('standard');
+                        setCollabMode(false);
+                        setDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-[10px] hover:bg-zinc-900 text-zinc-300 hover:text-white transition-colors"
+                    >
+                      Standard Editing
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditorMode('chat');
+                        setCollabMode(false);
+                        setDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-[10px] hover:bg-zinc-900 text-zinc-300 hover:text-white transition-colors"
+                    >
+                      AI Chat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditorMode('collab');
+                        setCollabMode(true);
+                        setDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-[10px] hover:bg-zinc-900 text-zinc-300 hover:text-white transition-colors"
+                    >
+                      AI Collab Review
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Core Writing Surface (Novel Editor) with Optional AI Chat Split */}
+            <div className="flex-1 flex overflow-hidden min-h-0">
+              
+              {/* Novel Editor */}
+              <div className="flex-1 min-w-0 bg-zinc-900 overflow-y-auto p-4 relative">
+                {isAiTyping && (
+                  <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2 bg-purple-900/80 text-purple-400 px-2 py-1 rounded text-xs border border-purple-700 backdrop-blur-sm shadow-xl animate-in fade-in">
+                    <Bot size={12} className="animate-pulse" />
+                    <span className="font-bold">AI Synchronizing...</span>
+                  </div>
+                )}
+
+                <EditorRoot>
+                  <EditorSync content={content} />
+                  <Editor
+                    className="prose prose-invert max-w-none focus:outline-none min-h-full text-zinc-300 text-sm font-sans"
                     initialContent={content}
                     extensions={writingExtensions}
                     editorProps={{
                       attributes: {
-                        class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full',
+                        class: 'focus:outline-none prose prose-invert max-w-none text-zinc-300 text-sm min-h-[150px]',
                       },
                       handleDOMEvents: {
                         contextmenu: () => false,
@@ -413,162 +346,126 @@ const TiptapEditor = ({
                     onUpdate={({ editor }) => {
                       onChange(editor.getHTML());
                     }}
-                  >
-                    <EditorBubble className="flex w-fit max-w-xs shrink-0 gap-1 rounded border border-zinc-800 bg-zinc-950 p-1 shadow-xl animate-in fade-in zoom-in duration-100">
-                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleBold().run()}>
-                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><Bold size={12} /></button>
-                      </EditorBubbleItem>
-                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleItalic().run()}>
-                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><Italic size={12} /></button>
-                      </EditorBubbleItem>
-                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleUnderline().run()}>
-                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><UnderlineIcon size={12} /></button>
-                      </EditorBubbleItem>
-                      <EditorBubbleItem onSelect={(editor) => editor.chain().focus().toggleStrike().run()}>
-                        <button type="button" className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 rounded"><Strikethrough size={12} /></button>
-                      </EditorBubbleItem>
-                    </EditorBubble>
+                  />
+                </EditorRoot>
+              </div>
+
+              {/* AI Chat Interface Panel */}
+              {editorMode === 'chat' && (
+                <div className="w-[320px] border-l border-zinc-800 bg-zinc-950 flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+                  <div className="h-9 border-b border-zinc-900 flex items-center px-4 bg-zinc-900/40 justify-between">
+                    <span className="text-[9px] font-black tracking-widest text-zinc-400 uppercase flex items-center gap-1.5 font-mono">
+                      <Sparkles size={10} className="text-[var(--color-primary)]" />
+                      AI Chat Assistant
+                    </span>
+                  </div>
+
+                  {/* Messages list */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+                    {chatMessages.length === 0 && (
+                      <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 opacity-50">
+                        <Bot size={28} className="text-[var(--color-primary)] animate-bounce" />
+                        <p className="text-[11px] font-semibold text-zinc-300">Ask EVAIX AI</p>
+                        <p className="text-[9px] text-zinc-500 max-w-[180px] leading-relaxed">Ask questions or request edits. Changes will write directly back into the editor.</p>
+                      </div>
+                    )}
+
+                    {chatMessages.map((msg, index) => {
+                      const isUser = msg.role === 'user';
+                      return (
+                        <div key={index} className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                          {!isUser && (
+                            <div className="w-5.5 h-5.5 rounded-full bg-purple-950/50 border border-purple-500/30 flex items-center justify-center shrink-0">
+                              <Bot size={10} className="text-purple-400" />
+                            </div>
+                          )}
+                          <div className={`max-w-[85%] rounded-lg p-2.5 text-[11px] leading-relaxed font-mono ${
+                            isUser 
+                              ? 'bg-[var(--color-primary)] text-black font-semibold rounded-br-none shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.15)]' 
+                              : 'bg-zinc-900 border border-zinc-850 text-zinc-300 rounded-bl-none'
+                          }`}>
+                            {msg.content}
+                          </div>
+                          {isUser && (
+                            <div className="w-5.5 h-5.5 rounded-full bg-zinc-800 border border-zinc-750 flex items-center justify-center shrink-0">
+                              <User size={10} className="text-zinc-300" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {isAiTyping && (
+                      <div className="flex gap-2.5 justify-start">
+                        <div className="w-5.5 h-5.5 rounded-full bg-purple-950/50 border border-purple-500/30 flex items-center justify-center shrink-0 animate-pulse">
+                          <Bot size={10} className="text-purple-400" />
+                        </div>
+                        <div className="bg-zinc-900 border border-zinc-850 text-zinc-400 rounded-lg rounded-bl-none p-2.5 text-[11px] flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Input Form with Paperclip */}
+                  <div className="p-3 border-t border-zinc-900 bg-zinc-950 flex flex-col gap-2 shrink-0">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          toast.success(`Attached file: ${file.name}`);
+                        }
+                      }}
+                    />
                     
-                    <EditorCommand className="z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border border-zinc-850 bg-zinc-950 px-1 py-2 shadow-2xl transition-all scrollbar-thin">
-                      <EditorCommandEmpty className="px-2 text-zinc-500 text-xs">No results</EditorCommandEmpty>
-                      <EditorCommandList>
-                        {suggestionItems.map((item) => (
-                          <EditorCommandItem
-                            key={item.title}
-                            value={item.title}
-                            onCommand={item.command}
-                            className="flex w-full items-center space-x-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-300 hover:bg-zinc-900 aria-selected:bg-zinc-900 transition-colors cursor-pointer"
-                          >
-                            <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400">
-                              {item.icon}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-zinc-200">{item.title}</p>
-                              <p className="text-[10px] text-zinc-500">{item.description}</p>
-                            </div>
-                          </EditorCommandItem>
-                        ))}
-                      </EditorCommandList>
-                    </EditorCommand>
-                  </NovelEditorContent>
+                    <div className="flex gap-2 items-center bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-zinc-500 hover:text-zinc-300 transition-colors p-1"
+                        title="Attach files or images"
+                      >
+                        <Paperclip size={13} />
+                      </button>
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Ask AI assistant..."
+                        className="flex-1 bg-transparent border-none text-[11px] text-white outline-none placeholder:text-zinc-600 font-mono"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSendMessage(chatInput);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSendMessage(chatInput)}
+                        disabled={!chatInput.trim() || isAiTyping}
+                        className="text-[var(--color-primary)] hover:opacity-80 disabled:opacity-30 p-1"
+                      >
+                        <Send size={13} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </EditorRoot>
-            ) : (
-              <>
-                {isWritingMode && editor && <WritingToolbar editor={editor} />}
-                <TiptapEditorContent editor={editor} className="flex-1 h-full min-h-0 overflow-y-auto" />
-              </>
-            )}
-            
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-[10px] text-zinc-600 bg-black/40 px-2 py-0.5 rounded border border-zinc-800 uppercase font-bold">
-                {isWritingMode ? 'Novel (Rich Text)' : 'Tiptap (Plain Text)'}
-              </span>
+              )}
+
             </div>
           </div>
         );
       }}
     </SmartContainer>
   );
-};
-
-const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate, roleId, onRoleChange, cardId }) => {
-  const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
-  const projectType = useWorkspaceStore(s => s.projectType);
-  const card = useWorkspaceStore(s => s.cards.find(c => c.id === cardId));
-  const updateCard = useWorkspaceStore(s => s.updateCard);
-  
-  const collabMode = (card?.metadata as any)?.collabMode || false;
-  const setCollabMode = (val: boolean) => {
-    updateCard(cardId || '', {
-      metadata: {
-        ...(card?.metadata || {}),
-        collabMode: val
-      }
-    });
-  };
-
-  useAgenticContext({
-    id: cardId || fileName,
-    type: isCode ? 'code-editor' : 'markdown-editor',
-    title: fileName,
-    defaultIncluded: true,
-    getContext: async () => {
-      // Dynamic Context Pruning
-      if (!content || content.trim() === "") {
-        return { format: 'markdown', content: "" };
-      }
-      return {
-        format: 'markdown',
-        content: content
-      };
-    },
-    applyMutation: async (mutation) => {
-      if (mutation.action === 'REWRITE') {
-        // Just directly setting content for now, ideally prompt user
-        onChange(mutation.content);
-        return true;
-      }
-      return false;
-    }
-  });
-
-  if (isCode) {
-    const extension = fileName.split('.').pop() || 'text';
-    return (
-      <SmartContainer 
-        type="MONACO" 
-        title={`Code: ${fileName}`}
-        contextId={fileName}
-        selectedRoleId={roleId}
-        onRoleSelect={onRoleChange}
-        extraActions={
-            <div className="flex items-center gap-1">
-                {/* Save Button */}
-                 <button type="button" onClick={() => { onChange(content); toast.success("Saved"); }} title="Save File (Cmd+S)" className="hover:text-[var(--text-primary)] transition-colors"><Save size={10}/></button>
-                 <button type="button" onClick={() => { void navigator.clipboard.writeText(content).then(() => toast.success('Copied')); }} title="Copy Code" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
-                 <button type="button" onClick={() => onRun && onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>
-            </div>
-        }
-        onGenerate={(prompt, options) => onRun && onRun(prompt, options?.roleId)}
-        onAiResponse={(res) => {
-          const payload = res as AiResponse;
-          const code = typeof payload === 'string' ? payload : payload.content || payload.code;
-          if(code) onChange(code);
-        }}
-      >
-        {(registerContext) => (
-          <div className="h-full w-full relative flex flex-col">
-          {/* ... */}
-            {isAiTyping && (
-              <div className="absolute top-2 right-4 z-50 flex items-center gap-2 bg-emerald-900/80 text-emerald-400 px-2 py-1 rounded text-xs border border-emerald-700 backdrop-blur-sm animate-pulse shadow-lg">
-                <Bot size={12} />
-                <span className="font-bold">AI Refactoring...</span>
-              </div>
-            )}
-            
-            <MonacoEditor
-              value={content}
-              onChange={(val) => onChange(val || '')}
-              // Map tsx/jsx to typescript/javascript for Monaco
-              language={extension === 'tsx' ? 'typescript' : extension === 'jsx' ? 'javascript' : extension} 
-              theme="vs-dark"
-              onMount={(editor) => {
-                registerContext(() => editor.getValue());
-              }}
-              options={{
-                minimap: { enabled: true },
-                wordWrap: 'on',
-                readOnly: isAiTyping,
-              }} 
-            />
-          </div>
-        )}
-      </SmartContainer>
-    );
-  }
-
-  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} cardId={cardId} projectType={projectType} collabMode={collabMode} setCollabMode={setCollabMode} />;
 };
 
 export default SmartEditor;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, Dna, LayoutTemplate, Database, ChevronDown } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, LayoutTemplate, Database, ChevronDown, Settings, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -23,10 +23,35 @@ import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
 import { UniversalDataGrid } from '../UniversalDataGrid.js';
 import { DatabaseBrowser } from '../DatabaseBrowser.js';
 import { NebulaBuilder } from '../../nebula/features/builder/NebulaBuilder.js';
-import { getToolsForProjectType } from '../../registry/ToolRegistry.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
+
+const parseCSV = (csv: string): Record<string, string>[] => {
+  const lines = csv.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+  const headers = lines[0].split(',').map(h => h.trim());
+  const result: Record<string, string>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(v => v.trim());
+    const obj: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      obj[header] = values[index] || '';
+    });
+    result.push(obj);
+  }
+  return result;
+};
+
+const stringifyCSV = (data: Record<string, unknown>[]): string => {
+  if (data.length === 0) return '';
+  const headers = Object.keys(data[0]);
+  const headerLine = headers.join(',');
+  const rowLines = data.map(row => 
+    headers.map(header => String(row[header] ?? '')).join(',')
+  );
+  return [headerLine, ...rowLines].join('\n');
+};
 
 export const SwappableCard = memo(({ id }: { id: string }) => {
     const {
@@ -41,26 +66,23 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const projectType = useWorkspaceStore(s => s.projectType);
     const navigate = useNavigate();
 
-    const activeProjectType = useWorkspaceStore(state => state.activeProject?.type);
-
     const availableTools = useMemo(() => {
         const baseTools = [
-            { id: 'editor', name: 'Editor', icon: Code }, // EDITOR IS DEFAULT
-            { id: 'ai-chat', name: 'AI Chat', icon: FileText },
-            { id: 'files', name: 'Files', icon: Folder }
+            { id: 'editor', name: 'Editor', icon: Code },
+            { id: 'browser', name: 'Native Browser', icon: Globe },
+            { id: 'files', name: 'Files', icon: Folder },
+            { id: 'data', name: 'Data', icon: Database },
+            { id: 'settings', name: 'Settings', icon: Settings }
         ];
 
-        // ONLY inject coding tools if we are absolutely in a coding project (case-insensitive check for 'coding' or 'code')
-        const type = activeProjectType?.toLowerCase() || '';
-        if (type === 'coding' || type === 'code') {
+        if (projectType === 'coding') {
             baseTools.push({ id: 'terminal', name: 'Terminal', icon: Terminal });
-            baseTools.push({ id: 'BadBuilder', name: 'BadBuilder', icon: LayoutTemplate });
+            baseTools.push({ id: 'badbuilder', name: 'BadBuilder', icon: LayoutTemplate });
         }
 
         return baseTools;
-    }, [activeProjectType]);
+    }, [projectType]);
 
-    const [activeTab, setActiveTab] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | 'ai-chat'>('editor');
 
     const startSessionMutation = trpc.agent.startSession.useMutation();
 
@@ -86,11 +108,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     });
 
     const [content, setContent] = useState<string>('');
-    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | 'ai-chat' | null>(() => {
+    const [viewMode, setViewMode] = useState<'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'config' | 'settings' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'BadBuilder' | 'badbuilder' | 'ai-chat' | null>(() => {
         if (card?.activeTool === null) return 'editor';
-        if (card?.activeTool) return card.activeTool as any;
+        if (card?.activeTool) {
+            if (card.activeTool === 'config') return 'settings';
+            if (card.activeTool === 'BadBuilder') return 'badbuilder';
+            return card.activeTool as any;
+        }
         const meta = card?.metadata as { viewMode?: string } | undefined;
-        return (meta?.viewMode as any) || 'editor';
+        const mode = meta?.viewMode;
+        if (mode === 'config') return 'settings';
+        if (mode === 'BadBuilder') return 'badbuilder';
+        return (mode as any) || 'editor';
     });
 
     const setViewModeAndStore = useCallback((mode: typeof viewMode) => {
@@ -105,11 +134,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     }, [id, updateCard]);
 
     useEffect(() => {
-        if (viewMode) {
-            setActiveTab(viewMode as any);
-        } else {
+        if (!viewMode) {
             setViewModeAndStore('editor');
-            setActiveTab('editor');
         }
     }, [viewMode, setViewModeAndStore]);
     const [terminalLogs, setTerminalLogs] = useState<TerminalMessage[]>([]);
@@ -122,11 +148,12 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const [showSupplementary, setShowSupplementary] = useState(false);
     const [supplementaryLogs, setSupplementaryLogs] = useState<TerminalMessage[]>([]);
     const [isRunning, setIsRunning] = useState(false);
-    const [showFileNamePrompt, setShowFileNamePrompt] = useState(false);
-    const [newFileName, setNewFileName] = useState('');
     const abortController = useRef<AbortController | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    const [newMenuOpen, setNewMenuOpen] = useState(false);
+    const newMenuRef = useRef<HTMLDivElement>(null);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -139,6 +166,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [menuOpen]);
+
+    // Close new menu when clicking outside
+    useEffect(() => {
+        if (!newMenuOpen) return;
+        function handleClickOutside(e: MouseEvent) {
+            if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
+                setNewMenuOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [newMenuOpen]);
 
     // Sync header filename with active file
     useEffect(() => {
@@ -177,10 +216,40 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             return;
         }
 
+        const getNextAvailableName = async (dir: string, baseName: string, ext: string) => {
+            let index = 1;
+            while (true) {
+                const name = `${baseName}_${index}.${ext}`;
+                const fullPath = `${dir}/${name}`;
+                try {
+                    await readFile(fullPath);
+                } catch (err: any) {
+                    return fullPath;
+                }
+                index++;
+                if (index > 100) return `${dir}/${baseName}_${Date.now()}.${ext}`;
+            }
+        };
+
         if (!activeFile && viewMode === 'editor') {
-            setShowFileNamePrompt(true);
+            const sessionsDir = `${currentPath}/sessions`;
+            const autoCreate = async () => {
+                try {
+                    await mkdir(sessionsDir);
+                } catch (e) {
+                    // Ignore
+                }
+                try {
+                    const filePath = await getNextAvailableName(sessionsDir, 'Document', 'md');
+                    await writeFile(filePath, '');
+                    setActiveFile(filePath);
+                } catch (e) {
+                    console.error('Failed to auto create session file', e);
+                }
+            };
+            void autoCreate();
         }
-    }, [activeFile, viewMode, id, currentPath, writeFile, mkdir]);
+    }, [activeFile, viewMode, id, currentPath, writeFile, mkdir, readFile]);
 
     // Auto-switch view logic & Error Handling for Missing Files
     useEffect(() => {
@@ -191,6 +260,19 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
             } else if (/\.(png|jpg|jpeg|gif|svg|html)$/i.test(activeFile)) {
                 setBrowserUrl(`file://${activeFile}`);
                 setViewModeAndStore('browser');
+            } else if (/\.(json|csv)$/i.test(activeFile)) {
+                setViewModeAndStore('data');
+                void readFile(activeFile)
+                    .then(setContent)
+                    .catch(async (err: any) => {
+                        if (err.message?.includes('ENOENT')) {
+                            const defaultData = activeFile.endsWith('.csv') ? 'Column1,Column2\n,' : '[]';
+                            await writeFile(activeFile, defaultData);
+                            setContent(defaultData);
+                        } else {
+                            setContent('[]');
+                        }
+                    });
             } else {
                 void readFile(activeFile)
                     .then(setContent)
@@ -206,7 +288,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     });
             }
         }
-    }, [activeFile, readFile, writeFile]);
+    }, [activeFile, readFile, writeFile, setViewModeAndStore]);
 
     const handleSave = useCallback(async (val: string | undefined) => {
         if (val === undefined) return;
@@ -244,6 +326,45 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         const backupPath = `${currentPath}/.nebula/backups/${getBasename(targetPath)}.bak`;
         void writeFile(backupPath, val).catch(() => { });
     }, [activeFile, writeFile, currentPath, headerFilename]);
+
+    const getNextAvailableName = useCallback(async (dir: string, baseName: string, ext: string) => {
+        let index = 1;
+        while (true) {
+            const name = `${baseName}_${index}.${ext}`;
+            const fullPath = `${dir}/${name}`;
+            try {
+                await readFile(fullPath);
+            } catch (err: any) {
+                return fullPath;
+            }
+            index++;
+            if (index > 100) return `${dir}/${baseName}_${Date.now()}.${ext}`;
+        }
+    }, [readFile]);
+
+    const gridData = useMemo(() => {
+        if (!content) return [];
+        if (activeFile.endsWith('.csv')) {
+            return parseCSV(content);
+        }
+        try {
+            const parsed = JSON.parse(content);
+            if (Array.isArray(parsed)) return parsed;
+            return [];
+        } catch (e) {
+            return [];
+        }
+    }, [content, activeFile]);
+
+    const handleGridChange = useCallback((newData: Record<string, unknown>[]) => {
+        let serialized = '';
+        if (activeFile.endsWith('.csv')) {
+            serialized = stringifyCSV(newData);
+        } else {
+            serialized = JSON.stringify(newData, null, 2);
+        }
+        void handleSave(serialized);
+    }, [activeFile, handleSave]);
 
     const runAgent = useCallback(async (goal: string, roleIdOverride?: string) => {
         if (isRunning) return;
@@ -381,6 +502,54 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     >
                         <History size={10} />
                     </button>
+
+                    <div className="relative shrink-0 flex items-center font-sans" ref={newMenuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setNewMenuOpen(!newMenuOpen)}
+                            className="p-1 hover:text-[var(--color-primary)] text-[var(--text-muted)] transition-colors"
+                            title="Create New File"
+                        >
+                            <Plus size={10} />
+                        </button>
+                        {newMenuOpen && (
+                            <div className="absolute right-0 top-6 z-50 bg-zinc-900 border border-zinc-700 rounded shadow-xl py-1 flex flex-col gap-0.5 min-w-[140px] p-1 font-mono text-[9px]">
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        setNewMenuOpen(false);
+                                        const sessionsDir = `${currentPath}/sessions`;
+                                        try { await mkdir(sessionsDir); } catch(e) {}
+                                        const newPath = await getNextAvailableName(sessionsDir, 'Document', 'md');
+                                        await writeFile(newPath, '');
+                                        setActiveFile(newPath);
+                                        setViewModeAndStore('editor');
+                                        toast.success(`Created Document: ${getBasename(newPath)}`);
+                                    }}
+                                    className="w-full text-left px-2 py-1 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded"
+                                >
+                                    New Document (.md)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        setNewMenuOpen(false);
+                                        const sessionsDir = `${currentPath}/sessions`;
+                                        try { await mkdir(sessionsDir); } catch(e) {}
+                                        const newPath = await getNextAvailableName(sessionsDir, 'DataGrid', 'json');
+                                        const initialData = JSON.stringify([{ "Column1": "", "Column2": "" }], null, 2);
+                                        await writeFile(newPath, initialData);
+                                        setActiveFile(newPath);
+                                        setViewModeAndStore('data');
+                                        toast.success(`Created Data Grid: ${getBasename(newPath)}`);
+                                    }}
+                                    className="w-full text-left px-2 py-1 hover:bg-zinc-800 text-zinc-350 hover:text-white rounded"
+                                >
+                                    New Data Grid (.json)
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex gap-0.5">
@@ -425,70 +594,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 <span className="text-[10px] text-zinc-500 font-mono">Select a tool from the header dropdown to begin</span>
                             </div>
                         )}
-                        {showFileNamePrompt && (
-                            <div className="absolute inset-0 z-[200] bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
-                                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 w-full max-w-sm shadow-2xl space-y-4">
-                                    <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-wide">Create New Document</h3>
-                                    <p className="text-[10px] text-[var(--text-muted)]">Please provide a semantic filename for this session.</p>
-                                    <input
-                                        autoFocus
-                                        value={newFileName}
-                                        onChange={e => setNewFileName(e.target.value)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter' && newFileName.trim()) {
-                                                const createNamedFile = async () => {
-                                                    let name = newFileName.trim();
-                                                    if (!name.includes('.')) name += '.md';
 
-                                                    const sessionsDir = `${currentPath}/sessions`;
-                                                    const filePath = `${sessionsDir}/${name}`;
-
-                                                    try {
-                                                        await mkdir(sessionsDir);
-                                                    } catch {
-                                                        // Ignore
-                                                    }
-
-                                                    await writeFile(filePath, '');
-                                                    setActiveFile(filePath);
-                                                    setShowFileNamePrompt(false);
-                                                };
-                                                void createNamedFile();
-                                            }
-                                        }}
-                                        placeholder="e.g. system_architecture.md"
-                                        className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] rounded px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)] font-mono"
-                                    />
-                                    <button
-                                        disabled={!newFileName.trim()}
-                                        onClick={() => {
-                                            const createNamedFile = async () => {
-                                                let name = newFileName.trim();
-                                                if (!name.includes('.')) name += '.md';
-
-                                                const sessionsDir = `${currentPath}/sessions`;
-                                                const filePath = `${sessionsDir}/${name}`;
-
-                                                try {
-                                                    await mkdir(sessionsDir);
-                                                } catch {
-                                                    // Ignore
-                                                }
-
-                                                await writeFile(filePath, '');
-                                                setActiveFile(filePath);
-                                                setShowFileNamePrompt(false);
-                                            };
-                                            void createNamedFile();
-                                        }}
-                                        className="w-full bg-[var(--color-primary)] text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Create File
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                        {viewMode === 'config' && (
+                        {(viewMode === 'config' || viewMode === 'settings') && (
                             <div className="h-full flex items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-sm">
                                 <div className="max-w-xs space-y-4">
                                     <Fingerprint size={48} className="mx-auto text-[var(--color-primary)] opacity-50" />
@@ -574,13 +681,29 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         {viewMode === 'browser' && <SmartBrowser cardId={id} screenspaceId={card?.screenspaceId || 1} url={browserUrl} onUrlChange={setBrowserUrl} />}
                         {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
                         {viewMode === 'preview' && <iframe src="http://localhost:8000" className="w-full h-full border-none bg-white" />}
-                        {viewMode === 'BadBuilder' && (
+                        {(viewMode === 'BadBuilder' || viewMode === 'badbuilder') && (
                             <iframe
                                 src={`http://localhost:4000/badbuilder/index.html?workspace=${encodeURIComponent(activeWorkspacePath)}`}
                                 className="w-full h-full border-none bg-zinc-950"
                             />
                         )}
-                        {viewMode === 'data' && <div className="h-full w-full bg-white"><UniversalDataGrid data={[]} /></div>}
+                        {viewMode === 'data' && (
+                            <div className="h-full w-full bg-zinc-950 p-2">
+                                <UniversalDataGrid 
+                                    data={gridData} 
+                                    onChange={handleGridChange}
+                                    onCreateTable={async () => {
+                                        const sessionsDir = `${currentPath}/sessions`;
+                                        try { await mkdir(sessionsDir); } catch(e) {}
+                                        const newPath = await getNextAvailableName(sessionsDir, 'DataGrid', 'json');
+                                        const initialData = JSON.stringify([{ "Column1": "", "Column2": "" }], null, 2);
+                                        await writeFile(newPath, initialData);
+                                        setActiveFile(newPath);
+                                        setContent(initialData);
+                                    }}
+                                />
+                            </div>
+                        )}
                         {viewMode === 'databrowser' && <DatabaseBrowser id={id} />}
                         {viewMode === 'builder' && (
                             <NebulaBuilder

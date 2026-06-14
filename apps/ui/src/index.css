@@ -96,15 +96,5 @@
   display: none;  /* Chrome, Safari and Opera */
 }
 
-/* Collaborative Review styles */
-ins {
-  text-decoration: underline;
-  background-color: rgba(16, 185, 129, 0.2) !important; /* green with opacity */
-  color: #10b981 !important;
-}
-
-del {
-  text-decoration: line-through;
-  background-color: rgba(239, 68, 68, 0.2) !important; /* red with opacity */
-  color: #ef4444 !important;
-}
+del { text-decoration: line-through; color: #ef4444; background-color: #fee2e2; }
+ins { text-decoration: underline; color: #16a34a; background-color: #dcfce7; }

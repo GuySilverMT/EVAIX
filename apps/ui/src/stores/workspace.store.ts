@@ -141,7 +141,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
         if (isNaN(columnIndex)) columnIndex = 0;
         
-        const newName = `${projectName} C${columnIndex + 1}`;
+        const newName = `${projectName} C${columnIndex}`;
         
         const newPanel = {
           id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
