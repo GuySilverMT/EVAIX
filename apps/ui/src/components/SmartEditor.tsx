@@ -1,23 +1,30 @@
 import React, { useEffect, useState, useRef } from 'react';
 import MonacoEditor from './MonacoEditor.js';
 import { 
-  Bot, Play, Copy, Save, Paperclip, Send, Sparkles, FileText, User,
-  Bold, Italic, Underline, Strikethrough, Code
+  Bot, Play, Copy, Paperclip, Send, Sparkles, FileText, User,
+  Bold, Italic, Underline, Strikethrough, Code, Heading1, Heading2, Heading3, List, Table as TableIcon,
+  Save, FolderOpen, ChevronDown, MessageSquare, AlignLeft, AlignCenter, AlignRight, ListOrdered,
+  Quote, RotateCcw
 } from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { useAgenticContext } from '../hooks/useAgenticContext.js';
 import { toast } from 'sonner';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
 import { TextStyle, FontFamily, FontSize } from '@tiptap/extension-text-style';
+
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
+
+import { StarterKit } from '@tiptap/starter-kit';
+import { Underline as TiptapUnderline } from '@tiptap/extension-underline';
+import { Placeholder } from '@tiptap/extension-placeholder';
+
 import { 
   EditorRoot, 
   EditorContent as Editor,
-  useEditor as useNovelEditor,
-  StarterKit as NovelStarterKit,
-  Placeholder as NovelPlaceholder,
-  TiptapUnderline as NovelUnderline,
   EditorBubble,
-  EditorBubbleItem,
   EditorCommand,
   EditorCommandEmpty,
   EditorCommandItem,
@@ -26,15 +33,17 @@ import {
 } from 'novel';
 
 const writingExtensions = [
-  NovelStarterKit,
-  NovelPlaceholder.configure({
-    placeholder: "Start writing..."
-  }),
-  NovelUnderline,
+  StarterKit,
+  Placeholder.configure({ placeholder: 'Start writing...' }),
+  TiptapUnderline,
   NovelCommand,
   TextStyle,
   FontFamily,
-  FontSize
+  FontSize,
+  Table.configure({ resizable: true }),
+  TableRow,
+  TableHeader,
+  TableCell
 ];
 
 type AiResponse = string | { 
@@ -57,287 +66,454 @@ interface SmartEditorProps {
   onRoleChange?: (roleId: string) => void;
 }
 
+// Compact divider
+const Sep = () => <span className="w-px h-3.5 bg-zinc-700 mx-0.5 shrink-0" />;
+
+// Unified single-line formatting + nav bar rendered above the Novel editor
+const UnifiedEditorBar = ({
+  editor, fileName, onFileNameChange, onSave, onOpen,
+  activeTab, onTabChange, onRun, isAiTyping, showNovel,
+  onCopy, content
+}: {
+  editor: any;
+  fileName: string;
+  onFileNameChange: (n: string) => void;
+  onSave: () => void;
+  onOpen: () => void;
+  activeTab: 'editor' | 'chat';
+  onTabChange: (t: 'editor' | 'chat') => void;
+  onRun?: () => void;
+  isAiTyping?: boolean;
+  showNovel: boolean;
+  onCopy: () => void;
+  content: string;
+}) => {
+  const btn = (active: boolean) =>
+    `p-0.5 rounded transition-colors ${
+      active ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
+    }`;
+
+  return (
+    <div className="flex items-center gap-1 border-b border-zinc-800 bg-zinc-950 px-1.5 py-0.5 shrink-0 min-h-0 overflow-x-auto" style={{ height: '28px' }}>
+      {/* File name editable */}
+      <FileText size={10} className="text-zinc-600 shrink-0" />
+      <input
+        type="text"
+        value={fileName.split('/').pop() || fileName}
+        onChange={e => onFileNameChange(e.target.value)}
+        className="w-24 bg-transparent text-[10px] text-zinc-300 font-mono outline-none border-none min-w-0 truncate"
+        title="File name"
+      />
+      <button type="button" onClick={onSave} title="Save" className={btn(false)}><Save size={10} /></button>
+      <button type="button" onClick={onOpen} title="Open file" className={btn(false)}><FolderOpen size={10} /></button>
+
+      <Sep />
+
+      {/* Editor / Chat toggle (icons only) */}
+      <button type="button" onClick={() => onTabChange('editor')} title="Editor" className={btn(activeTab === 'editor')}>
+        <AlignLeft size={10} />
+      </button>
+      <button type="button" onClick={() => onTabChange('chat')} title="AI Chat" className={btn(activeTab === 'chat')}>
+        <MessageSquare size={10} />
+      </button>
+
+      {/* Formatting — only in novel/editor mode */}
+      {showNovel && activeTab === 'editor' && editor && (
+        <>
+          <Sep />
+          {/* Font family */}
+          <select
+            onChange={e => {
+              const v = e.target.value;
+              v === 'default'
+                ? (editor.chain().focus() as any).unsetFontFamily().run()
+                : (editor.chain().focus() as any).setFontFamily(v).run();
+            }}
+            className="bg-zinc-900 border-0 text-zinc-400 text-[9px] rounded outline-none py-0 px-0.5 h-4 font-mono"
+            title="Font"
+          >
+            <option value="default">Font</option>
+            <option value="sans-serif">Sans</option>
+            <option value="serif">Serif</option>
+            <option value="monospace">Mono</option>
+            <option value="cursive">Script</option>
+          </select>
+          {/* Font size */}
+          <select
+            onChange={e => {
+              const v = e.target.value;
+              v === 'default'
+                ? (editor.chain().focus() as any).unsetFontSize().run()
+                : (editor.chain().focus() as any).setFontSize(v).run();
+            }}
+            className="bg-zinc-900 border-0 text-zinc-400 text-[9px] rounded outline-none py-0 px-0.5 h-4 w-10 font-mono"
+            title="Size"
+          >
+            <option value="default">Sz</option>
+            <option value="11px">11</option>
+            <option value="13px">13</option>
+            <option value="15px">15</option>
+            <option value="18px">18</option>
+            <option value="22px">22</option>
+            <option value="28px">28</option>
+          </select>
+          <Sep />
+          <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive('bold'))} title="Bold"><Bold size={10}/></button>
+          <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={btn(editor.isActive('italic'))} title="Italic"><Italic size={10}/></button>
+          <button type="button" onClick={() => editor.chain().focus().toggleUnderline().run()} className={btn(editor.isActive('underline'))} title="Underline"><Underline size={10}/></button>
+          <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} className={btn(editor.isActive('strike'))} title="Strike"><Strikethrough size={10}/></button>
+          <button type="button" onClick={() => editor.chain().focus().toggleCode().run()} className={btn(editor.isActive('code'))} title="Code"><Code size={10}/></button>
+          <Sep />
+          <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={`${btn(editor.isActive('heading', {level:1}))} text-[9px] font-bold px-0.5`} title="H1">H1</button>
+          <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={`${btn(editor.isActive('heading', {level:2}))} text-[9px] font-bold px-0.5`} title="H2">H2</button>
+          <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={`${btn(editor.isActive('heading', {level:3}))} text-[9px] font-bold px-0.5`} title="H3">H3</button>
+          <Sep />
+          <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={btn(editor.isActive('bulletList'))} title="Bullet list"><List size={10}/></button>
+          <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={btn(editor.isActive('orderedList'))} title="Numbered list"><ListOrdered size={10}/></button>
+          <button type="button" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} className={btn(false)} title="Insert table"><TableIcon size={10}/></button>
+        </>
+      )}
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Copy + Run */}
+      <button type="button" onClick={onCopy} title="Copy content" className={btn(false)}><Copy size={10}/></button>
+      {onRun && (
+        <button
+          type="button"
+          onClick={onRun}
+          disabled={isAiTyping}
+          title="Run Agent"
+          className="flex items-center gap-0.5 px-1.5 h-5 text-[9px] font-bold rounded bg-[var(--color-primary)] text-black hover:opacity-90 disabled:opacity-40 transition-all shrink-0"
+        >
+          <Play size={9} fill="currentColor" />
+          Run
+        </button>
+      )}
+    </div>
+  );
+};
+
+
 const ComposedEditor = ({ 
   content, 
   fileName, 
   onChange, 
   onRun, 
-  onNavigate 
+  onNavigate,
+  onEditorReady 
 }: { 
   content: string; 
   fileName: string; 
   onChange: (val: string) => void; 
   onRun?: (goal?: string) => void; 
-  onNavigate?: (url: string) => void; 
+  onNavigate?: (url: string) => void;
+  onEditorReady?: (editor: any) => void;
 }) => {
-  const { editor } = useNovelEditor();
+  // Capture the editor via onCreate — never block EditorContent from mounting
+  const [capturedEditor, setCapturedEditor] = useState<any>(null);
 
-  // Content sync from outside prop
+  // Content sync from outside prop changes
   useEffect(() => {
-    if (editor && !editor.isDestroyed && !editor.isFocused) {
+    if (capturedEditor && !capturedEditor.isDestroyed && !capturedEditor.isFocused) {
       if (!content) {
-        editor.commands.setContent('');
+        capturedEditor.commands.setContent('');
         return;
       }
       try {
         if (fileName.endsWith('.json')) {
           const json = JSON.parse(content);
-          editor.commands.setContent(json);
+          capturedEditor.commands.setContent(json);
         } else {
-          editor.commands.setContent(content);
+          capturedEditor.commands.setContent(content);
         }
       } catch (e) {
-        editor.commands.setContent(content);
+        capturedEditor.commands.setContent(content);
       }
     }
-  }, [content, editor, fileName]);
-
-  if (!editor) return null;
+  }, [content, capturedEditor, fileName]);
 
   return (
-    <div className="relative w-full h-full">
-      <Editor
-        className="prose prose-invert max-w-none focus:outline-none min-h-full text-zinc-300 text-sm font-sans"
-        initialContent={fileName.endsWith('.json') ? (content ? JSON.parse(content) : undefined) : undefined}
-        extensions={writingExtensions}
-        editorProps={{
-          attributes: {
-            class: 'focus:outline-none prose prose-invert max-w-none text-zinc-300 text-sm min-h-[150px] w-full h-full',
-          },
-          handleDOMEvents: {
-            contextmenu: () => false,
-            keydown: (view, event) => {
-              if (event.key === 'Enter' && (event.shiftKey || event.ctrlKey || event.altKey)) {
-                event.preventDefault();
-                onRun && onRun();
-                return true;
-              }
-              return false;
+    <div className="flex flex-col w-full h-full border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 shadow-sm relative z-0">
+      <TextFormattingBar editor={capturedEditor} />
+      <style>{`
+        .prose ins {
+          text-decoration: none;
+          background-color: rgba(16, 185, 129, 0.2);
+          color: #34d399;
+          padding: 0.1em 0.2em;
+          border-radius: 0.2em;
+        }
+        .prose del {
+          text-decoration: line-through;
+          background-color: rgba(239, 68, 68, 0.2);
+          color: #f87171;
+          padding: 0.1em 0.2em;
+          border-radius: 0.2em;
+        }
+        .prose table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1rem 0;
+        }
+        .prose th, .prose td {
+          border: 1px solid #3f3f46;
+          padding: 0.5rem;
+        }
+        .prose th {
+          background-color: #27272a;
+        }
+      `}</style>
+      <div className="w-full h-full min-h-[500px] overflow-y-auto text-white bg-zinc-950">
+        <Editor
+          className="prose prose-invert max-w-none focus:outline-none min-h-[500px] w-full text-zinc-300 text-sm font-sans"
+          initialContent={fileName.endsWith('.json') ? (content ? JSON.parse(content) : undefined) : undefined}
+          extensions={writingExtensions}
+          editorProps={{
+            attributes: {
+              class: 'focus:outline-none prose prose-invert max-w-none text-zinc-300 text-sm min-h-[500px] w-full h-full p-4',
             },
-            click: (view, event) => {
-              const target = event.target as HTMLElement;
-              const link = target.closest('a');
-              if (link && link.href && onNavigate) {
-                event.preventDefault();
-                onNavigate(link.href);
-                return true;
+            handleDOMEvents: {
+              keydown: (_view, event) => {
+                if (event.key === 'Enter' && (event.shiftKey || event.ctrlKey || event.altKey)) {
+                  event.preventDefault();
+                  onRun && onRun();
+                  return true;
+                }
+                return false;
+              },
+              click: (_view, event) => {
+                const target = event.target as HTMLElement;
+                const link = target.closest('a');
+                if (link && link.href && onNavigate) {
+                  event.preventDefault();
+                  onNavigate(link.href);
+                  return true;
+                }
+                return false;
               }
-              return false;
+            },
+          }}
+          onCreate={({ editor }) => {
+            setCapturedEditor(editor);
+            onEditorReady?.(editor);
+          }}
+          onUpdate={({ editor }) => {
+            setCapturedEditor(editor);
+            onEditorReady?.(editor);
+            if (fileName.endsWith('.json')) {
+              onChange(JSON.stringify(editor.getJSON(), null, 2));
+            } else {
+              onChange(editor.getHTML());
             }
-          },
-        }}
-        onUpdate={({ editor }) => {
-          if (fileName.endsWith('.json')) {
-            onChange(JSON.stringify(editor.getJSON(), null, 2));
-          } else {
-            onChange(editor.getHTML());
-          }
-        }}
-      >
-        {/* Composed Bubble Menu */}
-        <EditorBubble className="flex items-center w-max max-w-[calc(100vw-32px)] border border-zinc-850 bg-zinc-950 p-1.5 rounded-lg shadow-2xl gap-2 z-50 select-none">
-          {/* Font Family Selector */}
-          <select 
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === 'default') {
-                (editor.chain().focus() as any).unsetFontFamily().run();
-              } else {
-                (editor.chain().focus() as any).setFontFamily(val).run();
-              }
-            }}
-            className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[10px] rounded px-1.5 py-0.5 outline-none font-mono transition-colors"
-            title="Font Family"
-          >
-            <option value="default">Default Font</option>
-            <option value="sans-serif">Sans-Serif</option>
-            <option value="serif">Serif</option>
-            <option value="monospace">Monospace</option>
-            <option value="cursive">Cursive</option>
-          </select>
+          }}
+        >
+          {/* Composed Bubble Menu */}
+          <EditorBubble className="flex items-center w-max max-w-[calc(100vw-32px)] border border-zinc-850 bg-zinc-950 p-1.5 rounded-lg shadow-2xl gap-2 z-50 select-none">
+            {/* Font Family Selector */}
+            <select 
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'default') {
+                  (capturedEditor?.chain().focus() as any)?.unsetFontFamily().run();
+                } else {
+                  (capturedEditor?.chain().focus() as any)?.setFontFamily(val).run();
+                }
+              }}
+              className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[10px] rounded px-1.5 py-0.5 outline-none font-mono transition-colors"
+              title="Font Family"
+            >
+              <option value="default">Default Font</option>
+              <option value="sans-serif">Sans-Serif</option>
+              <option value="serif">Serif</option>
+              <option value="monospace">Monospace</option>
+              <option value="cursive">Cursive</option>
+            </select>
 
-          {/* Font Size Selector */}
-          <select 
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === 'default') {
-                (editor.chain().focus() as any).unsetFontSize().run();
-              } else {
-                (editor.chain().focus() as any).setFontSize(val).run();
-              }
-            }}
-            className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[10px] rounded px-1.5 py-0.5 outline-none font-mono transition-colors"
-            title="Font Size"
-          >
-            <option value="default">Default Size</option>
-            <option value="12px">12px</option>
-            <option value="14px">14px</option>
-            <option value="16px">16px</option>
-            <option value="18px">18px</option>
-            <option value="20px">20px</option>
-            <option value="24px">24px</option>
-            <option value="30px">30px</option>
-          </select>
+            {/* Font Size Selector */}
+            <select 
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'default') {
+                  (capturedEditor?.chain().focus() as any)?.unsetFontSize().run();
+                } else {
+                  (capturedEditor?.chain().focus() as any)?.setFontSize(val).run();
+                }
+              }}
+              className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[10px] rounded px-1.5 py-0.5 outline-none font-mono transition-colors"
+              title="Font Size"
+            >
+              <option value="default">Default Size</option>
+              <option value="12px">12px</option>
+              <option value="14px">14px</option>
+              <option value="16px">16px</option>
+              <option value="18px">18px</option>
+              <option value="20px">20px</option>
+              <option value="24px">24px</option>
+              <option value="30px">30px</option>
+            </select>
 
-          <span className="w-px h-4 bg-zinc-800" />
+            <span className="w-px h-4 bg-zinc-800" />
 
-          {/* Inline styles */}
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`p-1 rounded hover:bg-zinc-800 transition-colors ${editor.isActive('bold') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
-            title="Bold"
-          >
-            <Bold size={11} />
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`p-1 rounded hover:bg-zinc-800 transition-colors ${editor.isActive('italic') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
-            title="Italic"
-          >
-            <Italic size={11} />
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={`p-1 rounded hover:bg-zinc-800 transition-colors ${editor.isActive('underline') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
-            title="Underline"
-          >
-            <Underline size={11} />
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-            className={`p-1 rounded hover:bg-zinc-800 transition-colors ${editor.isActive('strike') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
-            title="Strikethrough"
-          >
-            <Strikethrough size={11} />
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleCode().run()}
-            className={`p-1 rounded hover:bg-zinc-800 transition-colors ${editor.isActive('code') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
-            title="Inline Code"
-          >
-            <Code size={11} />
-          </button>
-        </EditorBubble>
+            {/* Inline styles */}
+            <button
+              type="button"
+              onClick={() => capturedEditor?.chain().focus().toggleBold().run()}
+              className={`p-1 rounded hover:bg-zinc-800 transition-colors ${capturedEditor?.isActive('bold') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
+              title="Bold"
+            >
+              <Bold size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={() => capturedEditor?.chain().focus().toggleItalic().run()}
+              className={`p-1 rounded hover:bg-zinc-800 transition-colors ${capturedEditor?.isActive('italic') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
+              title="Italic"
+            >
+              <Italic size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={() => capturedEditor?.chain().focus().toggleUnderline().run()}
+              className={`p-1 rounded hover:bg-zinc-800 transition-colors ${capturedEditor?.isActive('underline') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
+              title="Underline"
+            >
+              <Underline size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={() => capturedEditor?.chain().focus().toggleStrike().run()}
+              className={`p-1 rounded hover:bg-zinc-800 transition-colors ${capturedEditor?.isActive('strike') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
+              title="Strikethrough"
+            >
+              <Strikethrough size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={() => capturedEditor?.chain().focus().toggleCode().run()}
+              className={`p-1 rounded hover:bg-zinc-800 transition-colors ${capturedEditor?.isActive('code') ? 'text-[var(--color-primary)] bg-zinc-800' : 'text-zinc-400'}`}
+              title="Inline Code"
+            >
+              <Code size={11} />
+            </button>
+          </EditorBubble>
 
-        {/* Composed Slash Commands */}
-        <EditorCommand className="z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950 p-1 shadow-2xl transition-all font-mono">
-          <EditorCommandEmpty className="px-2 py-1.5 text-[10px] text-zinc-500">
-            No results
-          </EditorCommandEmpty>
-          <EditorCommandList>
-            <EditorCommandItem
-              value="Heading 1"
-              onCommand={({ editor, range }) => {
-                editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
-                H1
-              </div>
-              <div>
-                <p className="font-bold text-zinc-200">Heading 1</p>
-                <p className="text-[9px] text-zinc-500 font-sans">Big section heading.</p>
-              </div>
-            </EditorCommandItem>
-            <EditorCommandItem
-              value="Heading 2"
-              onCommand={({ editor, range }) => {
-                editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
-                H2
-              </div>
-              <div>
-                <p className="font-bold text-zinc-200">Heading 2</p>
-                <p className="text-[9px] text-zinc-500 font-sans">Medium section heading.</p>
-              </div>
-            </EditorCommandItem>
-            <EditorCommandItem
-              value="Heading 3"
-              onCommand={({ editor, range }) => {
-                editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
-                H3
-              </div>
-              <div>
-                <p className="font-bold text-zinc-200">Heading 3</p>
-                <p className="text-[9px] text-zinc-500 font-sans">Small section heading.</p>
-              </div>
-            </EditorCommandItem>
-            <EditorCommandItem
-              value="Bullet List"
-              onCommand={({ editor, range }) => {
-                editor.chain().focus().deleteRange(range).toggleBulletList().run();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
-                •
-              </div>
-              <div>
-                <p className="font-bold text-zinc-200">Bullet List</p>
-                <p className="text-[9px] text-zinc-500 font-sans">Create a simple bulleted list.</p>
-              </div>
-            </EditorCommandItem>
-            <EditorCommandItem
-              value="Numbered List"
-              onCommand={({ editor, range }) => {
-                editor.chain().focus().deleteRange(range).toggleOrderedList().run();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
-                1.
-              </div>
-              <div>
-                <p className="font-bold text-zinc-200">Numbered List</p>
-                <p className="text-[9px] text-zinc-500 font-sans">Create a list with numbering.</p>
-              </div>
-            </EditorCommandItem>
-            <EditorCommandItem
-              value="Blockquote"
-              onCommand={({ editor, range }) => {
-                editor.chain().focus().deleteRange(range).toggleBlockquote().run();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
-                ”
-              </div>
-              <div>
-                <p className="font-bold text-zinc-200">Blockquote</p>
-                <p className="text-[9px] text-zinc-500 font-sans">Capture a quote block.</p>
-              </div>
-            </EditorCommandItem>
-            <EditorCommandItem
-              value="Code Block"
-              onCommand={({ editor, range }) => {
-                editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
-              }}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
-                &lt;&gt;
-              </div>
-              <div>
-                <p className="font-bold text-zinc-200">Code Block</p>
-                <p className="text-[9px] text-zinc-500 font-sans">Insert a syntax highlighted code block.</p>
-              </div>
-            </EditorCommandItem>
-          </EditorCommandList>
-        </EditorCommand>
-      </Editor>
+          {/* Composed Slash Commands */}
+          <EditorCommand className="z-50 h-auto max-h-[330px] w-72 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950 p-1 shadow-2xl transition-all font-mono">
+            <EditorCommandEmpty className="px-2 py-1.5 text-[10px] text-zinc-500">
+              No results
+            </EditorCommandEmpty>
+            <EditorCommandList>
+              <EditorCommandItem
+                value="Heading 1"
+                onCommand={({ editor, range }) => {
+                  editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
+                  H1
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-200">Heading 1</p>
+                  <p className="text-[9px] text-zinc-500 font-sans">Big section heading.</p>
+                </div>
+              </EditorCommandItem>
+              <EditorCommandItem
+                value="Heading 2"
+                onCommand={({ editor, range }) => {
+                  editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
+                  H2
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-200">Heading 2</p>
+                  <p className="text-[9px] text-zinc-500 font-sans">Medium section heading.</p>
+                </div>
+              </EditorCommandItem>
+              <EditorCommandItem
+                value="Heading 3"
+                onCommand={({ editor, range }) => {
+                  editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
+                  H3
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-200">Heading 3</p>
+                  <p className="text-[9px] text-zinc-500 font-sans">Small section heading.</p>
+                </div>
+              </EditorCommandItem>
+              <EditorCommandItem
+                value="Bullet List"
+                onCommand={({ editor, range }) => {
+                  editor.chain().focus().deleteRange(range).toggleBulletList().run();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
+                  •
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-200">Bullet List</p>
+                  <p className="text-[9px] text-zinc-500 font-sans">Create a simple bulleted list.</p>
+                </div>
+              </EditorCommandItem>
+              <EditorCommandItem
+                value="Numbered List"
+                onCommand={({ editor, range }) => {
+                  editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
+                  1.
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-200">Numbered List</p>
+                  <p className="text-[9px] text-zinc-500 font-sans">Create a list with numbering.</p>
+                </div>
+              </EditorCommandItem>
+              <EditorCommandItem
+                value="Blockquote"
+                onCommand={({ editor, range }) => {
+                  editor.chain().focus().deleteRange(range).toggleBlockquote().run();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
+                  ”
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-200">Blockquote</p>
+                  <p className="text-[9px] text-zinc-500 font-sans">Capture a quote block.</p>
+                </div>
+              </EditorCommandItem>
+              <EditorCommandItem
+                value="Code Block"
+                onCommand={({ editor, range }) => {
+                  editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
+                }}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[10px] text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="flex h-5 w-5 items-center justify-center rounded border border-zinc-800 bg-zinc-900 text-zinc-400 font-bold">
+                  &lt;&gt;
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-200">Code Block</p>
+                  <p className="text-[9px] text-zinc-500 font-sans">Insert a syntax highlighted code block.</p>
+                </div>
+              </EditorCommandItem>
+            </EditorCommandList>
+          </EditorCommand>
+        </Editor>
+      </div>
     </div>
   );
 };
@@ -355,29 +531,27 @@ const SmartEditor: React.FC<SmartEditorProps> = ({
 }) => {
   const projectType = useWorkspaceStore(s => s.projectType);
   const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
-  
   const isCodeType = projectType === 'coding' || projectType === 'deploy';
   const showNovel = projectType === 'writing' || (!isCodeType && !isCode);
-  const containerType = showNovel ? 'DOCS' : 'MONACO';
 
   const [activeTab, setActiveTab] = useState<'editor' | 'chat'>('editor');
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
-  
+  const [localFileName, setLocalFileName] = useState(fileName);
+  // Editor instance lifted so UnifiedEditorBar can reach it
+  const [liftedEditor, setLiftedEditor] = useState<any>(null);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openFileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, isAiTyping]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages, isAiTyping]);
 
   const handleSendMessage = (text: string) => {
     if (!text.trim() || isAiTyping) return;
     setChatMessages(prev => [...prev, { role: 'user', content: text }]);
     setChatInput('');
-    if (onRun) {
-      onRun(text);
-    }
+    if (onRun) onRun(text);
   };
 
   useAgenticContext({
@@ -385,279 +559,128 @@ const SmartEditor: React.FC<SmartEditorProps> = ({
     type: showNovel ? 'markdown-editor' : 'code-editor',
     title: fileName,
     defaultIncluded: true,
-    getContext: async () => {
-      if (!content || content.trim() === "") {
-        return { format: 'markdown', content: "" };
-      }
-      return {
-        format: 'markdown',
-        content: content
-      };
-    },
+    getContext: async () => ({ format: 'markdown', content: content || '' }),
     applyMutation: async (mutation) => {
-      if (mutation.action === 'REWRITE') {
-        onChange(mutation.content);
-        return true;
-      }
+      if (mutation.action === 'REWRITE') { onChange(mutation.content); return true; }
       return false;
     }
   });
 
   return (
-    <SmartContainer 
-      type={containerType} 
-      title={showNovel ? "Document Editor" : `Code: ${fileName}`}
-      contextId={fileName}
-      selectedRoleId={roleId}
-      onRoleSelect={onRoleChange}
-      extraActions={
-          <div className="flex items-center gap-1.5">
-             <button type="button" onClick={() => { 
-                void navigator.clipboard.writeText(content).then(() => toast.success('Copied'));
-             }} title="Copy All" className="hover:text-[var(--text-primary)] transition-colors"><Copy size={10}/></button>
-             {onRun && <button type="button" onClick={() => onRun()} title="Run Agent (Ctrl+Enter)" className="hover:text-[var(--text-primary)] transition-colors"><Play size={10}/></button>}
-          </div>
-      }
-      onGenerate={(prompt, options) => onRun && onRun(prompt, options?.roleId)}
-      onAiResponse={(res) => {
-        const payload = res as AiResponse;
-        let targetContent = "";
-        if (typeof payload === 'string') {
-            targetContent = payload;
-        } else {
-            targetContent = payload.result || payload.content || payload.text || "";
-        }
+    <div className="h-full w-full flex flex-col bg-zinc-900 overflow-hidden">
+      {/* Hidden file inputs */}
+      <input type="file" ref={fileInputRef} className="hidden" onChange={e => {
+        const f = e.target.files?.[0]; if (f) toast.success(`Attached: ${f.name}`);
+      }} />
+      <input type="file" ref={openFileRef} accept=".md,.txt,.html,.json" className="hidden" onChange={e => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = ev => { if (ev.target?.result) onChange(ev.target.result as string); };
+        reader.readAsText(f);
+        toast.success(`Opened: ${f.name}`);
+      }} />
 
-        if (targetContent) {
-          if (activeTab === 'chat') {
-            setChatMessages(prev => [...prev, { role: 'assistant', content: "I have updated the file with the changes." }]);
-          }
-          onChange(targetContent);
-        }
-      }}
-    >
-      {(registerContext) => {
-        registerContext(() => content);
+      {/* ONE unified bar */}
+      <UnifiedEditorBar
+        editor={liftedEditor}
+        fileName={localFileName}
+        onFileNameChange={setLocalFileName}
+        onSave={() => { void navigator.clipboard.writeText(content).then(() => toast.success('Copied to clipboard')); }}
+        onOpen={() => openFileRef.current?.click()}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onRun={onRun ? () => onRun() : undefined}
+        isAiTyping={isAiTyping}
+        showNovel={showNovel}
+        onCopy={() => void navigator.clipboard.writeText(content).then(() => toast.success('Copied'))}
+        content={content}
+      />
 
-        return (
-          <div className="h-full w-full bg-zinc-900 flex flex-col relative group">
-            
-            {/* EditorHeader Tab-bar */}
-            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 py-2 text-zinc-300 relative z-30 shrink-0 select-none">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <FileText size={12} className="text-zinc-500" />
-                  <span className="text-xs font-bold text-zinc-100 font-mono truncate max-w-[200px]">{fileName.split('/').pop() || fileName}</span>
+      {/* Content area */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        {activeTab === 'editor' ? (
+          showNovel ? (
+            <div className="h-full w-full bg-zinc-950 overflow-y-auto relative">
+              {isAiTyping && (
+                <div className="absolute bottom-3 right-3 z-50 flex items-center gap-1.5 bg-purple-900/80 text-purple-300 px-2 py-1 rounded text-[10px] border border-purple-700 backdrop-blur-sm animate-pulse">
+                  <Bot size={10} /><span className="font-bold">AI Syncing...</span>
                 </div>
-
-                {/* Tab Switcher */}
-                <div className="flex items-center bg-zinc-900 border border-zinc-850 p-0.5 rounded-md">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('editor')}
-                    className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all flex items-center gap-1.5 ${
-                      activeTab === 'editor'
-                        ? 'bg-zinc-800 text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    <FileText size={10} />
-                    Editor
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('chat')}
-                    className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded transition-all flex items-center gap-1.5 ${
-                      activeTab === 'chat'
-                        ? 'bg-zinc-800 text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    <Sparkles size={10} className={activeTab === 'chat' ? 'text-amber-400 animate-pulse' : 'text-zinc-500'} />
-                    AI Chat
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
-                {activeTab === 'editor' ? (
-                  showNovel ? "Notion Mode" : "Monaco Mode"
-                ) : "AI Assistant Mode"}
-              </div>
+              )}
+              <EditorRoot>
+                <ComposedEditor
+                  content={content}
+                  fileName={localFileName}
+                  onChange={onChange}
+                  onRun={onRun ? () => onRun() : undefined}
+                  onNavigate={onNavigate}
+                  onEditorReady={setLiftedEditor}
+                />
+              </EditorRoot>
             </div>
-
-            {/* Content Area */}
-            <div className="flex-1 flex overflow-hidden min-h-0 relative">
-              {activeTab === 'editor' ? (
-                showNovel ? (
-                  /* Composed Novel Editor */
-                  <div className="flex-1 min-w-0 bg-zinc-900 overflow-y-auto p-4 relative h-full w-full">
-                    {isAiTyping && (
-                      <div className="absolute bottom-4 right-4 z-50 flex items-center gap-2 bg-purple-900/80 text-purple-400 px-2 py-1 rounded text-xs border border-purple-700 backdrop-blur-sm shadow-xl animate-pulse">
-                        <Bot size={12} />
-                        <span className="font-bold">AI Syncing...</span>
-                      </div>
-                    )}
-                    <EditorRoot>
-                      <ComposedEditor 
-                        content={content} 
-                        fileName={fileName} 
-                        onChange={onChange} 
-                        onRun={onRun ? () => onRun() : undefined}
-                        onNavigate={onNavigate}
-                      />
-                    </EditorRoot>
+          ) : (
+            <div className="h-full w-full relative">
+              {isAiTyping && (
+                <div className="absolute top-2 right-3 z-50 flex items-center gap-1.5 bg-emerald-900/80 text-emerald-300 px-2 py-1 rounded text-[10px] border border-emerald-700 backdrop-blur-sm animate-pulse">
+                  <Bot size={10} /><span className="font-bold">AI Refactoring...</span>
+                </div>
+              )}
+              <MonacoEditor
+                value={content}
+                onChange={val => onChange(val || '')}
+                language={fileName.endsWith('.tsx') ? 'typescript' : fileName.endsWith('.jsx') ? 'javascript' : fileName.split('.').pop() || 'text'}
+                theme="vs-dark"
+                options={{ minimap: { enabled: true }, wordWrap: 'on', readOnly: isAiTyping }}
+              />
+            </div>
+          )
+        ) : (
+          /* Chat panel */
+          <div className="flex-1 bg-zinc-950 flex flex-col h-full animate-in fade-in duration-200">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chatMessages.length === 0 && (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 opacity-60">
+                  <Bot size={28} className="text-amber-400 animate-bounce" />
+                  <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest font-mono">Ask EVAIX AI</p>
+                  <p className="text-[10px] text-zinc-500 font-mono">Describe changes or ask questions. Edits go directly to the file.</p>
+                </div>
+              )}
+              {chatMessages.map((msg, i) => {
+                const isUser = msg.role === 'user';
+                return (
+                  <div key={i} className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    {!isUser && <div className="w-5 h-5 rounded-full bg-purple-950 border border-purple-500/30 flex items-center justify-center shrink-0"><Bot size={10} className="text-purple-400" /></div>}
+                    <div className={`max-w-[80%] rounded px-2.5 py-1.5 text-[10px] leading-relaxed font-mono ${isUser ? 'bg-[var(--color-primary)] text-black font-semibold' : 'bg-zinc-900 border border-zinc-800 text-zinc-300'}`}>{msg.content}</div>
+                    {isUser && <div className="w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0"><User size={10} className="text-zinc-300" /></div>}
                   </div>
-                ) : (
-                  /* Monaco Editor */
-                  <div className="h-full w-full relative flex flex-col">
-                    {isAiTyping && (
-                      <div className="absolute top-2 right-4 z-50 flex items-center gap-2 bg-emerald-900/80 text-emerald-400 px-2 py-1 rounded text-xs border border-emerald-700 backdrop-blur-sm shadow-lg animate-pulse">
-                        <Bot size={12} />
-                        <span className="font-bold">AI Refactoring...</span>
-                      </div>
-                    )}
-                    
-                    <MonacoEditor
-                      value={content}
-                      onChange={(val) => onChange(val || '')}
-                      language={
-                        fileName.endsWith('.tsx')
-                          ? 'typescript'
-                          : fileName.endsWith('.jsx')
-                          ? 'javascript'
-                          : fileName.split('.').pop() || 'text'
-                      }
-                      theme="vs-dark"
-                      onMount={(editor) => {
-                        registerContext(() => editor.getValue());
-                      }}
-                      options={{
-                        minimap: { enabled: true },
-                        wordWrap: 'on',
-                        readOnly: isAiTyping,
-                      }} 
-                    />
-                  </div>
-                )
-              ) : (
-                /* Full-width Chat Interface */
-                <div className="flex-1 bg-zinc-950 flex flex-col h-full w-full animate-in fade-in duration-200">
-                  <div className="h-9 border-b border-zinc-900 flex items-center px-4 bg-zinc-900/40 justify-between shrink-0">
-                    <span className="text-[9px] font-black tracking-widest text-zinc-400 uppercase flex items-center gap-1.5 font-mono">
-                      <Sparkles size={10} className="text-amber-400 animate-pulse" />
-                      AI Chat Assistant
-                    </span>
-                  </div>
-
-                  {/* Messages list */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
-                    {chatMessages.length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 opacity-60 max-w-md mx-auto">
-                        <Bot size={32} className="text-amber-400 animate-bounce" />
-                        <p className="text-xs font-bold text-zinc-200 uppercase tracking-widest font-mono">Ask EVAIX AI</p>
-                        <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
-                          Ask questions, describe changes, or request code generation. Modifications are written directly back to the editor virtual file.
-                        </p>
-                      </div>
-                    )}
-
-                    {chatMessages.map((msg, index) => {
-                      const isUser = msg.role === 'user';
-                      return (
-                        <div key={index} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
-                          {!isUser && (
-                            <div className="w-6 h-6 rounded-full bg-purple-950/50 border border-purple-500/30 flex items-center justify-center shrink-0">
-                              <Bot size={12} className="text-purple-400" />
-                            </div>
-                          )}
-                          <div className={`max-w-[75%] rounded-lg p-3 text-[11px] leading-relaxed font-mono ${
-                            isUser 
-                              ? 'bg-[var(--color-primary)] text-black font-semibold rounded-br-none shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.15)]' 
-                              : 'bg-zinc-900 border border-zinc-850 text-zinc-300 rounded-bl-none'
-                          }`}>
-                            {msg.content}
-                          </div>
-                          {isUser && (
-                            <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-750 flex items-center justify-center shrink-0">
-                              <User size={12} className="text-zinc-300" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {isAiTyping && (
-                      <div className="flex gap-3 justify-start">
-                        <div className="w-6 h-6 rounded-full bg-purple-950/50 border border-purple-500/30 flex items-center justify-center shrink-0 animate-pulse">
-                          <Bot size={12} className="text-purple-400" />
-                        </div>
-                        <div className="bg-zinc-900 border border-zinc-850 text-zinc-400 rounded-lg rounded-bl-none p-3 text-[11px] flex items-center gap-2">
-                          <div className="flex gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-
-                  {/* Input Form with Paperclip */}
-                  <div className="p-4 border-t border-zinc-900 bg-zinc-950 flex flex-col gap-2 shrink-0">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          toast.success(`Attached file: ${file.name}`);
-                        }
-                      }}
-                    />
-                    
-                    <div className="flex gap-2 items-center bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-zinc-550 hover:text-zinc-300 transition-colors p-1"
-                        title="Attach files or images"
-                      >
-                        <Paperclip size={14} />
-                      </button>
-                      <input
-                        type="text"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="Ask AI assistant..."
-                        className="flex-1 bg-transparent border-none text-[11px] text-white outline-none placeholder:text-zinc-655 font-mono"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSendMessage(chatInput);
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSendMessage(chatInput)}
-                        disabled={!chatInput.trim() || isAiTyping}
-                        className="text-[var(--color-primary)] hover:opacity-85 disabled:opacity-30 p-1 transition-all"
-                      >
-                        <Send size={14} />
-                      </button>
-                    </div>
+                );
+              })}
+              {isAiTyping && (
+                <div className="flex gap-2">
+                  <div className="w-5 h-5 rounded-full bg-purple-950 border border-purple-500/30 flex items-center justify-center shrink-0 animate-pulse"><Bot size={10} className="text-purple-400" /></div>
+                  <div className="bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 flex gap-1">
+                    {[0,150,300].map(d => <span key={d} className="w-1 h-1 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
                   </div>
                 </div>
               )}
+              <div ref={chatEndRef} />
             </div>
-
+            <div className="px-3 py-2 border-t border-zinc-800 bg-zinc-950 flex gap-2 items-center shrink-0">
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="text-zinc-600 hover:text-zinc-400 transition-colors"><Paperclip size={12} /></button>
+              <input
+                type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
+                placeholder="Ask AI assistant..."
+                className="flex-1 bg-transparent text-[10px] text-white outline-none placeholder:text-zinc-600 font-mono"
+                onKeyDown={e => { if (e.key === 'Enter') handleSendMessage(chatInput); }}
+              />
+              <button type="button" onClick={() => handleSendMessage(chatInput)} disabled={!chatInput.trim() || isAiTyping} className="text-[var(--color-primary)] hover:opacity-80 disabled:opacity-30 transition-all"><Send size={12} /></button>
+            </div>
           </div>
-        );
-      }}
-    </SmartContainer>
+        )}
+      </div>
+    </div>
   );
 };
 
 export default SmartEditor;
+
