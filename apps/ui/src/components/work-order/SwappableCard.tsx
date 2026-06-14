@@ -22,6 +22,7 @@ import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
 import { UniversalDataGrid } from '../UniversalDataGrid.js';
 import { DatabaseBrowser } from '../DatabaseBrowser.js';
 import { NebulaBuilder } from '../../nebula/features/builder/NebulaBuilder.js';
+import { getToolsForProjectType } from '../../registry/ToolRegistry.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -36,6 +37,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const card = useWorkspaceStore(s => s.cards.find(c => c.id === id));
     const updateCard = useWorkspaceStore(s => s.updateCard);
     const activeWorkspacePath = useWorkspaceStore(s => s.activeWorkspacePath) || '';
+    const projectType = useWorkspaceStore(s => s.projectType);
     const navigate = useNavigate();
 
     const startSessionMutation = trpc.agent.startSession.useMutation();
@@ -280,16 +282,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         title="Select Tool"
                     >
                         {(() => {
-                            const activeTool = [
-                                { id: 'files', icon: Folder },
-                                { id: 'editor', icon: Code },
-                                { id: 'terminal', icon: Terminal },
-                                { id: 'browser', icon: Globe },
-                                { id: 'role', icon: Fingerprint },
-                                { id: 'dna-lab', icon: Dna },
-                                { id: 'BadBuilder', icon: LayoutTemplate },
-                                { id: 'databrowser', icon: Database }
-                            ].find(t => t.id === viewMode);
+                            const activeTool = getToolsForProjectType(projectType).find(t => t.id === viewMode);
                             const IconComp = activeTool?.icon || Folder;
                             return <IconComp size={12} className={activeTool ? "text-[var(--color-primary)]" : "text-zinc-500"} />;
                         })()}
@@ -298,16 +291,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
                     {menuOpen && (
                         <div className="absolute left-0 top-7 z-50 bg-zinc-900 border border-zinc-700 rounded shadow-xl py-1 flex flex-col gap-0.5 min-w-[36px] items-center p-1">
-                             {[
-                                { id: 'files', icon: Folder, label: 'File Explorer' },
-                                { id: 'editor', icon: Code, label: 'Code Editor' },
-                                { id: 'terminal', icon: Terminal, label: 'Smart Terminal' },
-                                { id: 'browser', icon: Globe, label: 'Web Browser' },
-                                { id: 'role', icon: Fingerprint, label: 'Agent Role' },
-                                { id: 'dna-lab', icon: Dna, label: 'Agent DNA Lab' },
-                                { id: 'BadBuilder', icon: LayoutTemplate, label: 'BadBuilder' },
-                                { id: 'databrowser', icon: Database, label: 'Database Grid' }
-                            ].map(t => (
+                             {getToolsForProjectType(projectType).map(t => (
                                 <button
                                     key={t.id}
                                     type="button"

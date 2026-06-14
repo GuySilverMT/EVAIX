@@ -78,8 +78,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set) => ({
       columns: 3,
-      // Clamp to 2–4; workflows may lock this value
-      setColumns: (columns) => set({ columns: Math.max(2, Math.min(4, columns)) }),
+      // Clamp to 1–4; workflows may lock this value
+      setColumns: (columns) => set({ columns: Math.max(1, Math.min(4, columns)) }),
       showSidebar: false,
       toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
       setSidebarOpen: (open) => set({ showSidebar: open }),

@@ -179,19 +179,57 @@ function WorkspaceFlipper() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ProjectContextBar — Active Project Context + Model Selector
+// DashboardBackButton — returns to the dashboard
 // ─────────────────────────────────────────────────────────────────────────────
-function ProjectContextBar() {
+function DashboardBackButton() {
   const navigate = useNavigate();
-  const { activeWorkspaceId, projectType, activeModelId, setActiveModelId } = useWorkspaceStore();
-  const [modelOpen, setModelOpen] = useState(false);
-  const modelAnchorRef = useRef<HTMLButtonElement>(null);
+  return (
+    <button
+      onClick={() => navigate('/')}
+      title="Go to Dashboard"
+      className="flex items-center justify-center w-8 h-8 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-color)] hover:text-white hover:border-indigo-500/50 transition-all"
+    >
+      <Folder size={13} className="text-zinc-500 hover:text-indigo-400" />
+    </button>
+  );
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ProjectInfoBadge — Active Project Name display
+// ─────────────────────────────────────────────────────────────────────────────
+function ProjectInfoBadge() {
+  const { activeWorkspaceId, projectName, projectType } = useWorkspaceStore();
+  
   // Fetch workspace details if activeWorkspaceId is present
   const { data: wsDetails } = trpc.workspace.get.useQuery(
     { id: activeWorkspaceId || '' },
     { enabled: !!activeWorkspaceId }
   );
+
+  if (!activeWorkspaceId) return null;
+
+  const nameToDisplay = projectName || wsDetails?.name || 'Unnamed Project';
+  const typeToDisplay = projectType || wsDetails?.projectType || 'CODE';
+
+  return (
+    <div className="flex flex-col pl-1 select-text">
+      <span className="text-[10px] font-black uppercase tracking-wider text-white truncate max-w-[120px]" title={nameToDisplay}>
+        {nameToDisplay}
+      </span>
+      <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest">
+        {typeToDisplay}
+      </span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ModelSelector — drop down fleet selector
+// ─────────────────────────────────────────────────────────────────────────────
+function ModelSelector() {
+  const { activeWorkspaceId, activeModelId, setActiveModelId } = useWorkspaceStore();
+  const [modelOpen, setModelOpen] = useState(false);
+  const modelAnchorRef = useRef<HTMLButtonElement>(null);
 
   // Fetch active models
   const { data: models } = trpc.model.list.useQuery();
@@ -209,76 +247,50 @@ function ProjectContextBar() {
     }
   }, [models, activeModelId, setActiveModelId]);
 
+  if (!activeWorkspaceId) return null;
+
   return (
-    <div className="flex items-center gap-2">
-      {/* Dashboard Back Button */}
+    <div className="relative">
       <button
-        onClick={() => navigate('/')}
-        title="Go to Dashboard"
-        className="flex items-center justify-center w-8 h-8 rounded-sm bg-[var(--bg-primary)] border border-[var(--border-color)] hover:text-white hover:border-indigo-500/50 transition-all animate-in fade-in"
+        ref={modelAnchorRef}
+        onClick={() => setModelOpen(o => !o)}
+        className={cn(
+          "flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-[9px] font-bold uppercase tracking-wider transition-all border",
+          modelOpen
+            ? "bg-indigo-600 text-white border-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
+            : "bg-[var(--bg-primary)] text-zinc-400 border-[var(--border-color)] hover:text-white hover:border-indigo-500/50"
+        )}
       >
-        <Folder size={13} className="text-zinc-500 hover:text-indigo-400" />
+        <Sparkles size={11} className={cn("text-indigo-400", modelOpen && "text-white animate-pulse")} />
+        <span className="max-w-[100px] truncate">{selectedModel?.name || "Select Model"}</span>
+        <ChevronDown size={8} className={cn("transition-transform", modelOpen && "rotate-180")} />
       </button>
 
-      {activeWorkspaceId && wsDetails && (
-        <div className="flex items-center gap-2 border-l border-zinc-800 pl-2 animate-in slide-in-from-left-2 duration-200">
-          {/* Project Info Badge */}
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-wider text-white truncate max-w-[120px]" title={wsDetails.name}>
-              {wsDetails.name}
-            </span>
-            <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest">
-              {projectType || wsDetails.projectType}
-            </span>
-          </div>
-
-          <div className="w-px h-4 bg-zinc-800 mx-1" />
-
-          {/* Model Selector Dropdown */}
-          <div className="relative">
+      <DropdownPortal anchorRef={modelAnchorRef} open={modelOpen} onClose={() => setModelOpen(false)} align="left" width={220}>
+        <div className="px-3 py-1 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+          Select Model Fleet
+        </div>
+        <div className="h-px bg-zinc-700 my-1" />
+        <div className="max-h-60 overflow-y-auto custom-scrollbar">
+          {models && models.map(m => (
             <button
-              ref={modelAnchorRef}
-              onClick={() => setModelOpen(o => !o)}
+              key={m.id}
+              onClick={() => handleModelSelect(m.id)}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-[9px] font-bold uppercase tracking-wider transition-all border",
-                modelOpen
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.3)]"
-                  : "bg-[var(--bg-primary)] text-zinc-400 border-[var(--border-color)] hover:text-white hover:border-indigo-500/50"
+                "w-full text-left px-3 py-2 text-[10px] flex flex-col transition-colors border-b border-zinc-800/30 last:border-b-0",
+                m.id === activeModelId
+                  ? "text-indigo-400 bg-indigo-400/10 font-bold"
+                  : "hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
               )}
             >
-              <Sparkles size={11} className={cn("text-indigo-400", modelOpen && "text-white animate-pulse")} />
-              <span className="max-w-[100px] truncate">{selectedModel?.name || "Select Model"}</span>
-              <ChevronDown size={8} className={cn("transition-transform", modelOpen && "rotate-180")} />
+              <span className="font-bold truncate w-full">{m.name}</span>
+              <span className="text-[8px] text-zinc-500 font-mono mt-0.5 truncate w-full">
+                {m.provider?.name || m.providerId}
+              </span>
             </button>
-
-            <DropdownPortal anchorRef={modelAnchorRef} open={modelOpen} onClose={() => setModelOpen(false)} align="left" width={220}>
-              <div className="px-3 py-1 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                Select Model Fleet
-              </div>
-              <div className="h-px bg-zinc-700 my-1" />
-              <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                {models && models.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => handleModelSelect(m.id)}
-                    className={cn(
-                      "w-full text-left px-3 py-2 text-[10px] flex flex-col transition-colors border-b border-zinc-800/30 last:border-b-0",
-                      m.id === activeModelId
-                        ? "text-indigo-400 bg-indigo-400/10 font-bold"
-                        : "hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
-                    )}
-                  >
-                    <span className="font-bold truncate w-full">{m.name}</span>
-                    <span className="text-[8px] text-zinc-500 font-mono mt-0.5 truncate w-full">
-                      {m.provider?.name || m.providerId}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </DropdownPortal>
-          </div>
+          ))}
         </div>
-      )}
+      </DropdownPortal>
     </div>
   );
 }
@@ -365,7 +377,7 @@ function ColumnControls() {
     <div className="flex items-center gap-0.5">
       <button
         onClick={() => setColumns(columns - 1)}
-        disabled={columns <= 2}
+        disabled={columns <= 1}
         title="Remove Column"
         className="w-6 h-6 flex items-center justify-center rounded-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-transparent hover:border-[var(--border-color)]"
       >
@@ -410,10 +422,13 @@ export const GlobalContextBar = ({
       <div className="flex-none h-10 bg-[var(--bg-secondary)] border-b border-[var(--border-color)] flex items-center select-none px-2 gap-1.5 overflow-hidden">
 
         {/* ── LEFT: Core controls ── */}
-        <div className="flex items-center gap-1 flex-none">
-          <ProjectContextBar />
+        <div className="flex items-center gap-1.5 flex-none">
+          <DashboardBackButton />
+          <ProjectInfoBadge />
           <div className="w-px h-4 bg-[var(--border-color)]" />
           <WorkspaceFlipper />
+          <div className="w-px h-4 bg-[var(--border-color)]" />
+          <ModelSelector />
           <div className="w-px h-4 bg-[var(--border-color)]" />
           <SettingsDropdown onToggleTheme={onToggleTheme} themeOpen={themeOpen} />
           <div className="w-px h-4 bg-[var(--border-color)]" />

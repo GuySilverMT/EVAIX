@@ -99,15 +99,31 @@ async function startServer() {
         return res.status(400).json({ error: 'Missing path parameter' });
       }
       const fs = await import('fs/promises');
+      let content: string;
       try {
-        const content = await fs.readFile(filePath, 'utf-8');
-        res.json({ content });
+        content = await fs.readFile(filePath, 'utf-8');
       } catch (err: any) {
         if (err.code === 'ENOENT') {
-          return res.status(404).json({ error: 'File not found' });
+          const fileName = path.basename(filePath);
+          if (fileName.endsWith('.layout.json')) {
+            const defaultPath = path.join(__dirname, '../../badbuilder', fileName);
+            try {
+              content = await fs.readFile(defaultPath, 'utf-8');
+              // Automatically seed the file in the workspace
+              await fs.mkdir(path.dirname(filePath), { recursive: true });
+              await fs.writeFile(filePath, content, 'utf-8');
+              console.log(`[REST VFS Read] Seeded default layout ${fileName} to ${filePath}`);
+            } catch (fallbackErr) {
+              return res.status(404).json({ error: 'File not found' });
+            }
+          } else {
+            return res.status(404).json({ error: 'File not found' });
+          }
+        } else {
+          throw err;
         }
-        throw err;
       }
+      res.json({ content });
     } catch (err: any) {
       console.error('[REST VFS Read Error]:', err);
       res.status(500).json({ error: err.message });

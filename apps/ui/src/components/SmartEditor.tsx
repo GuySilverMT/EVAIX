@@ -1,12 +1,22 @@
 import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import Image from '@tiptap/extension-image';
+import TextAlign from '@tiptap/extension-text-align';
+import Underline from '@tiptap/extension-underline';
+import Typography from '@tiptap/extension-typography';
+import { WritingToolbar } from './WritingToolbar.js';
 import MonacoEditor from './MonacoEditor.js'; 
 import { Bot, Loader2, Play, Copy, Save, RefreshCw } from 'lucide-react';
 import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { useAgenticContext } from '../hooks/useAgenticContext.js';
 import { toast } from 'sonner';
 import { trpc } from '../utils/trpc.js';
+import { useWorkspaceStore } from '../stores/workspace.store.js';
 
 type AiResponse = string | { 
   content?: string; 
@@ -28,18 +38,39 @@ interface SmartEditorProps {
   onRoleChange?: (roleId: string) => void;
 }
 
-const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate, roleId, onRoleChange, cardId }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void, roleId?: string | null, onRoleChange?: (roleId: string) => void, cardId?: string }) => {
+const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNavigate, roleId, onRoleChange, cardId, projectType }: { content: string, onChange: (val: string) => void, isAiTyping: boolean, onRun?: (goal?: string, roleIdOverride?: string) => void, fileName: string, onNavigate?: (url: string) => void, roleId?: string | null, onRoleChange?: (roleId: string) => void, cardId?: string, projectType?: string | null }) => {
   const [showLogs, setShowLogs] = React.useState(false); // [NEW] Toggle state
   const utils = trpc.useContext();
+  const isWritingMode = projectType?.toLowerCase() === 'writing';
   
+  // Format content for code block if not writing mode
+  const getInitialContent = (raw: string) => {
+      if (isWritingMode) return raw;
+      // Bypass Tiptap's HTML parser entirely so markdown/configs load as raw text inside a CodeBlock
+      const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<pre><code class="language-markdown">${escaped}</code></pre>`;
+  };
+
+  const writingExtensions = [
+    StarterKit,
+    Underline,
+    Typography,
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    Image.configure({ inline: true, allowBase64: true }),
+    Table.configure({ resizable: true }),
+    TableRow,
+    TableHeader,
+    TableCell,
+  ];
+
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-    ],
-    content: content, // ... (unchanged)
+    extensions: isWritingMode ? writingExtensions : [StarterKit],
+    content: getInitialContent(content),
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full',
+        class: isWritingMode 
+            ? 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full' 
+            : 'focus:outline-none min-h-[100px] text-zinc-300 text-sm p-4 h-full font-mono whitespace-pre-wrap',
       },
       handleDOMEvents: {
         // CRITICAL: Return false to allow contextmenu event to bubble up for voice keyboard
@@ -50,7 +81,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
       // Only trigger onChange if the update was NOT from an external setContent
       // We check if the editor is focused to determine if user is typing
       if (editor.isFocused) {
-        onChange(editor.getHTML());
+        onChange(isWritingMode ? editor.getHTML() : editor.getText());
       }
     },
   });
@@ -58,10 +89,13 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
   // Keep Tiptap content synced if content prop changes externally (e.g. AI writes)
   // BUT avoid loops by checking focus - if focussed, we assume the user is typing
   useEffect(() => {
-    if (editor && !editor.isDestroyed && !editor.isFocused && content !== editor.getHTML()) {
-      editor.commands.setContent(content); 
+    if (editor && !editor.isDestroyed && !editor.isFocused) {
+      const currentVal = isWritingMode ? editor.getHTML() : editor.getText();
+      if (content !== currentVal) {
+        editor.commands.setContent(getInitialContent(content)); 
+      }
     }
-  }, [content, editor]);
+  }, [content, editor, isWritingMode]);
 
   // Handle Cmd+Enter to Run
   useEffect(() => {
@@ -200,7 +234,8 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
                 </div>
               )}
 
-            <EditorContent editor={editor} className="flex-1 h-full min-h-0" />
+            {isWritingMode && editor && <WritingToolbar editor={editor} />}
+            <EditorContent editor={editor} className="flex-1 h-full min-h-0 overflow-y-auto" />
             
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <span className="text-[10px] text-zinc-600 bg-black/40 px-2 py-0.5 rounded border border-zinc-800 uppercase font-bold">
@@ -216,6 +251,7 @@ const TiptapEditor = ({ content, onChange, isAiTyping, onRun, fileName, onNaviga
 
 const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, isAiTyping = false, onRun, onNavigate, roleId, onRoleChange, cardId }) => {
   const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
+  const projectType = useWorkspaceStore(s => s.projectType);
 
 
   useAgenticContext({
@@ -298,7 +334,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({ fileName, content, onChange, 
     );
   }
 
-  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} cardId={cardId} />;
+  return <TiptapEditor key={fileName} fileName={fileName} content={content} onChange={onChange} isAiTyping={isAiTyping} onRun={onRun} onNavigate={onNavigate} roleId={roleId} onRoleChange={onRoleChange} cardId={cardId} projectType={projectType} />;
 };
 
 export default SmartEditor;
