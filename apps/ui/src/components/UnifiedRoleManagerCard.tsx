@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, Sparkles, Save, SlidersHorizontal, Settings2, Plus } from 'lucide-react';
+import { Bot, Sparkles, Save, SlidersHorizontal, Settings2 } from 'lucide-react';
 import { useAgenticContext } from '../hooks/useAgenticContext.js';
 // import { trpc } from '@/utils/trpc'; // Assuming you use tRPC for saving
 
@@ -11,7 +11,12 @@ interface RoleDraft {
   tools: string[];
 }
 
-export const UnifiedRoleManagerCard = ({ cardId, initialRole = null }) => {
+interface UnifiedRoleManagerCardProps {
+  cardId: string;
+  initialRole?: RoleDraft | null;
+}
+
+export const UnifiedRoleManagerCard = ({ cardId, initialRole = null }: UnifiedRoleManagerCardProps) => {
   const [activeRole, setActiveRole] = useState<RoleDraft>(
     initialRole || { name: '', systemPrompt: '', model: 'claude-3.5-sonnet', tools: [] }
   );

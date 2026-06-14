@@ -1,12 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import MonacoEditor from './MonacoEditor.js';
-import { 
-  Bot, Play, Copy, Paperclip, Send, Sparkles, FileText, User,
-  Bold, Italic, Underline, Strikethrough, Code, Heading1, Heading2, Heading3, List, Table as TableIcon,
-  Save, FolderOpen, ChevronDown, MessageSquare, AlignLeft, AlignCenter, AlignRight, ListOrdered,
-  Quote, RotateCcw
+import {
+  Bot, Copy, Paperclip, Send, User,
+  Bold, Italic, Underline, Strikethrough, Code, Table as TableIcon
 } from 'lucide-react';
-import { SmartContainer } from './nebula/containers/SmartContainer.js';
 import { useAgenticContext } from '../hooks/useAgenticContext.js';
 import { toast } from 'sonner';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
@@ -32,7 +29,7 @@ import {
   Command as NovelCommand
 } from 'novel';
 
-const writingExtensions = [
+const writingExtensions: any[] = [
   StarterKit,
   Placeholder.configure({ placeholder: 'Start writing...' }),
   TiptapUnderline,
@@ -46,14 +43,6 @@ const writingExtensions = [
   TableCell
 ];
 
-type AiResponse = string | { 
-  content?: string; 
-  text?: string; 
-  code?: string; 
-  result?: string; 
-  logs?: string[] 
-};
-
 interface SmartEditorProps {
   cardId?: string;
   fileName: string;
@@ -64,133 +53,132 @@ interface SmartEditorProps {
   onNavigate?: (url: string) => void;
   roleId?: string | null;
   onRoleChange?: (roleId: string) => void;
+  activeTab?: 'editor' | 'chat';
+  onTabChange?: (tab: 'editor' | 'chat') => void;
 }
 
 // Compact divider
 const Sep = () => <span className="w-px h-3.5 bg-zinc-700 mx-0.5 shrink-0" />;
 
-// Unified single-line formatting + nav bar rendered above the Novel editor
-const UnifiedEditorBar = ({
-  editor, fileName, onFileNameChange, onSave, onOpen,
-  activeTab, onTabChange, onRun, isAiTyping, showNovel,
-  onCopy, content
+// Unified formatting bar rendered above the editor
+const EditorFormatBar = ({
+  editor, showNovel, onCopy
 }: {
   editor: any;
-  fileName: string;
-  onFileNameChange: (n: string) => void;
-  onSave: () => void;
-  onOpen: () => void;
-  activeTab: 'editor' | 'chat';
-  onTabChange: (t: 'editor' | 'chat') => void;
-  onRun?: () => void;
-  isAiTyping?: boolean;
   showNovel: boolean;
   onCopy: () => void;
-  content: string;
 }) => {
   const btn = (active: boolean) =>
-    `p-0.5 rounded transition-colors ${
-      active ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'
+    `p-1.5 rounded-md transition-colors ${
+      active ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
     }`;
 
+  if (!showNovel || !editor) return null;
+
   return (
-    <div className="flex items-center gap-1 border-b border-zinc-800 bg-zinc-950 px-1.5 py-0.5 shrink-0 min-h-0 overflow-x-auto" style={{ height: '28px' }}>
-      {/* File name editable */}
-      <FileText size={10} className="text-zinc-600 shrink-0" />
-      <input
-        type="text"
-        value={fileName.split('/').pop() || fileName}
-        onChange={e => onFileNameChange(e.target.value)}
-        className="w-24 bg-transparent text-[10px] text-zinc-300 font-mono outline-none border-none min-w-0 truncate"
-        title="File name"
-      />
-      <button type="button" onClick={onSave} title="Save" className={btn(false)}><Save size={10} /></button>
-      <button type="button" onClick={onOpen} title="Open file" className={btn(false)}><FolderOpen size={10} /></button>
+    <div className="flex items-center gap-1.5 border-b border-zinc-800 bg-zinc-950 px-3 py-1.5 shrink-0 min-h-0 overflow-x-auto shadow-sm" style={{ height: '44px' }}>
+      {/* Font family */}
+      <select
+        onChange={e => {
+          const v = e.target.value;
+          v === 'default'
+            ? (editor.chain().focus() as any).unsetFontFamily().run()
+            : (editor.chain().focus() as any).setFontFamily(v).run();
+        }}
+        className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded outline-none py-1 px-2 h-7 font-sans focus:ring-1 focus:ring-[var(--color-primary)]"
+        title="Font"
+      >
+        <option value="default">Default Font</option>
+        <option value="sans-serif">Sans Serif</option>
+        <option value="serif">Serif</option>
+        <option value="monospace">Monospace</option>
+        <option value="cursive">Script</option>
+      </select>
+
+      {/* Font size */}
+      <select
+        onChange={e => {
+          const v = e.target.value;
+          v === 'default'
+            ? (editor.chain().focus() as any).unsetFontSize().run()
+            : (editor.chain().focus() as any).setFontSize(v).run();
+        }}
+        className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded outline-none py-1 px-1 h-7 font-sans focus:ring-1 focus:ring-[var(--color-primary)] w-14"
+        title="Size"
+      >
+        <option value="default">Size</option>
+        <option value="11px">11</option>
+        <option value="13px">13</option>
+        <option value="15px">15</option>
+        <option value="18px">18</option>
+        <option value="22px">22</option>
+        <option value="28px">28</option>
+      </select>
 
       <Sep />
 
-      {/* Editor / Chat toggle (icons only) */}
-      <button type="button" onClick={() => onTabChange('editor')} title="Editor" className={btn(activeTab === 'editor')}>
-        <AlignLeft size={10} />
-      </button>
-      <button type="button" onClick={() => onTabChange('chat')} title="AI Chat" className={btn(activeTab === 'chat')}>
-        <MessageSquare size={10} />
-      </button>
+      <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive('bold'))} title="Bold"><Bold size={14}/></button>
+      <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={btn(editor.isActive('italic'))} title="Italic"><Italic size={14}/></button>
+      <button type="button" onClick={() => editor.chain().focus().toggleUnderline().run()} className={btn(editor.isActive('underline'))} title="Underline"><Underline size={14}/></button>
+      <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} className={btn(editor.isActive('strike'))} title="Strike"><Strikethrough size={14}/></button>
+      <button type="button" onClick={() => editor.chain().focus().toggleCode().run()} className={btn(editor.isActive('code'))} title="Code"><Code size={14}/></button>
+      
+      <Sep />
 
-      {/* Formatting — only in novel/editor mode */}
-      {showNovel && activeTab === 'editor' && editor && (
-        <>
-          <Sep />
-          {/* Font family */}
-          <select
-            onChange={e => {
-              const v = e.target.value;
-              v === 'default'
-                ? (editor.chain().focus() as any).unsetFontFamily().run()
-                : (editor.chain().focus() as any).setFontFamily(v).run();
-            }}
-            className="bg-zinc-900 border-0 text-zinc-400 text-[9px] rounded outline-none py-0 px-0.5 h-4 font-mono"
-            title="Font"
-          >
-            <option value="default">Font</option>
-            <option value="sans-serif">Sans</option>
-            <option value="serif">Serif</option>
-            <option value="monospace">Mono</option>
-            <option value="cursive">Script</option>
-          </select>
-          {/* Font size */}
-          <select
-            onChange={e => {
-              const v = e.target.value;
-              v === 'default'
-                ? (editor.chain().focus() as any).unsetFontSize().run()
-                : (editor.chain().focus() as any).setFontSize(v).run();
-            }}
-            className="bg-zinc-900 border-0 text-zinc-400 text-[9px] rounded outline-none py-0 px-0.5 h-4 w-10 font-mono"
-            title="Size"
-          >
-            <option value="default">Sz</option>
-            <option value="11px">11</option>
-            <option value="13px">13</option>
-            <option value="15px">15</option>
-            <option value="18px">18</option>
-            <option value="22px">22</option>
-            <option value="28px">28</option>
-          </select>
-          <Sep />
-          <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive('bold'))} title="Bold"><Bold size={10}/></button>
-          <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={btn(editor.isActive('italic'))} title="Italic"><Italic size={10}/></button>
-          <button type="button" onClick={() => editor.chain().focus().toggleUnderline().run()} className={btn(editor.isActive('underline'))} title="Underline"><Underline size={10}/></button>
-          <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} className={btn(editor.isActive('strike'))} title="Strike"><Strikethrough size={10}/></button>
-          <button type="button" onClick={() => editor.chain().focus().toggleCode().run()} className={btn(editor.isActive('code'))} title="Code"><Code size={10}/></button>
-          <Sep />
-          <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={`${btn(editor.isActive('heading', {level:1}))} text-[9px] font-bold px-0.5`} title="H1">H1</button>
-          <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={`${btn(editor.isActive('heading', {level:2}))} text-[9px] font-bold px-0.5`} title="H2">H2</button>
-          <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={`${btn(editor.isActive('heading', {level:3}))} text-[9px] font-bold px-0.5`} title="H3">H3</button>
-          <Sep />
-          <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={btn(editor.isActive('bulletList'))} title="Bullet list"><List size={10}/></button>
-          <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={btn(editor.isActive('orderedList'))} title="Numbered list"><ListOrdered size={10}/></button>
-          <button type="button" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} className={btn(false)} title="Insert table"><TableIcon size={10}/></button>
-        </>
-      )}
+      {/* Headings Dropdown */}
+      <select
+        value={
+          editor.isActive('heading', { level: 1 }) ? '1' :
+          editor.isActive('heading', { level: 2 }) ? '2' :
+          editor.isActive('heading', { level: 3 }) ? '3' : 'p'
+        }
+        onChange={e => {
+          const v = e.target.value;
+          if (v === 'p') editor.chain().focus().setParagraph().run();
+          else editor.chain().focus().toggleHeading({ level: parseInt(v) as any }).run();
+        }}
+        className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded outline-none py-1 px-2 h-7 font-sans focus:ring-1 focus:ring-[var(--color-primary)]"
+        title="Heading"
+      >
+        <option value="p">Paragraph</option>
+        <option value="1">Heading 1</option>
+        <option value="2">Heading 2</option>
+        <option value="3">Heading 3</option>
+      </select>
+
+      {/* Lists Dropdown */}
+      <select
+        value={
+          editor.isActive('bulletList') ? 'bullet' :
+          editor.isActive('orderedList') ? 'ordered' : 'none'
+        }
+        onChange={e => {
+          const v = e.target.value;
+          if (v === 'none') {
+             editor.commands.liftListItem('listItem');
+          } else if (v === 'bullet') {
+             editor.chain().focus().toggleBulletList().run();
+          } else if (v === 'ordered') {
+             editor.chain().focus().toggleOrderedList().run();
+          }
+        }}
+        className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs rounded outline-none py-1 px-2 h-7 font-sans focus:ring-1 focus:ring-[var(--color-primary)]"
+        title="List Style"
+      >
+        <option value="none">No List</option>
+        <option value="bullet">Bullet List</option>
+        <option value="ordered">Numbered List</option>
+      </select>
+
+      <button type="button" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} className={btn(false)} title="Insert table"><TableIcon size={14}/></button>
 
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Copy + Run */}
-      <button type="button" onClick={onCopy} title="Copy content" className={btn(false)}><Copy size={10}/></button>
-      {onRun && (
-        <button
-          type="button"
-          onClick={onRun}
-          disabled={isAiTyping}
-          title="Run Agent"
-          className="flex items-center gap-0.5 px-1.5 h-5 text-[9px] font-bold rounded bg-[var(--color-primary)] text-black hover:opacity-90 disabled:opacity-40 transition-all shrink-0"
-        >
-          <Play size={9} fill="currentColor" />
-          Run
-        </button>
-      )}
+      {/* Copy */}
+      <button type="button" onClick={onCopy} title="Copy content" className={btn(false)}>
+        <Copy size={14} className="text-zinc-500 hover:text-zinc-300" />
+      </button>
     </div>
   );
 };
@@ -235,8 +223,7 @@ const ComposedEditor = ({
   }, [content, capturedEditor, fileName]);
 
   return (
-    <div className="flex flex-col w-full h-full border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 shadow-sm relative z-0">
-      <TextFormattingBar editor={capturedEditor} />
+    <div className="flex flex-col w-full h-full overflow-hidden bg-zinc-950 relative z-0">
       <style>{`
         .prose ins {
           text-decoration: none;
@@ -525,25 +512,26 @@ const SmartEditor: React.FC<SmartEditorProps> = ({
   isAiTyping = false, 
   onRun, 
   onNavigate, 
-  roleId, 
-  onRoleChange, 
-  cardId 
+  cardId,
+  activeTab: propActiveTab,
+  onTabChange: propOnTabChange
 }) => {
   const projectType = useWorkspaceStore(s => s.projectType);
   const isCode = /\.(ts|tsx|js|jsx|css|json|py|sh|yml|yaml|sql)$/.test(fileName);
   const isCodeType = projectType === 'coding' || projectType === 'deploy';
   const showNovel = projectType === 'writing' || (!isCodeType && !isCode);
 
-  const [activeTab, setActiveTab] = useState<'editor' | 'chat'>('editor');
+  const [localActiveTab, setLocalActiveTab] = useState<'editor' | 'chat'>('editor');
+  const activeTab = propActiveTab || localActiveTab;
+
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
-  const [localFileName, setLocalFileName] = useState(fileName);
-  // Editor instance lifted so UnifiedEditorBar can reach it
+  
+  // Editor instance lifted so EditorFormatBar can reach it
   const [liftedEditor, setLiftedEditor] = useState<any>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const openFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages, isAiTyping]);
 
@@ -572,30 +560,14 @@ const SmartEditor: React.FC<SmartEditorProps> = ({
       <input type="file" ref={fileInputRef} className="hidden" onChange={e => {
         const f = e.target.files?.[0]; if (f) toast.success(`Attached: ${f.name}`);
       }} />
-      <input type="file" ref={openFileRef} accept=".md,.txt,.html,.json" className="hidden" onChange={e => {
-        const f = e.target.files?.[0];
-        if (!f) return;
-        const reader = new FileReader();
-        reader.onload = ev => { if (ev.target?.result) onChange(ev.target.result as string); };
-        reader.readAsText(f);
-        toast.success(`Opened: ${f.name}`);
-      }} />
 
-      {/* ONE unified bar */}
-      <UnifiedEditorBar
-        editor={liftedEditor}
-        fileName={localFileName}
-        onFileNameChange={setLocalFileName}
-        onSave={() => { void navigator.clipboard.writeText(content).then(() => toast.success('Copied to clipboard')); }}
-        onOpen={() => openFileRef.current?.click()}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onRun={onRun ? () => onRun() : undefined}
-        isAiTyping={isAiTyping}
-        showNovel={showNovel}
-        onCopy={() => void navigator.clipboard.writeText(content).then(() => toast.success('Copied'))}
-        content={content}
-      />
+      {activeTab === 'editor' && (
+        <EditorFormatBar
+          editor={liftedEditor}
+          showNovel={showNovel}
+          onCopy={() => void navigator.clipboard.writeText(content).then(() => toast.success('Copied'))}
+        />
+      )}
 
       {/* Content area */}
       <div className="flex-1 overflow-hidden min-h-0">
@@ -610,7 +582,7 @@ const SmartEditor: React.FC<SmartEditorProps> = ({
               <EditorRoot>
                 <ComposedEditor
                   content={content}
-                  fileName={localFileName}
+                  fileName={fileName}
                   onChange={onChange}
                   onRun={onRun ? () => onRun() : undefined}
                   onNavigate={onNavigate}

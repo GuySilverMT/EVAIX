@@ -18,7 +18,7 @@ import { AIChat } from '../AIChat.js';
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 import { HistoryPanel } from '../HistoryPanel.js';
-import { RefreshCcw, Activity } from 'lucide-react';
+import { RefreshCcw, Activity, Play } from 'lucide-react';
 import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
 import { UniversalDataGrid } from '../UniversalDataGrid.js';
 import { DatabaseBrowser } from '../DatabaseBrowser.js';
@@ -142,6 +142,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const [sessionId] = useState(() => `session-${id}-${Date.now()}`);
     const [showRolePicker, setShowRolePicker] = useState(false);
     const [headerFilename, setHeaderFilename] = useState('');
+    const [editorTab, setEditorTab] = useState<'editor' | 'chat'>('editor');
     const [showHistory, setShowHistory] = useState(false);
     const [isRecovering, setIsRecovering] = useState(false);
     const [recoveryStep, setRecoveryStep] = useState('');
@@ -468,7 +469,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     )}
                 </div>
 
-                <div className="flex-1 flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6" title={activeFile}>
+                <div className="flex items-center bg-[var(--bg-primary)] rounded-sm border border-[var(--border-color)] px-2 h-6 w-48 shrink-0" title={activeFile}>
                     <FileText size={10} className="text-[var(--text-muted)] mr-1.5" />
                     <input
                         value={headerFilename}
@@ -480,7 +481,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && viewMode) void handleSave(content);
                         }}
-                        className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)]"
+                        className="bg-transparent text-[10px] text-[var(--text-primary)] w-full outline-none font-mono placeholder:text-[var(--text-muted)] truncate"
                         placeholder="filename.md"
                     />
                     <span className="text-[9px] text-[var(--text-muted)] whitespace-nowrap ml-1">
@@ -552,7 +553,38 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                     </div>
                 </div>
 
-                <div className="flex gap-0.5">
+                <div className="flex-1 flex items-center gap-1.5 px-2">
+                    {viewMode === 'editor' && (
+                        <div className="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded p-0.5">
+                            <button 
+                                onClick={() => setEditorTab('editor')} 
+                                className={cn("px-2 py-0.5 rounded text-[10px] font-bold transition-colors", editorTab === 'editor' ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                                title="Editor Mode"
+                            >
+                                Editor
+                            </button>
+                            <button 
+                                onClick={() => setEditorTab('chat')} 
+                                className={cn("px-2 py-0.5 rounded text-[10px] font-bold transition-colors", editorTab === 'chat' ? "bg-zinc-700 text-white" : "text-zinc-500 hover:text-zinc-300")}
+                                title="AI Chat Mode"
+                            >
+                                AI Chat
+                            </button>
+                        </div>
+                    )}
+                    
+                    <button
+                        onClick={() => void runAgent("Analyze this document and continue.", agentConfig.roleId)}
+                        disabled={isRunning}
+                        title="Run Agent"
+                        className="flex items-center gap-1 px-2 h-6 text-[10px] font-bold rounded bg-[var(--color-primary)] text-black hover:opacity-90 disabled:opacity-40 transition-all shrink-0"
+                    >
+                        <Play size={10} fill="currentColor" />
+                        Run Agent
+                    </button>
+                </div>
+
+                <div className="flex gap-0.5 shrink-0">
                     <button
                         onClick={() => setShowSupplementary(!showSupplementary)}
                         className={cn(
@@ -623,6 +655,8 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                     setBrowserUrl(url);
                                     setViewModeAndStore('browser');
                                 }}
+                                activeTab={editorTab}
+                                onTabChange={setEditorTab}
                             />
                         )}
                         {showHistory && (

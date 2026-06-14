@@ -5,8 +5,8 @@ import type { RoleFormState, Model, Role } from '../../types/role.js';
 import { DEFAULT_ROLE_FORM_DATA } from '../../constants.js';
 import {
     Save, Trash2, Sparkles,
-    Fingerprint, Cpu, Shield, Globe, Wrench, Eye,
-    FileText, Plus, X as CloseIcon, Bot, Download,
+    Fingerprint, Cpu, Globe, Wrench, Eye,
+    FileText, Plus, X as CloseIcon, Download,
     PanelLeftClose, PanelLeft
 } from 'lucide-react';
 import { toast } from 'sonner';

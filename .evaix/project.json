@@ -9,9 +9,11 @@
           {
             "id": "1",
             "roleId": "",
-            "activeTool": "files",
+            "activeTool": "browser",
             "metadata": {
-              "viewMode": "files"
+              "viewMode": "browser",
+              "activeFile": "/home/guy/EVAIX/cspell.json",
+              "url": "https://google.com"
             }
           }
         ]
@@ -39,7 +41,9 @@
             "roleId": "",
             "activeTool": "browser",
             "metadata": {
-              "viewMode": "browser"
+              "viewMode": "browser",
+              "activeFile": "",
+              "url": "https://google.com"
             }
           }
         ]
