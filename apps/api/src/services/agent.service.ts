@@ -90,14 +90,7 @@ export class AgentService {
         });
         ctx.projectPrompt = card?.workspace.systemPrompt || undefined;
         if (inputCtx?.collabMode) {
-          const collabInstruction = `
-\n[COLLABORATION REVIEW MODE ACTIVE]
-When writing or modifying files, you MUST act as a collaborative editor (like Google Docs review mode):
-- Do NOT perform raw replacements.
-- Wrap all additions in <ins>added text</ins>.
-- Wrap all deletions in <del>deleted text</del>.
-- Do not modify unchanged text.
-Keep all ins and del tags correctly structured.\n`;
+          const collabInstruction = `\nYou are an expert document editor. Do not rewrite the document blindly. You must use Track Changes. If you want to delete a word, wrap it in <del>word</del>. If you want to add a word, wrap it in <ins>word</ins>.\n`;
           ctx.projectPrompt = (ctx.projectPrompt || '') + collabInstruction;
         }
 
