@@ -721,7 +721,7 @@ function handleBgImage(e) { const file = e.target.files[0]; if (!file) return; c
 function clearBgImage() { const b = getSelected(); if (!b) return; b.bgImage = null; document.getElementById("img-drop-zone").textContent = "Click to upload"; refreshBlock(b); }
 
 // ═══════════════════════════════════════════════════
-// EXPORTS & PROJECT LOGIC
+// EXPORTS & COMPONENT LIBRARY LOGIC
 // ═══════════════════════════════════════════════════
 let currentProjectName = null;
 
@@ -791,32 +791,88 @@ function triggerImportJSON() { document.getElementById("import-input-hidden").cl
 function triggerImport() { triggerImportJSON(); }
 
 function exportContainerJSON() {
-  const b = getSelected(); if (!b) { showToast("Select a block first"); return; }
+  const b = getSelected(); if (!b) { showToast("Select a block first to export as Component"); return; }
   function collectWithChildren(id) { const block = state.blocks.find(x => x.id === id); if (!block) return []; return [block, ...state.blocks.filter(c => c.parentId === id).flatMap(c => collectWithChildren(c.id))]; }
   const blocks = collectWithChildren(b.id);
-  const comp = { meta: { tool: "layout-designer-v5", type: "component" }, vars: JSON.parse(JSON.stringify(state.variables)), frame: { name: b.name, blocks: JSON.parse(JSON.stringify(blocks)) } };
-  download(JSON.stringify(comp, null, 2), (b.name || "component").replace(/\s+/g, "-") + ".component.json"); showToast("Exported: " + b.name);
+  const comp = { 
+    id: "comp-" + Date.now(), // Fixed ID generation so it saves properly to library
+    meta: { tool: "layout-designer-v5", type: "component" }, 
+    vars: JSON.parse(JSON.stringify(state.variables)), 
+    frame: { name: b.name || "Component", blocks: JSON.parse(JSON.stringify(blocks)) } 
+  };
+  download(JSON.stringify(comp, null, 2), (b.name || "component").replace(/\s+/g, "-") + ".component.json"); 
+  showToast("Component Exported: " + b.name);
 }
 
 function handleImport(e) {
   const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
-  reader.onload = ev => { try { const c = JSON.parse(ev.target.result); if (!c.frame) throw 0; if (!components.find(x => x.id === c.id)) { components.push(c); localStorage.setItem("ld4-components", JSON.stringify(components)); } dropComponent(c); renderComponents(); showToast("Imported: " + c.frame.name); } catch { showToast("Invalid file"); } };
+  reader.onload = ev => { 
+    try { 
+      const c = JSON.parse(ev.target.result); 
+      if (!c.frame) throw new Error("Not a component"); 
+      if (!c.id) c.id = "comp-" + Date.now(); // Patch for legacy files
+      
+      if (!components.find(x => x.id === c.id)) { 
+        components.push(c); 
+        localStorage.setItem("ld4-components", JSON.stringify(components)); 
+      } 
+      renderComponents(); 
+      showToast("Added to Component Library: " + c.frame.name); 
+    } catch(err) { 
+      showToast("Invalid component file"); 
+    } 
+  };
   reader.readAsText(file); e.target.value = "";
 }
 
-function dropComponent(comp) { comp.frame.blocks.forEach(b => { const nb = { ...JSON.parse(JSON.stringify(b)), id: uid(), parentId: null }; state.blocks.push(nb); }); renderCanvas(); renderTree(); }
+function dropComponent(comp) { 
+  const idMap = {}; 
+  const newBlocks = [];
+  const cbIds = new Set(comp.frame.blocks.map(b => b.id)); 
+  
+  // Create unique IDs for the stamped clone to prevent canvas crashing
+  comp.frame.blocks.forEach(b => { idMap[b.id] = uid(); }); 
+  
+  // Decide where to nest the drop. If 1 block is selected, drop inside it. Otherwise, drop at root.
+  const targetParentId = state.selection.length === 1 ? state.selection[0] : null;
+
+  comp.frame.blocks.forEach(b => { 
+    const nb = { ...JSON.parse(JSON.stringify(b)), id: idMap[b.id] }; 
+    
+    // Connect root component block to the target selection
+    if (!cbIds.has(b.parentId)) {
+        nb.parentId = targetParentId;
+        if (!targetParentId) { nb.x += 20; nb.y += 20; } // Offset if dropping on open canvas
+    } else {
+        nb.parentId = idMap[b.parentId];
+    }
+    newBlocks.push(nb);
+  }); 
+  
+  state.blocks.push(...newBlocks); 
+  state.selection = [newBlocks[0].id]; // Select the dropped component
+  saveHistory();
+  renderCanvas(); renderTree(); renderSidebar();
+  showToast("Component Stamped on Canvas"); 
+}
 
 function renderComponents() {
   const el = document.getElementById("comp-list"); if (!el) return;
-  if (!components.length) { el.innerHTML = `<div style="color:var(--text3);font-size:9px;padding:4px 2px;line-height:1.7">No saved components.</div>`; return; }
+  if (!components.length) { el.innerHTML = `<div style="color:var(--text3);font-size:9px;padding:4px 2px;line-height:1.7">No saved components. Use "Export JSON" on a block, then Import here.</div>`; return; }
   el.innerHTML = "";
   components.forEach((c, i) => {
     const d = document.createElement("div"); d.className = "comp-item";
-    d.innerHTML = `<div style="flex:1"><div style="font-size:10px;color:var(--text)">${c.name}</div><div style="font-size:8px;color:var(--text3)">${c.frame?.blocks?.length || 0} blocks</div></div><button class="tb-btn" style="font-size:8px;padding:2px 6px" onclick="dropComponent(components[${i}]);showToast('Dropped')">Use</button><span style="color:var(--text3);font-size:12px;cursor:pointer;padding:0 2px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'" onclick="delComp(${i})">×</span>`;
+    const name = c.frame?.name || "Unnamed Component";
+    d.innerHTML = `<div style="flex:1"><div style="font-size:10px;color:var(--text)">${name}</div><div style="font-size:8px;color:var(--text3)">${c.frame?.blocks?.length || 0} blocks</div></div><button class="tb-btn" style="font-size:8px;padding:2px 6px" onclick="dropComponent(components[${i}])">Use</button><span style="color:var(--text3);font-size:12px;cursor:pointer;padding:0 2px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'" onclick="delComp(${i})" title="Remove from Library">×</span>`;
     el.appendChild(d);
   });
 }
-function delComp(i) { components.splice(i, 1); localStorage.setItem("ld4-components", JSON.stringify(components)); renderComponents(); }
+
+function delComp(i) { 
+  components.splice(i, 1); 
+  localStorage.setItem("ld4-components", JSON.stringify(components)); 
+  renderComponents(); 
+}
 
 // ═══════════════════════════════════════════════════
 // DATA EXPORTS
@@ -926,6 +982,12 @@ document.addEventListener("keydown", e => {
 });
 
 function init() {
+  // NEW: Boot up library memory
+  try {
+    const savedComps = localStorage.getItem("ld4-components");
+    if (savedComps) components = JSON.parse(savedComps);
+  } catch (err) { console.warn("Failed to load components library", err); }
+
   renderVars(); renderLeftVars(); renderComponents(); renderCanvas(); renderStateTabs(); applyZoom();
   const urlParams = new URLSearchParams(window.location.search); const workspacePath = urlParams.get("workspace");
   if (workspacePath) {
