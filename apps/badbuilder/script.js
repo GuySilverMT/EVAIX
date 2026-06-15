@@ -95,8 +95,22 @@ function applyRoleSections(role) {
 // ═══════════════════════════════════════════════════
 // VARIABLES
 // ═══════════════════════════════════════════════════
+const GOOGLE_FONTS = [
+  { name: "Roboto", value: "'Roboto', sans-serif" },
+  { name: "Inter", value: "'Inter', sans-serif" },
+  { name: "Poppins", value: "'Poppins', sans-serif" },
+  { name: "Montserrat", value: "'Montserrat', sans-serif" },
+  { name: "Open Sans", value: "'Open Sans', sans-serif" },
+  { name: "Outfit", value: "'Outfit', sans-serif" },
+  { name: "Sora", value: "'Sora', sans-serif" },
+  { name: "Playfair Display", value: "'Playfair Display', serif" },
+  { name: "Lora", value: "'Lora', serif" },
+  { name: "Syne", value: "'Syne', sans-serif" },
+  { name: "JetBrains Mono", value: "'JetBrains Mono', monospace" }
+];
+
 function addVar(type, name, value) {
-  const def = { colors: "#7c6bff", fonts: "sans-serif", sizes: "14", icons: { size: 24, stroke: 2, color: "var(--primary)" } };
+  const def = { colors: "#7c6bff", fonts: "'Roboto', sans-serif", sizes: "14", icons: { size: 24, stroke: 2, color: "var(--primary)" } };
   const varName = name || (type === "icons" ? "new-style" : "new-var");
   state.variables[type][varName] = value ?? def[type];
   renderVars(); renderAllDropdowns();
@@ -127,8 +141,8 @@ function resolveColor(ref) {
 }
 
 function resolveFont(ref) {
-  if (ref && ref.startsWith("var(--")) { const name = ref.slice(6, -1); return state.variables.fonts[name] || "'Inter', sans-serif"; }
-  return state.variables.fonts[ref] || ref || "'Inter', sans-serif";
+  if (ref && ref.startsWith("var(--")) { const name = ref.slice(6, -1); return state.variables.fonts[name] || "'Roboto', sans-serif"; }
+  return state.variables.fonts[ref] || ref || "'Roboto', sans-serif";
 }
 
 function resolveSize(ref) {
@@ -148,6 +162,9 @@ function renderVars() {
         row.innerHTML = `<div class="var-swatch" style="background:${val}"><input type="color" value="${val}" oninput="state.variables.colors['${name}']=this.value; renderCanvas()" onchange="renderVars()"></div><div class="var-item-name"><input value="${name}" onchange="updateVar('colors', '${name}', this.value); renderVars(); renderAllDropdowns()"></div><span class="var-del" onclick="removeVar('colors','${name}')">×</span>`;
       } else if (type === "icons") {
         row.innerHTML = `<div class="var-item-name"><input value="${name}" onchange="updateVar('icons', '${name}', this.value); renderVars(); renderAllDropdowns()"></div><div style="display:flex; gap:4px; align-items:center"><input type="number" style="width:30px" value="${val.size}" oninput="state.variables.icons['${name}'].size=+this.value; renderCanvas()" title="Size"><input type="number" step="0.5" style="width:30px" value="${val.stroke}" oninput="state.variables.icons['${name}'].stroke=+this.value; renderCanvas()" title="Stroke"></div><span class="var-del" onclick="removeVar('icons','${name}')">×</span>`;
+      } else if (type === "fonts") {
+        const options = GOOGLE_FONTS.map(f => `<option value="${f.value}" ${val === f.value ? "selected" : ""}>${f.name}</option>`).join("");
+        row.innerHTML = `<div class="var-item-name"><input value="${name}" onchange="updateVar('fonts', '${name}', this.value); renderVars(); renderAllDropdowns()"></div><select class="var-size-val" style="width: 100px; font-size: 10px;" onchange="state.variables.fonts['${name}']=this.value; renderCanvas(); renderVars()">${options}</select><span class="var-del" onclick="removeVar('fonts','${name}')">×</span>`;
       } else {
         row.innerHTML = `<div class="var-item-name"><input value="${name}" onchange="updateVar('${type}', '${name}', this.value); renderVars(); renderAllDropdowns()"></div><input class="var-size-val" value="${val}" oninput="state.variables['${type}']['${name}']=this.value; renderCanvas()" onchange="renderVars()"><span class="var-del" onclick="removeVar('${type}','${name}')">×</span>`;
       }
@@ -200,7 +217,7 @@ let state = {
   mq: { active: false, sx: 0, sy: 0 },
   variables: {
     colors: { "background": "#0e0e0f", "surface": "#18181a", "primary": "#7c6bff" },
-    fonts: { "main": "'Inter', sans-serif" },
+    fonts: { "main": "'Roboto', sans-serif" },
     sizes: { "body": "12" },
     icons: { "standard": { size: 20, stroke: 2, color: "var(--primary)" } }
   },
@@ -213,6 +230,8 @@ function uid() { return "b" + (state._uid++); }
 function addBlock(type, parentId = null) {
   const isContainer = (type === "container");
   const baseOffset = state.blocks.filter(b => !b.parentId).length * 20;
+  const parentBlock = parentId ? getBlock(parentId) : null;
+  const isParentCell = parentBlock && parentBlock.role === "cell";
 
   const b = {
     id: uid(), role: type, name: nextName(type),
@@ -220,7 +239,7 @@ function addBlock(type, parentId = null) {
     x: isContainer ? (50 + baseOffset) : 0,
     y: isContainer ? (50 + baseOffset) : 0,
     w: isContainer ? 400 : 100, h: isContainer ? 300 : 40,
-    fillParent: (type === "table"),
+    fillParent: (type === "table" || isParentCell),
     layoutFlow: "relative",
     
     contentType: type === "object" ? "text" : null,
@@ -285,8 +304,7 @@ function setPropFromSelect(prop, val) {
 function setPropAndPreview(key, val) { setProp(key, val); updateIconPreview(val); }
 function updateIconPreview(name) {
   const el = document.getElementById("icon-preview"); if (!el) return;
-  el.innerHTML = `<i data-lucide="${name || "circle"}" style="width:20px;height:20px;color:var(--text2)"></i>`;
-  if (window.lucide) window.lucide.createIcons({ root: el });
+  el.innerHTML = `<span class="material-symbols-outlined" style="font-size: 20px; color: var(--text2)">${name || "circle"}</span>`;
 }
 function updateIconStyle(styleId) { const b = getSelected(); if (!b) return; b.iconStyleId = styleId; refreshBlock(b); renderSidebar(); }
 
@@ -389,9 +407,8 @@ function refreshBlock(b, providedEl = null) {
       const style = state.variables.icons[b.iconStyleId] || state.variables.icons["standard"] || { size: 20, stroke: 2 };
       const color = resolveColor(b.iconColor || b.textColor || "var(--primary)");
       iw.style.color = color; iw.style.width = style.size + "px"; iw.style.height = style.size + "px";
-      iw.innerHTML = `<i data-lucide="${b.iconName || "circle"}"></i>`;
+      iw.innerHTML = `<span class="material-symbols-outlined" style="font-size: ${style.size}px">${b.iconName || "circle"}</span>`;
       cw.appendChild(iw);
-      if (window.lucide) window.lucide.createIcons({ root: iw, attrs: { "stroke-width": style.stroke, "width": style.size, "height": style.size } });
     }
     if (b.contentType === "text" || b.contentType === "both") {
       const txt = document.createElement("div"); txt.className = "block-text";
@@ -842,6 +859,10 @@ function dropComponent(comp) {
     // Connect root component block to the target selection
     if (!cbIds.has(b.parentId)) {
         nb.parentId = targetParentId;
+        const parentBlock = targetParentId ? getBlock(targetParentId) : null;
+        if (parentBlock && parentBlock.role === "cell") {
+            nb.fillParent = true;
+        }
         if (!targetParentId) { nb.x += 20; nb.y += 20; } // Offset if dropping on open canvas
     } else {
         nb.parentId = idMap[b.parentId];
@@ -877,6 +898,34 @@ function delComp(i) {
 // ═══════════════════════════════════════════════════
 // DATA EXPORTS
 // ═══════════════════════════════════════════════════
+function buildMuiThemeObject() {
+  // Maps badbuilder variables to standard MUI palette keys
+  return {
+    palette: {
+      mode: 'dark', // Assuming EVAIX defaults to dark mode
+      primary: {
+        main: resolveColor('var(--primary)') || '#7c6bff',
+      },
+      background: {
+        default: resolveColor('var(--bg)') || '#0e0e0f',
+        paper: resolveColor('var(--surface)') || '#18181a',
+      },
+      text: {
+        primary: resolveColor('var(--text)') || '#e8e8ec',
+        secondary: resolveColor('var(--text2)') || '#c8c8d0',
+      },
+      divider: resolveColor('var(--border)') || '#333338',
+      error: { main: resolveColor('var(--red)') || '#ff6b6b' },
+      success: { main: resolveColor('var(--green)') || '#3ecf8e' },
+      warning: { main: resolveColor('var(--amber)') || '#fbbf24' },
+    },
+    typography: {
+      fontFamily: resolveFont('var(--main)'),
+      fontSize: resolveSize('var(--body)'),
+    }
+  };
+}
+
 function exportForAI() {
   const lines = [];
   lines.push("# UI COMPILER INSTRUCTIONS");
@@ -893,14 +942,10 @@ function exportForAI() {
   }
 
   lines.push("");
-  lines.push("## 2. DESIGN TOKENS (CSS Variables)");
-  lines.push("Please implement these using Tailwind arbitrary values (e.g., `bg-[var(--surface)]`) or map them in tailwind.config.js.");
-  lines.push("```css");
-  lines.push(":root {");
-  Object.entries(state.variables.colors).forEach(([k, v]) => lines.push("  --" + k + ": " + v + ";"));
-  Object.entries(state.variables.fonts).forEach(([k, v]) => lines.push("  --font-" + k + ": " + v + ";"));
-  Object.entries(state.variables.sizes).forEach(([k, v]) => lines.push("  --size-" + k + ": " + v + "px;"));
-  lines.push("}");
+  lines.push("## 2. DESIGN TOKENS (MUI Theme)");
+  lines.push("Below is the MUI theme configuration for this environment. You must generate a `theme.ts` file exporting this exact configuration using `createTheme()`.");
+  lines.push("```json");
+  lines.push(JSON.stringify(buildMuiThemeObject(), null, 2));
   lines.push("```");
   lines.push("");
 
@@ -917,11 +962,13 @@ function exportForAI() {
   lines.push("");
 
   lines.push("## 4. COMPILATION RULES");
-  lines.push("1. **Atomic Mapping**: `container` = div/section. `table` = CSS Grid. `object` = Typography, Button, or Icon Component.");
-  lines.push("2. **AI Notes**: Pay close attention to the `aiNotes` field on individual blocks. These contain specific logic or interaction requirements.");
-  lines.push("3. **Flow vs Absolute**: If layoutFlow is \"absolute\", apply absolute positioning based on x/y coordinates.");
-  lines.push("4. **Grid**: If a block has a `grid` property, use CSS Grid (`grid-cols-X`) mapping to the defined percentages.");
-  lines.push("5. **Output**: Output ONLY the complete, copy-pasteable TSX code. Do not include markdown explanations outside of the code block.");
+  lines.push("1. **Material UI Strict Mode**: Map all JSON roles to `@mui/material` components (`<Box>`, `<Grid>`, `<Typography>`, `<Button>`). DO NOT use raw HTML tags.");
+  lines.push("2. **ABSOLUTELY NO HARDCODED STYLES**: You are strictly forbidden from using hex codes, rgb values, or explicit pixel sizes for typography in the component files. All styling MUST reference the MUI theme object.");
+  lines.push("3. **The `sx` Prop Protocol**: Use the `sx` prop for styling. Map the JSON properties directly to theme keys. For example:");
+  lines.push("   - BAD: `sx={{ backgroundColor: '#18181a', color: '#e8e8ec' }}`");
+  lines.push("   - GOOD: `sx={{ bgcolor: 'background.paper', color: 'text.primary' }}`");
+  lines.push("   - If the JSON requests a border, use `sx={{ border: 1, borderColor: 'divider' }}`.");
+  lines.push("4. **Architecture**: Output the `theme.ts` file, followed by the modular React component files requested by the `isComponent` flags in the JSON tree.");
 
   download(lines.join("\n"), (currentProjectName || "layout") + "-ai-prompt.md");
   showToast("AI Compiler Prompt Downloaded!");
