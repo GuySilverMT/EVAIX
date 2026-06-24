@@ -17,7 +17,6 @@ const __dirname = path.dirname(__filename);
 // import { llmRouter } from './routers/llm.router.js';
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
-// import { scheduler } from './services/JobScheduler.js';
 import { backupService } from './services/BackupService.js';
 // import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
 import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
@@ -447,11 +446,6 @@ async function startServer() {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
-
-// START THE AUTONOMY ENGINE
-// scheduler.start(5000); // Check for work every 5 seconds
-// NOTE: Disabled until jobs table is created via migration.
-// JobScheduler will gracefully handle missing tables when enabled.
 
 console.log('Server starting... (Force Restart 2)');
 void startServer();
