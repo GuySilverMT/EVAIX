@@ -101,4 +101,3 @@ export const VoiceKeyboard: React.FC<VoiceKeyboardProps> = ({
   return null;
 };
 
-export default VoiceKeyboard;

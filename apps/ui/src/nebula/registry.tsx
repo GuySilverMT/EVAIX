@@ -18,7 +18,7 @@ export interface PropSchema {
   description?: string;
 }
 
-export interface ComponentDefinition {
+interface ComponentDefinition {
   component: React.ElementType;
   meta: {
     label: string;
@@ -311,6 +311,6 @@ export const ComponentMap: Record<string, React.ElementType> = Object.keys(Compo
 /**
  * Resolve a component by its manifest name
  */
-export const resolveComponent = (name: string): React.ElementType => {
+const resolveComponent = (name: string): React.ElementType => {
     return ComponentMap[name] || ComponentMap['Box'];
 };

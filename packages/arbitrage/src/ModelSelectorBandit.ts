@@ -1,5 +1,6 @@
+import { PrismaClient, Prisma } from '@prisma/client';
+const prisma = new PrismaClient();
 import { Model } from '@prisma/client';
-import { prisma } from '../db.js';
 
 export class ModelSelectorBandit {
   static CALIBRATION_THRESHOLD = 5;
@@ -83,14 +84,14 @@ export class ModelSelectorBandit {
       }
 
       // Find cross-provider rookie
-      const selectedRookie = rookies.find((r: Model) => r.providerId !== selectedVeteran.providerId);
+      let selectedRookie = rookies.find((r: Model) => r.providerId !== selectedVeteran!.providerId);
 
       if (selectedRookie) {
         return [selectedVeteran, selectedRookie];
       }
 
       // If no cross-provider rookie, fallback to cross-provider veteran
-      const alternativeVeteran = veterans.find((v: Model) => v.providerId !== selectedVeteran.providerId);
+      const alternativeVeteran = veterans.find((v: Model) => v.providerId !== selectedVeteran!.providerId);
       if (alternativeVeteran) {
         return [selectedVeteran, alternativeVeteran];
       }

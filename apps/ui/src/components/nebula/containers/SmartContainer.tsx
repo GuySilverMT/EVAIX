@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { AiToolbar } from '../primitives/AiToolbar.js';
 import { cn } from '../../../lib/utils.js';
 
-export type SmartContainerType = 'MONACO' | 'TERMINAL' | 'BROWSER' | 'DOCS' | 'CHAT';
+type SmartContainerType = 'MONACO' | 'TERMINAL' | 'BROWSER' | 'DOCS' | 'CHAT';
 
 interface SmartContainerProps {
   type: SmartContainerType;

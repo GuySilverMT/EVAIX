@@ -46,7 +46,7 @@ interface AgentSettingsProps {
   };
 }
 
-export const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, availableModels, onUpdate }) => {
+const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, availableModels, onUpdate }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAdjustmentDetails, setShowAdjustmentDetails] = useState(false);
 

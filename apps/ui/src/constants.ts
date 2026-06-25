@@ -1,6 +1,6 @@
 import type { RoleFormState } from './types/role.js';
 
-export const DEFAULT_MODEL_CONFIG = {
+const DEFAULT_MODEL_CONFIG = {
   maxContext: 128000,
   defaultMaxTokens: 2048,
   defaultTemperature: 0.7,

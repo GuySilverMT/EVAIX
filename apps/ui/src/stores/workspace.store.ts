@@ -12,13 +12,13 @@ export interface CardData {
   metadata?: Record<string, unknown>;
 }
 
-export interface Screenspace {
+interface Screenspace {
   id: number;
   name: string;
   cardIds: string[];
 }
 
-export interface WorkspaceState {
+interface WorkspaceState {
   columns: number;
   setColumns: (columns: number) => void;
   showSidebar: boolean;

@@ -56,7 +56,7 @@ export class KeywordListenerService {
     
     // Start listening
     await engine.startListening((keyword: string) => {
-      this.handleKeywordDetection(keyword, engine!.config.id);
+      this.handleKeywordDetection(keyword, engine.config.id);
     });
     
     this.isListening = true;

@@ -125,4 +125,3 @@ export const ProviderHealth: React.FC = () => {
   );
 };
 
-export default ProviderHealth;

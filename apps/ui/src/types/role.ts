@@ -1,4 +1,4 @@
-export interface Tool {
+interface Tool {
   id: string;
   name: string;
   description: string;
@@ -50,7 +50,7 @@ export interface Model {
   rewardModel?: { scoreType?: string };
 }
 
-export interface RoleDNA {
+interface RoleDNA {
   identity: {
     personaName: string;
     style: string; // [FLEXIBLE] e.g. 'PROFESSIONAL_CONCISE', 'SOCRATIC', 'FRIENDLY_HELPFUL'
@@ -151,7 +151,7 @@ export interface Role {
 }
 
 
-export interface CategoryNode {
+interface CategoryNode {
   id: string;
   name: string;
   parentId?: string;

@@ -1,6 +1,6 @@
 import type { Theme } from './types.js';
 
-export const darkTheme: Theme = {
+const darkTheme: Theme = {
   id: 'standard-dark',
   name: 'Nebula Deep',
   mode: 'dark',
@@ -77,7 +77,7 @@ export const darkTheme: Theme = {
   timestamp: Date.now(),
 };
 
-export const lightTheme: Theme = {
+const lightTheme: Theme = {
   id: 'standard-light',
   name: 'Nebula Light',
   mode: 'light',
