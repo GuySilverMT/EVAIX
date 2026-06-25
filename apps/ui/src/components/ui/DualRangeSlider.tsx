@@ -10,7 +10,7 @@ interface DualRangeSliderProps {
   unit?: string;
 }
 
-export const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
+const DualRangeSlider: React.FC<DualRangeSliderProps> = ({
   min,
   max,
   step = 1,

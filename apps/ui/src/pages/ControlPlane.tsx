@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button.js';
 import { cn } from '../lib/utils.js';
 
-export const ControlPlane: React.FC = () => {
+const ControlPlane: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'registry' | 'analytics'>('registry');
 
   return (

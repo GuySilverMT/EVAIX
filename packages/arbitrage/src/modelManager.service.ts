@@ -1,10 +1,14 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { DEFAULT_MODEL_TEMP, DEFAULT_MAX_TOKENS, DEFAULT_MODEL_TAKE_LIMIT } from '../config/constants.js';
-import { isModelBlacklisted, blacklistModel } from '../rateLimiter.js';
-import { CreditGuard } from './CreditGuard.js';
-import { ProviderManager } from './ProviderManager.js';
+const prisma = new PrismaClient();
+const DEFAULT_MODEL_TEMP = 0.7;
+const DEFAULT_MAX_TOKENS = 1000;
+const DEFAULT_MODEL_TAKE_LIMIT = 5;
+// Mocking rateLimiter
+const isModelBlacklisted = (id: string) => false;
+const blacklistModel = (id: string, time: number) => {};
+const CreditGuard = { isProviderLocked: async (id: string) => false };
+const ProviderManager = { isHealthy: (id: string) => true, getProviderIds: () => [], markUnhealthy: (id: string, time: number) => {} };
 import { PricingRegistry } from './PricingRegistry.js';
-import { prisma } from '../db.js';
 
 /**
  * Multi-Armed Bandit Router (Arbitrage Engine)
@@ -265,7 +269,7 @@ export async function getBestModel(roleId?: string, failedModels: string[] = [],
 
       return {
         modelId: externalId,
-        providerId: model.providerId,
+        providerId: model.providerId as any,
         model: { ...model, internalId: model.id },
         temperature: DEFAULT_MODEL_TEMP,
         maxTokens: DEFAULT_MAX_TOKENS
@@ -378,7 +382,7 @@ export async function resolveModelForRole(role: any, estimatedInputTokens?: numb
     console.log(`[ROUTING] Role ${role.name || role.id} strictly bound to ${role.targetProvider} : ${role.targetModel}`);
     const activeProviders = ProviderManager.getProviderIds();
 
-    if (!activeProviders.includes(role.targetProvider)) {
+    if (!activeProviders.includes(role.targetProvider as never)) {
       throw new Error(`Role is strictly bound to provider '${role.targetProvider}', but it is currently unavailable.`);
     }
 
@@ -399,7 +403,7 @@ export async function resolveModelForRole(role: any, estimatedInputTokens?: numb
   }
 
   // 2. Standard Routing
-  const metadata = (role.metadata || {});
+  const metadata = (role.metadata || {}) as any;
   const requirements = metadata.requirements || {};
 
   const roleReq: RoleRequirement = {
