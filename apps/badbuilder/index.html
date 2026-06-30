@@ -254,6 +254,7 @@
                 <option value="text">Text Only</option>
                 <option value="icon">Icon Only</option>
                 <option value="both">Text + Icon</option>
+                <option value="dropdown">Dropdown Menu</option>
               </select>
             </div>
 
@@ -267,9 +268,9 @@
             <div id="obj-icon-group" style="margin-top:8px">
               <div class="r-row">
                 <span class="r-lbl">Icon</span>
-                <input class="r-input" id="p-iconName" placeholder="Material icon name..." style="flex:1" onchange="setPropAndPreview('iconName',this.value)">
+                <input class="r-input" id="p-iconName" placeholder="Search Material Icon..." style="flex:1" oninput="renderIconPicker(this.value)" onchange="setPropAndPreview('iconName',this.value)">
               </div>
-              <div id="icon-preview" style="display:flex;align-items:center;justify-content:center;height:32px;margin-top:4px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)"></div>
+              <div id="icon-picker-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap:4px; max-height:120px; overflow-y:auto; margin-top:8px; padding:4px; background:var(--surface2); border-radius:4px; border:1px solid var(--border);"></div>
             </div>
 
             <div class="r-label" style="margin-top:12px">Tooltip / Hover</div>
@@ -277,6 +278,12 @@
 
             <div class="r-label" style="margin-top:12px">Action / Link (Makes Button)</div>
             <input class="r-input" id="p-action" placeholder="URL or action intent..." style="width:100%" onchange="setProp('action',this.value)">
+
+            <div id="obj-dropdown-group" style="display:none; margin-top:12px; padding:8px; background:var(--surface2); border:1px solid var(--border); border-radius:4px;">
+              <div class="r-label" style="margin-top:0; margin-bottom:8px;">Dropdown Items</div>
+              <div id="dropdown-items-container" style="display:flex; flex-direction:column; gap:6px;"></div>
+              <button class="tb-btn" style="width:100%; margin-top:8px;" onclick="addDropdownRow()">+ Add Row</button>
+            </div>
           </div>
 
           <div class="r-section" id="rs-text-color">
