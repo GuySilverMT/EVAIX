@@ -1,5 +1,5 @@
 {
-  "name": "@evaix/arbitrage",
+  "name": "@evaix/db",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -15,9 +15,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "tiktoken": "^1.0.20",
-    "uuid": "^9.0.1",
-    "@evaix/db": "workspace:*"
+    "@prisma/client": "^5.19.1"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

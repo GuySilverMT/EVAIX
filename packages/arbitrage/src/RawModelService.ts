@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@evaix/db';
 const prisma = new PrismaClient();
 
 interface RawModelResponse {

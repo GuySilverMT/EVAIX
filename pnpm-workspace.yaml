@@ -3,3 +3,5 @@ packages:
   - 'packages/*'
   - 'packages/api-contract'
   - 'apps/ui'
+  - 'packages/arbitrage'
+  - 'packages/db'

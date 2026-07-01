@@ -1,6 +1,5 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, Model } from '@evaix/db';
 const prisma = new PrismaClient();
-import { Model } from '@prisma/client';
 
 export class ModelSelectorBandit {
   static CALIBRATION_THRESHOLD = 5;
