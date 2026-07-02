@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GlobalHotKeys } from 'react-hotkeys';
 import { ThemeSidebar } from '../../../features/constitution/components/ThemeSidebar.js';
 import { cn } from '../../../lib/utils.js';
-import { GlobalContextBar } from '../../../nebula/features/navigation/GlobalContextBar.js';
+import EvaixDenseWorkbench from '../EvaixDenseWorkbench.js';
 import { VoiceKeyboard } from '../../VoiceKeyboard.js';
 import { ContextMenu } from '../../ContextMenu.js';
 import { useVoiceKeyboard } from '../../../contexts/VoiceKeyboardContext.js';
@@ -36,7 +36,6 @@ export const CooperativeLayout = ({ children, header }: { children: React.ReactN
     const handlers = {
         TOGGLE_THEME: (e?: KeyboardEvent) => { e?.preventDefault(); setShowTheme(p => !p); },
         TOGGLE_AI: (e?: KeyboardEvent) => { 
-            e?.preventDefault(); 
             // 🟢 In Headless mode, the header should handle this or we dispatch an event
             window.dispatchEvent(new CustomEvent('coop:toggle-ai'));
         },
@@ -55,15 +54,11 @@ export const CooperativeLayout = ({ children, header }: { children: React.ReactN
                 {header !== null && (
                     <div className="flex-none z-50 shadow-md">
                         {header || (
-                            <GlobalContextBar 
-                                aiOpen={showAi} 
-                                setAiOpen={setShowAi} 
-                                themeOpen={showTheme} 
-                                onToggleTheme={() => setShowTheme(p => !p)} 
-                            />
+                            <EvaixDenseWorkbench />
                         )}
                     </div>
                 )}
+
 
                 <div className="flex-1 flex overflow-hidden relative">
                     {/* 2. THE STAGE (Full Width) */}
