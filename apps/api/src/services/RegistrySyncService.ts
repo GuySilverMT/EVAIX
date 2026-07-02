@@ -1,6 +1,5 @@
 import { prisma } from '../db.js';
 import { BaseLLMProvider, LLMModel } from '../utils/BaseLLMProvider.js';
-import { RawModelService } from './RawModelService.js';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
@@ -62,13 +61,18 @@ export class RegistrySyncService {
 
                 console.log(`[RegistrySyncService] Fetching models for ${providerLabel}...`);
 
-                const snapshot = await RawModelService.fetchAndSnapshot(rawProviderId);
-
-                if (!snapshot || !Array.isArray(snapshot.rawData)) {
-                    console.error(`[RegistrySyncService] Failed to get valid snapshot for ${providerLabel}.`);
-                    continue;
+                // Simplified model fetching since RawModelService is deprecated in favor of LiteLLM proxy routing.
+                // Depending on the implementation, this either connects to LiteLLM or performs a simple list request.
+                // Assuming provider instance provides getModels.
+                const providerInstance = providers.get(rawProviderId);
+                let models: LLMModel[] = [];
+                if (providerInstance) {
+                    models = await providerInstance.getModels();
+                } else {
+                     console.error(`[RegistrySyncService] Failed to get valid provider instance for ${providerLabel}.`);
+                     continue;
                 }
-                const models = snapshot.rawData as LLMModel[];
+
                 console.log(`[RegistrySyncService] Got ${models.length} models from ${providerLabel}.`);
 
                 let modelsToSync = models;
