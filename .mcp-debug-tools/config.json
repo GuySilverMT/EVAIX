@@ -3,5 +3,12 @@
   "port": 8890,
   "pid": 14152,
   "workspacePath": "/home/guy/mono",
-  "workspaceName": "mono"
+  "workspaceName": "mono",
+  "mcpServers": {
+    "google-docs": {
+      "command": "node",
+      "args": ["/home/guy/EVAIX/apps/api/dist/services/mcp-google-docs-server.js"],
+      "env": {}
+    }
+  }
 }

@@ -256,5 +256,54 @@ export function getNativeTools(rootPath: string, fsTools: ReturnType<typeof crea
              description: t.description,
              input_schema: (t.inputSchema as any) as Record<string, unknown> // Zod schema needs to be passed or converted appropriately, assuming similar handling as other tools
          })),
+        {
+            name: 'readDocument',
+            handler: async (args: unknown) => {
+                const typedArgs = args as { path: string };
+                return fsTools.readFile(typedArgs);
+            },
+            description: 'Pull doc text directly into your context window as zero-padded plain text or raw markdown.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path to the document in the workspace' }
+                },
+                required: ['path']
+            }
+        },
+        {
+            name: 'createDocument',
+            handler: async (args: unknown) => {
+                const typedArgs = args as { path: string, text: string };
+                return fsTools.writeFile({ path: typedArgs.path, content: typedArgs.text });
+            },
+            description: 'Create a direct document flat-file/VFS-backed stream by indexing array strings directly.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path to the new document in the workspace' },
+                    text: { type: 'string', description: 'Initial text content' }
+                },
+                required: ['path', 'text']
+            }
+        },
+        {
+            name: 'modifyText',
+            handler: async (args: unknown) => {
+                const typedArgs = args as { path: string, search_string: string, replace_string: string };
+                return fsTools.patchFile(typedArgs);
+            },
+            description: 'Perform direct text manipulation on a document by replacing search_string with replace_string.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path to the document' },
+                    search_string: { type: 'string', description: 'String to replace' },
+                    replace_string: { type: 'string', description: 'Replacement string' }
+                },
+                required: ['path', 'search_string', 'replace_string']
+            }
+        },
     ];
 }
+

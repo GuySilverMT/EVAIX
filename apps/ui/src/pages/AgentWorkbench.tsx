@@ -26,6 +26,8 @@ const VoiceWorkflow     = lazy(() => import('../features/workflows/VoiceWorkflow
 
 // ─────────────────────────────────────────────────────────────────────────────
 import { AgentWorkbenchScaffold } from '../components/cooperative/AgentWorkbenchScaffold.js';
+import { ProjectManagerPanel } from '../components/work-order/ProjectManagerPanel.js';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Workflow → Component mapping
@@ -349,12 +351,20 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   }, [dockLayoutData]);
 
   return (
-    <div className={cn('h-full w-full flex flex-col overflow-hidden relative bg-[var(--color-background)]', className)}>
-      <DockLayout
-        ref={dockLayoutRef}
-        defaultLayout={dockLayoutData}
-        style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}
-      />
+    <div className={cn('h-full w-full flex overflow-hidden relative bg-[var(--color-background)]', className)}>
+      {/* LEFT COLUMN: Workspace & Tools Panel */}
+      <div className="w-[300px] border-r border-zinc-800 flex-shrink-0 flex flex-col bg-zinc-950 overflow-hidden">
+          <ProjectManagerPanel />
+      </div>
+
+      {/* RIGHT COLUMN: Execution Window */}
+      <div className="flex-1 relative overflow-hidden bg-zinc-950">
+        <DockLayout
+          ref={dockLayoutRef}
+          defaultLayout={dockLayoutData}
+          style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, border: 'none' }}
+        />
+      </div>
     </div>
   );
 }

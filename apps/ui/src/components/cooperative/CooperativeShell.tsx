@@ -30,7 +30,7 @@ export function CooperativeShell() {
       <main className="flex-1 relative overflow-hidden flex flex-col">
         <Routes>
           {/* Project dashboard home */}
-          <Route path="/"          element={<ProjectDashboard />} />
+          <Route path="/"          element={<Navigate to="/workbench" replace />} />
 
           {/* Primary workbench */}
           <Route path="/workspace/:id" element={<AgentWorkbench />} />
