@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-07-02T11:18:26.724Z",
+  "intents": [
+    {
+      "id": "chat",
+      "path": "chat.sh",
+      "triggers": [
+        "let's chat",
+        "start chat",
+        "open chat",
+        "chat with me",
+        "talk to me",
+        "chat"
+      ],
+      "accepts_args": true,
+      "description": "Start or continue a chat session with EVAIX"
+    },
+    {
+      "id": "create_script",
+      "path": "create_script.sh",
+      "triggers": [
+        "write a python script",
+        "create script",
+        "generate script",
+        "write script",
+        "build python script"
+      ],
+      "accepts_args": true,
+      "description": "Generate or write code script based on instruction"
+    },
+    {
+      "id": "system_status",
+      "path": "system_status.sh",
+      "triggers": [
+        "check system status",
+        "system status",
+        "status check",
+        "show status"
+      ],
+      "accepts_args": false,
+      "description": "Query EVAIX system status and metrics"
+    }
+  ]
+}

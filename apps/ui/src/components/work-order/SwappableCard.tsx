@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, LayoutTemplate, Database, ChevronDown, Plus } from 'lucide-react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, LayoutTemplate, Database, ChevronDown, Plus, Play, Activity, RefreshCcw, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -14,11 +13,9 @@ import type { TerminalMessage } from '@repo/common/agent';
 import CompactRoleSelector from '../CompactRoleSelector.js';
 import { ErrorBoundary } from '../ErrorBoundary.js';
 import { AIChat } from '../AIChat.js';
-
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 import { HistoryPanel } from '../HistoryPanel.js';
-import { Cpu, MessageSquare } from 'lucide-react';
 import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
 import { UniversalDataGrid } from '../UniversalDataGrid.js';
 import { DatabaseBrowser } from '../DatabaseBrowser.js';

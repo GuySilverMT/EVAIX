@@ -9,40 +9,10 @@
           {
             "id": "1",
             "roleId": "",
-            "activeTool": "files",
+            "activeTool": "data",
             "metadata": {
-              "viewMode": "files",
+              "viewMode": "data",
               "activeFile": "/home/guy/EVAIX/cspell.json",
-              "url": "https://google.com"
-            }
-          }
-        ]
-      },
-      {
-        "id": "col-2",
-        "cards": [
-          {
-            "id": "2",
-            "roleId": "",
-            "activeTool": "editor",
-            "metadata": {
-              "viewMode": "editor",
-              "activeFile": "/home/guy/EVAIX/sessions/card-2.md",
-              "url": "https://google.com"
-            }
-          }
-        ]
-      },
-      {
-        "id": "col-3",
-        "cards": [
-          {
-            "id": "3",
-            "roleId": "",
-            "activeTool": "browser",
-            "metadata": {
-              "viewMode": "browser",
-              "activeFile": "",
               "url": "https://google.com"
             }
           }
