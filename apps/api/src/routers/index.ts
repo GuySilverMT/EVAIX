@@ -27,8 +27,7 @@ import { basetoolRouter } from './basetool.router.js';
 import { providerModelRouter } from './providerModel.router.js';
 import { bookmarkRouter } from './bookmark.router.js';
 import { skillRouter } from './skill.router.js';
-
-
+import { openwebuiRouter } from './openwebui.router.js';
 
 export const appRouter = createTRPCRouter({
   agent: agentRouter,
@@ -58,7 +57,7 @@ export const appRouter = createTRPCRouter({
   basetool: basetoolRouter,
   providerModel: providerModelRouter,
   bookmark: bookmarkRouter,
-
+  openwebui: openwebuiRouter,
 });
 
 export type AppRouter = typeof appRouter;

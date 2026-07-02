@@ -27,6 +27,7 @@ const VoiceWorkflow     = lazy(() => import('../features/workflows/VoiceWorkflow
 // ─────────────────────────────────────────────────────────────────────────────
 import { AgentWorkbenchScaffold } from '../components/cooperative/AgentWorkbenchScaffold.js';
 import { ProjectManagerPanel } from '../components/work-order/ProjectManagerPanel.js';
+import { OpenWebUIDenseChat } from '../components/cooperative/OpenWebUIDenseChat.js';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -357,13 +358,18 @@ export default function AgentWorkbench({ className }: { className?: string }) {
           <ProjectManagerPanel />
       </div>
 
-      {/* RIGHT COLUMN: Execution Window */}
-      <div className="flex-1 relative overflow-hidden bg-zinc-950">
-        <DockLayout
-          ref={dockLayoutRef}
-          defaultLayout={dockLayoutData}
-          style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, border: 'none' }}
-        />
+      {/* RIGHT COLUMN: Execution Window & Open WebUI Chat Split */}
+      <div className="flex-1 relative overflow-hidden bg-zinc-950 flex flex-row">
+        <div className="flex-1 relative overflow-hidden">
+          <DockLayout
+            ref={dockLayoutRef}
+            defaultLayout={dockLayoutData}
+            style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, border: 'none' }}
+          />
+        </div>
+        <div className="w-[360px] h-full flex-shrink-0 border-l border-zinc-800">
+          <OpenWebUIDenseChat />
+        </div>
       </div>
     </div>
   );

@@ -18,11 +18,12 @@ import { AIChat } from '../AIChat.js';
 import MonacoDiffEditor from '../MonacoDiffEditor.js';
 import { cn } from '../../lib/utils.js';
 import { HistoryPanel } from '../HistoryPanel.js';
-import { RefreshCcw, Activity, Play } from 'lucide-react';
+import { Cpu, MessageSquare } from 'lucide-react';
 import { AgentDNAlab } from '../../features/dna-lab/AgentDNAlab.js';
 import { UniversalDataGrid } from '../UniversalDataGrid.js';
 import { DatabaseBrowser } from '../DatabaseBrowser.js';
 import { NebulaBuilder } from '../../nebula/features/builder/NebulaBuilder.js';
+import { OpenWebUIDenseChat } from '../cooperative/OpenWebUIDenseChat.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -69,6 +70,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         const baseTools = [
             { id: 'editor', name: 'Editor', icon: Code },
             { id: 'browser', name: 'Native Browser', icon: Globe },
+            { id: 'chat', name: 'Open WebUI Chat', icon: Cpu },
             { id: 'files', name: 'Files', icon: Folder },
             { id: 'data', name: 'Data', icon: Database },
             // Promoted Agent DNA Lab directly into the top-level tools
@@ -108,7 +110,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
     const [content, setContent] = useState<string>('');
     
-    type ViewMode = 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'badbuilder' | 'ai-chat' | null;
+    type ViewMode = 'editor' | 'diff' | 'terminal' | 'browser' | 'chat' | 'files' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'badbuilder' | 'ai-chat' | null;
     
     const [viewMode, setViewMode] = useState<ViewMode>(() => {
         if (card?.activeTool === null) return 'editor';
@@ -682,6 +684,7 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                         )}
                         {/* Removed screenspaceId from SmartBrowser */}
                         {viewMode === 'browser' && <SmartBrowser cardId={id} url={browserUrl} onUrlChange={setBrowserUrl} />}
+                        {viewMode === 'chat' && <OpenWebUIDenseChat />}
                         
                         {/* DNA Lab is now a first-class citizen! */}
                         {viewMode === 'dna-lab' && <AgentDNAlab embeddedMode roleId={agentConfig.roleId} onRoleChange={(roleId) => updateCard(id, { roleId: roleId })} />}
