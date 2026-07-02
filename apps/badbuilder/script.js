@@ -881,7 +881,7 @@ function _doSave(name) {
   const urlParams = new URLSearchParams(window.location.search); const workspacePath = urlParams.get("workspace");
   if (workspacePath) {
     const layoutPath = workspacePath + "/.evaix/layouts/badbuilderpage.layout.json";
-    fetch("/api/vfs/write", { method: "POST", headers: { "Content-Type": "application/json", }, body: JSON.stringify({ path: layoutPath, content: JSON.stringify(data, null, 2) }) })
+    fetch("/api/vfs/write", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer dev-token" }, body: JSON.stringify({ path: layoutPath, content: JSON.stringify(data, null, 2) }) })
     .then(r => { if (!r.ok) throw new Error("Save API returned error"); return r.json(); }).then(() => { showToast("Saved: " + name); })
     .catch(err => { showToast("VFS Save failed: " + err.message); });
   } else { download(JSON.stringify(data, null, 2), name.replace(/\s+/g, "-") + ".layout.json"); showToast("Saved: " + name); }
@@ -1132,7 +1132,7 @@ function init() {
   const urlParams = new URLSearchParams(window.location.search); const workspacePath = urlParams.get("workspace");
   if (workspacePath) {
     const layoutPath = workspacePath + "/.evaix/layouts/badbuilderpage.layout.json";
-    fetch(`/api/vfs/read?path=${encodeURIComponent(layoutPath)}`)
+    fetch(`/api/vfs/read?path=${encodeURIComponent(layoutPath)}`, { headers: { "Authorization": "Bearer dev-token" } })
       .then(r => { if (!r.ok) throw new Error("Not found"); return r.json(); })
       .then(data => { if (data && data.content) { loadLayoutData(JSON.parse(data.content)); showToast("Loaded workspace layout"); } })
       .catch(err => { console.warn("[BadBuilder] Failed to load workspace layout", err); });

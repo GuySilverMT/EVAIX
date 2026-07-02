@@ -24,6 +24,11 @@ const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: import.meta.env.VITE_API_URL || 'http://localhost:4000/trpc', // URL of your tRPC server
+      headers() {
+        return {
+          Authorization: 'Bearer dev-token',
+        };
+      },
     }),
   ],
   transformer: SuperJSON,

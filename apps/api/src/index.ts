@@ -71,8 +71,17 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use('/badbuilder', express.static(path.join(__dirname, '../../badbuilder')));
 
+  // Auth Middleware for Express routes
+  const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized: Missing or invalid authorization token' });
+    }
+    next();
+  };
+
   // REST wrapper for VFS write
-  app.post('/api/vfs/write', async (req, res) => {
+  app.post('/api/vfs/write', requireAuth, async (req, res) => {
     try {
       const { path: filePath, content } = req.body;
       if (!filePath || content === undefined) {
@@ -92,7 +101,7 @@ async function startServer() {
   });
 
   // REST wrapper for VFS read
-  app.get('/api/vfs/read', async (req, res) => {
+  app.get('/api/vfs/read', requireAuth, async (req, res) => {
     try {
       const filePath = req.query.path as string;
       if (!filePath) {

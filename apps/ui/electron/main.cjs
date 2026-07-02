@@ -15,7 +15,7 @@ function createWindow() {
     height: height,
     webPreferences: {
       webviewTag: true,
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
     },
   });
