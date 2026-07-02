@@ -9,9 +9,9 @@
           {
             "id": "1",
             "roleId": "",
-            "activeTool": "editor",
+            "activeTool": "files",
             "metadata": {
-              "viewMode": "editor",
+              "viewMode": "files",
               "activeFile": "/home/guy/EVAIX/cspell.json",
               "url": "https://google.com"
             }
