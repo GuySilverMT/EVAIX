@@ -301,12 +301,102 @@ function setPropFromSelect(prop, val) {
   refreshBlock(b); renderTree(); renderAllDropdowns();
 }
 
+const COMMON_ICONS = [
+  "home", "settings", "search", "menu", "close", "add", "delete", "edit", "info", "warning", "error", "check",
+  "person", "group", "favorite", "star", "email", "phone", "location_on", "date_range", "schedule",
+  "visibility", "visibility_off", "arrow_forward", "arrow_back", "arrow_drop_down", "arrow_drop_up",
+  "folder", "description", "insert_drive_file", "cloud", "cloud_download", "cloud_upload",
+  "play_arrow", "pause", "stop", "volume_up", "volume_off", "photo", "camera", "videocam",
+  "shopping_cart", "payment", "work", "build", "bug_report", "code", "terminal", "language",
+  "lock", "lock_open", "key", "vpn_key", "security", "fingerprint", "face", "thumb_up", "thumb_down",
+  "share", "reply", "forward", "send", "chat", "forum", "notifications", "alarm", "event",
+  "dashboard", "list", "view_module", "view_list", "view_column", "grid_on", "table_chart",
+  "bar_chart", "pie_chart", "show_chart", "trending_up", "trending_down", "account_circle",
+  "exit_to_app", "power_settings_new", "refresh", "sync", "done", "done_all", "help", "more_vert", "more_horiz",
+  "bolt", "lightbulb", "dark_mode", "light_mode", "science", "biotech", "memory", "rocket_launch", "computer",
+  "smartphone", "tablet", "watch", "keyboard", "mouse", "print", "save", "download", "upload", "mic", "headset"
+];
+
 function setPropAndPreview(key, val) { setProp(key, val); updateIconPreview(val); }
 function updateIconPreview(name) {
-  const el = document.getElementById("icon-preview"); if (!el) return;
-  el.innerHTML = `<span class="material-symbols-outlined" style="font-size: 20px; color: var(--text2)">${name || "circle"}</span>`;
+  renderIconPicker(name);
+}
+function renderIconPicker(filter = "") {
+  const grid = document.getElementById("icon-picker-grid"); if (!grid) return;
+  grid.innerHTML = "";
+  const f = filter.toLowerCase();
+
+  // Always include the current typed value even if it's not in the common list
+  const iconsToShow = new Set(COMMON_ICONS.filter(i => i.includes(f)));
+  if (filter && !iconsToShow.has(filter)) iconsToShow.add(filter);
+
+  Array.from(iconsToShow).forEach(iconName => {
+    const btn = document.createElement("div");
+    btn.className = "material-symbols-outlined";
+    btn.textContent = iconName;
+    const b = getSelected();
+    const isSelected = b && b.iconName === iconName;
+    btn.style.cssText = `
+      cursor:pointer; font-size:20px; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+      border-radius:4px; border:1px solid ${isSelected ? 'var(--accent)' : 'transparent'};
+      background:${isSelected ? 'var(--accent-hover)' : 'transparent'};
+      color:${isSelected ? 'var(--text)' : 'var(--text2)'};
+    `;
+    btn.title = iconName;
+    btn.onmouseover = () => { if (!isSelected) btn.style.background = 'var(--surface)'; btn.style.color = 'var(--text)'; };
+    btn.onmouseout = () => { if (!isSelected) btn.style.background = 'transparent'; btn.style.color = 'var(--text2)'; };
+    btn.onclick = () => {
+      document.getElementById("p-iconName").value = iconName;
+      setProp('iconName', iconName);
+      renderIconPicker('');
+    };
+    grid.appendChild(btn);
+  });
 }
 function updateIconStyle(styleId) { const b = getSelected(); if (!b) return; b.iconStyleId = styleId; refreshBlock(b); renderSidebar(); }
+
+function renderDropdownBuilder() {
+  const b = getSelected();
+  if (!b) return;
+  const container = document.getElementById("dropdown-items-container");
+  if (!container) return;
+  container.innerHTML = "";
+  const items = b.dropdownItems || [];
+  items.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; gap:4px; align-items:center;";
+    row.innerHTML = `
+      <input class="r-input" style="width:40px; text-align:center; padding:2px;" placeholder="Icon" value="${item.icon || ''}" onchange="updateDropdownRow(${index}, 'icon', this.value)">
+      <input class="r-input" style="flex:1;" placeholder="Label / Tooltip" value="${item.text || ''}" onchange="updateDropdownRow(${index}, 'text', this.value)">
+      <button class="tb-btn" style="padding:2px 6px;" onclick="removeDropdownRow(${index})">x</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function addDropdownRow() {
+  const b = getSelected();
+  if (!b) return;
+  saveHistory();
+  if (!b.dropdownItems) b.dropdownItems = [];
+  b.dropdownItems.push({ icon: "", text: "" });
+  renderDropdownBuilder();
+}
+
+function updateDropdownRow(index, key, val) {
+  const b = getSelected();
+  if (!b || !b.dropdownItems) return;
+  saveHistory();
+  b.dropdownItems[index][key] = val;
+}
+
+function removeDropdownRow(index) {
+  const b = getSelected();
+  if (!b || !b.dropdownItems) return;
+  saveHistory();
+  b.dropdownItems.splice(index, 1);
+  renderDropdownBuilder();
+}
 
 function applyContainerPreset(w, h) {
   const b = getSelected(); if (!b || b.role !== "container") return;
@@ -678,11 +768,13 @@ function renderSidebar() {
     document.getElementById("p-contentType").value = b.contentType || "text";
     document.getElementById("obj-text-group").style.display = (b.contentType === "text" || b.contentType === "both") ? "block" : "none";
     document.getElementById("obj-icon-group").style.display = (b.contentType === "icon" || b.contentType === "both") ? "block" : "none";
+    document.getElementById("obj-dropdown-group").style.display = (b.contentType === "dropdown") ? "block" : "none";
     document.getElementById("p-textContent").value = b.text || "";
     document.getElementById("p-iconName").value = b.iconName || "";
     document.getElementById("p-tooltip").value = b.tooltip || "";
     document.getElementById("p-action").value = b.action || "";
     updateIconPreview(b.iconName);
+    if (b.contentType === "dropdown") renderDropdownBuilder();
   }
 
   ["left", "center", "right"].forEach(a => document.getElementById("ah-" + a)?.classList.toggle("active", b.alignH === a));
@@ -969,6 +1061,7 @@ function exportForAI() {
   lines.push("   - GOOD: `sx={{ bgcolor: 'background.paper', color: 'text.primary' }}`");
   lines.push("   - If the JSON requests a border, use `sx={{ border: 1, borderColor: 'divider' }}`.");
   lines.push("4. **Architecture**: Output the `theme.ts` file, followed by the modular React component files requested by the `isComponent` flags in the JSON tree.");
+  lines.push("5. **Dual-File Evolution Return**: You must return exactly two files: 1) A fully compiled, functional React .tsx implementation file. 2) An upgraded layout .json file that updates block-level aiNotes with the new functional capabilities, matching our living document specification.");
 
   download(lines.join("\n"), (currentProjectName || "layout") + "-ai-prompt.md");
   showToast("AI Compiler Prompt Downloaded!");
@@ -995,7 +1088,7 @@ function buildExportTree(blocks, allBlocks) {
         innerGridStyle: b.innerGridStyle,
         gridPattern: b.gridPattern
     } : null,
-    objectContent: b.role === "object" ? { type: b.contentType, text: b.text, icon: b.iconName, tooltip: b.tooltip, action: b.action } : null,
+    objectContent: b.role === "object" ? { type: b.contentType, text: b.text, icon: b.iconName, tooltip: b.tooltip, action: b.action, dropdownItems: b.dropdownItems || [] } : null,
     aiNotes: b.aiNotes || "",
     grid: b.grid ? { columns: b.grid.cols.map((w, i) => ({ index: i, widthPx: Math.round(w), pct: Math.round(w / b.w * 1000) / 10 })), rows: b.grid.rows.map((h, i) => ({ index: i, heightPx: Math.round(h), pct: Math.round(h / b.h * 1000) / 10 })) } : null,
     children: buildExportTree(allBlocks.filter(c => c.parentId === b.id), allBlocks),

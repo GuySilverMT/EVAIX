@@ -41,6 +41,7 @@
     "monaco-editor": "^0.54.0",
     "nanoid": "^5.1.6",
     "novel": "^1.0.2",
+    "rc-dock": "4.0.0-alpha.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hotkeys": "^2.0.0",

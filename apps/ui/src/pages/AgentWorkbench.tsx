@@ -7,6 +7,9 @@ import { useWorkspaceStore, type CardData } from '../stores/workspace.store.js';
 import { useBuilderStore } from '../stores/builder.store.js';
 import layoutData from '../../../badbuilder/agentworkbench.layout.json';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
+import DockLayout from 'rc-dock';
+import type { LayoutData, TabData, PanelData } from 'rc-dock';
+import 'rc-dock/dist/rc-dock.css';
 import { Button } from '../components/ui/button.js';
 import { cn } from '../lib/utils.js';
 import { trpc } from '../utils/trpc.js';
@@ -65,6 +68,7 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   } = useWorkspaceStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const dockLayoutRef = useRef<DockLayout>(null);
 
   // Load project configuration from local file system
   const vfsReadQuery = trpc.vfs.read.useQuery(
@@ -293,131 +297,64 @@ export default function AgentWorkbench({ className }: { className?: string }) {
   }
 
   // ── Free-grid mode (default, no active workflow) ───────────────────────────
-  return (
-    <div className={cn('h-full w-full flex flex-col overflow-hidden relative bg-zinc-950', className)}>
-
-      <div ref={containerRef} className="flex-1 flex overflow-x-auto bg-zinc-850 p-0 gap-[1px] min-w-full">
-        {Array.from({ length: columns }).map((_, columnIndex) => {
-          const columnCards = cardsByColumn[columnIndex] || [];
-          const currentFocusIndex = focusedCardIndex[columnIndex] || 0;
-          const currentCard = columnCards[currentFocusIndex];
-
-          return (
-            <div
-              key={columnIndex}
-              className="flex-1 flex flex-col overflow-hidden bg-[var(--color-background-secondary)] min-w-[280px]"
-            >
-              {/* Cards above the focused one (clickable breadcrumbs) */}
-              {currentFocusIndex > 0 && (
-                <div className="flex-none bg-[var(--color-background)] border-b border-[var(--color-border)] flex items-center justify-center gap-1 px-2 h-8">
-                  {columnCards.slice(0, currentFocusIndex).map((c, idx) => (
-                    <Button
-                      key={c.id}
-                      onClick={() => scrollToCardIndex(columnIndex, idx)}
-                      variant="outline"
-                      size="icon"
-                      className="w-6 h-6 text-[10px] font-bold hover:bg-[var(--color-primary)] hover:text-black hover:border-[var(--color-primary)]"
-                      title={`Go to card ${idx + 1}`}
-                    >
-                      {idx + 1}
-                    </Button>
-                  ))}
-                </div>
-              )}
-
-              {/* Active card */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                {currentCard ? (
-                  <div
-                    id={`card-${currentCard.id}`}
-                    className="h-full"
-                    onMouseEnter={() => setColumnFocus(columnIndex, currentCard.id)}
-                  >
-                    <SwappableCard key={currentCard.id} id={currentCard.id} />
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
-                    No cards in this column
-                  </div>
-                )}
-              </div>
-
-              {/* Column navigation footer */}
-              <div className="flex-none bg-[var(--color-background)] border-t border-[var(--color-border)] h-8">
-                {columnCards.length > 0 ? (
-                  <div className="h-full flex items-center justify-between px-3">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        onClick={() => scrollToCardIndex(columnIndex, Math.max(0, currentFocusIndex - 1))}
-                        disabled={currentFocusIndex === 0}
-                        variant="ghost" size="sm"
-                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                      >
-                        ↑ Prev
-                      </Button>
-                      <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider font-mono">
-                        {currentFocusIndex + 1}/{columnCards.length}
-                      </span>
-                      <Button
-                        onClick={() => scrollToCardIndex(columnIndex, Math.min(columnCards.length - 1, currentFocusIndex + 1))}
-                        disabled={currentFocusIndex === columnCards.length - 1}
-                        variant="ghost" size="sm"
-                        className="h-auto px-2 py-0.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                      >
-                        Next ↓
-                      </Button>
-                    </div>
-
-                    {/* Spawn tools inside footer when cards are present */}
-                    {activeWorkspaceId && (
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          onClick={() => handleSpawnCard(columnIndex)}
-                          variant="outline"
-                          className="h-5 px-2 bg-indigo-950/20 border-indigo-900/50 hover:bg-indigo-900/40 text-[8px] font-bold text-indigo-400 uppercase rounded-sm flex items-center gap-0.5"
-                        >
-                          <Plus size={8} /> Card
-                        </Button>
-                        <Button
-                          onClick={() => handleRemoveColumn(columnIndex)}
-                          variant="outline"
-                          className="h-5 px-2 bg-red-950/20 border-red-900/50 hover:bg-red-900/40 text-[8px] font-bold text-red-400 uppercase rounded-sm"
-                          title="Remove Column"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center gap-1.5">
-                    {activeWorkspaceId ? (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          onClick={() => handleSpawnCard(columnIndex)}
+  const dockLayoutData: LayoutData = useMemo(() => {
+    const panels: PanelData[] = [];
+    for (let i = 0; i < columns; i++) {
+      const columnCards = cardsByColumn[i] || [];
+      const tabs: TabData[] = columnCards.map((card, idx) => ({
+        id: `card-${card.id}`,
+        title: `Card ${idx + 1}`,
+        content: <SwappableCard key={card.id} id={card.id} />
+      }));
+      if (tabs.length === 0) {
+          tabs.push({
+              id: `empty-${i}`,
+              title: `Empty ${i + 1}`,
+              content: (
+                  <div className="h-full flex flex-col items-center justify-center gap-2 text-[var(--color-text-muted)]">
+                      <div>No cards in this column</div>
+                      {activeWorkspaceId && (
+                         <Button
+                          onClick={() => handleSpawnCard(i)}
                           variant="outline"
                           className="h-6 px-3 bg-indigo-950/30 border-indigo-900/50 hover:bg-indigo-900/50 text-[9px] font-bold text-indigo-400 uppercase rounded-sm flex items-center gap-1"
                         >
                           <Plus size={10} /> Add Card
                         </Button>
-                        <Button
-                          onClick={() => handleRemoveColumn(columnIndex)}
-                          variant="outline"
-                          className="h-6 px-3 bg-red-950/30 border-red-900/50 hover:bg-red-900/50 text-[9px] font-bold text-red-400 uppercase rounded-sm"
-                        >
-                          Remove Column
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-zinc-500 font-mono">Select workspace to spawn tools</span>
-                    )}
+                      )}
                   </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              )
+          });
+      }
+
+      panels.push({
+        id: `panel-${i}`,
+        tabs
+      });
+    }
+
+    return {
+      dockbox: {
+        mode: 'horizontal',
+        children: panels
+      }
+    };
+  }, [columns, cardsByColumn, handleSpawnCard, activeWorkspaceId]);
+
+
+  useEffect(() => {
+    if (dockLayoutRef.current) {
+        dockLayoutRef.current.loadLayout(dockLayoutData);
+    }
+  }, [dockLayoutData]);
+
+  return (
+    <div className={cn('h-full w-full flex flex-col overflow-hidden relative bg-[var(--color-background)]', className)}>
+      <DockLayout
+        ref={dockLayoutRef}
+        defaultLayout={dockLayoutData}
+        style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}
+      />
     </div>
   );
 }
