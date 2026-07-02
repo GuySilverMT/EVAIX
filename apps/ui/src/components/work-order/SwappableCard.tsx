@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
-import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, LayoutTemplate, Database, ChevronDown, Plus, Play, Activity, RefreshCcw, Cpu } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
+import { Code, Globe, Terminal, Fingerprint, Folder, X, FileText, History, Save, StopCircle, LayoutTemplate, Database, ChevronDown, Plus, Play, Activity, RefreshCcw, Cpu, Sliders, Settings, User, Sparkles, Table, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import SmartEditor from '../SmartEditor.js';
 import { SmartTerminal } from '../SmartTerminal.js';
@@ -21,6 +21,15 @@ import { UniversalDataGrid } from '../UniversalDataGrid.js';
 import { DatabaseBrowser } from '../DatabaseBrowser.js';
 import { NebulaBuilder } from '../../nebula/features/builder/NebulaBuilder.js';
 import { OpenWebUIDenseChat } from '../cooperative/OpenWebUIDenseChat.js';
+import { PropertyPanel } from '../nebula/system/PropertyPanel.js';
+import { ProjectManagerPanel } from './ProjectManagerPanel.js';
+import SettingsWorkflow from '../../features/workflows/SettingsWorkflow.jsx';
+import ProviderWorkflow from '../../features/workflows/ProviderWorkflow.jsx';
+import { ChatCard } from '../apps/ChatCard.js';
+import { DocsCard } from '../apps/DocsCard.js';
+import { SheetsCard } from '../apps/SheetsCard.js';
+import { PromptCard } from '../apps/PromptCard.js';
+import { ProjectManagerCard } from '../apps/ProjectManagerCard.js';
 
 // Helper to get filename from path
 const getBasename = (path: string) => path.split('/').pop() || path;
@@ -51,7 +60,15 @@ const stringifyCSV = (data: Record<string, unknown>[]): string => {
   return [headerLine, ...rowLines].join('\n');
 };
 
-export const SwappableCard = memo(({ id }: { id: string }) => {
+export interface SwappableCardProps {
+  id: string;
+  isFocused?: boolean;
+  isCondensed?: boolean;
+  isHiddenInTabs?: boolean;
+  onFocus?: () => void;
+}
+
+export const SwappableCard = memo(({ id, isFocused = true, isCondensed = false, isHiddenInTabs = false, onFocus }: SwappableCardProps) => {
     const {
         currentPath, navigateTo, readFile, writeFile, mkdir,
         files, refresh, createNode, ingestDirectory,
@@ -64,23 +81,18 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
     const projectType = useWorkspaceStore(s => s.projectType);
 
     const availableTools = useMemo(() => {
-        const baseTools = [
-            { id: 'editor', name: 'Editor', icon: Code },
+        return [
+            { id: 'chat', name: 'Gemini Chat', icon: Sparkles },
+            { id: 'docs', name: 'Google Docs', icon: FileText },
+            { id: 'sheets', name: 'Sheets Grid', icon: Table },
+            { id: 'prompt', name: 'Prompt Studio', icon: Terminal },
+            { id: 'project-manager', name: 'Project Tree', icon: Layers },
+            { id: 'files', name: 'Files Explorer', icon: Folder },
             { id: 'browser', name: 'Native Browser', icon: Globe },
-            { id: 'chat', name: 'Open WebUI Chat', icon: Cpu },
-            { id: 'files', name: 'Files', icon: Folder },
-            { id: 'data', name: 'Data', icon: Database },
-            // Promoted Agent DNA Lab directly into the top-level tools
+            { id: 'editor', name: 'Code Editor', icon: Code },
             { id: 'dna-lab', name: 'Agent DNA Lab', icon: Fingerprint }
         ];
-
-        if (projectType === 'coding') {
-            baseTools.push({ id: 'terminal', name: 'Terminal', icon: Terminal });
-            baseTools.push({ id: 'badbuilder', name: 'BadBuilder', icon: LayoutTemplate });
-        }
-
-        return baseTools;
-    }, [projectType]);
+    }, []);
 
     const startSessionMutation = trpc.agent.startSession.useMutation();
 
@@ -107,21 +119,17 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
 
     const [content, setContent] = useState<string>('');
     
-    type ViewMode = 'editor' | 'diff' | 'terminal' | 'browser' | 'chat' | 'files' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'badbuilder' | 'ai-chat' | null;
+    type ViewMode = 'chat' | 'docs' | 'sheets' | 'prompt' | 'project-manager' | 'editor' | 'diff' | 'terminal' | 'browser' | 'files' | 'dna-lab' | 'preview' | 'data' | 'databrowser' | 'builder' | 'badbuilder' | 'ai-chat' | 'property-panel' | 'settings' | 'provider' | null;
     
     const [viewMode, setViewMode] = useState<ViewMode>(() => {
-        if (card?.activeTool === null) return 'editor';
+        if (card?.activeTool === null) return 'chat';
         if (card?.activeTool) {
-            // Gracefully migrate legacy settings/config states to dna-lab
             if (card.activeTool === 'config' || card.activeTool === 'settings') return 'dna-lab';
-            if (card.activeTool === 'BadBuilder') return 'badbuilder';
             return card.activeTool as ViewMode;
         }
         const meta = card?.metadata as { viewMode?: string } | undefined;
         const mode = meta?.viewMode;
-        if (mode === 'config' || mode === 'settings') return 'dna-lab';
-        if (mode === 'BadBuilder') return 'badbuilder';
-        return (mode as ViewMode) || 'editor';
+        return (mode as ViewMode) || 'chat';
     });
 
     const setViewModeAndStore = useCallback((mode: ViewMode) => {
@@ -412,8 +420,26 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
         }
     }, [id, agentConfig, startSessionMutation, currentPath, sessionId, isRunning, activeFile, readFile, refresh, setViewModeAndStore, card?.metadata]);
 
+    if (isCondensed) {
+        return (
+            <div 
+                onClick={onFocus}
+                className="h-7 bg-zinc-900/90 hover:bg-zinc-800 border-b border-zinc-800 px-3 flex items-center justify-between cursor-pointer transition-colors font-mono text-xs select-none shrink-0"
+            >
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider truncate">
+                        {viewMode ? viewMode.toUpperCase() : 'APP CARD'}
+                    </span>
+                    <span className="text-[9px] text-zinc-600 truncate">[{id.slice(0, 6)}]</span>
+                </div>
+                <span className="text-[9px] text-indigo-400 font-bold uppercase hover:underline">Focus 🗁</span>
+            </div>
+        );
+    }
+
     return (
-        <div className="flex h-full w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] overflow-hidden relative flex-col">
+        <div className="flex h-full w-full rounded-none border-0 bg-[var(--bg-secondary)] overflow-hidden relative flex-col">
             <div className="h-9 border-b border-[var(--border-color)] flex items-center px-2 bg-[var(--bg-secondary)] gap-2">
                 <div className="relative shrink-0 font-sans" ref={menuRef}>
                     <button
@@ -728,6 +754,14 @@ export const SwappableCard = memo(({ id }: { id: string }) => {
                                 }}
                             />
                         )}
+                        {viewMode === 'chat' && <ChatCard />}
+                        {viewMode === 'docs' && <DocsCard />}
+                        {viewMode === 'sheets' && <SheetsCard />}
+                        {viewMode === 'prompt' && <PromptCard />}
+                        {viewMode === 'project-manager' && <ProjectManagerCard />}
+                        {viewMode === 'property-panel' && <PropertyPanel />}
+                        {viewMode === 'settings' && <SettingsWorkflow />}
+                        {viewMode === 'provider' && <ProviderWorkflow />}
                     </ErrorBoundary>
 
                     {showSupplementary && (

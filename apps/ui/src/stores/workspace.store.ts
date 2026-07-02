@@ -75,6 +75,11 @@ interface WorkspaceState {
   activeWorkflow: string | null; // e.g. 'provider' | 'org' | 'datacenter' | 'settings' | 'voice'
   setActiveWorkflow: (workflow: string | null) => void;
 
+  // [NEW] System App routing (Settings, Property Panel, Accounts, Models, Provider)
+  activeSystemApp: string | null;
+  setActiveSystemApp: (app: string | null) => void;
+  toggleSystemApp: (app: string) => void;
+
   // [NEW] LSP-style Orchestrator Mode (JSON-mode vs Code-mode)
   orchestratorMode: 'json' | 'code';
   setOrchestratorMode: (mode: 'json' | 'code') => void;
@@ -211,6 +216,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       activeWorkflow: null,
       setActiveWorkflow: (workflow) => set({ activeWorkflow: workflow }),
+
+      activeSystemApp: null,
+      setActiveSystemApp: (app) => set({ activeSystemApp: app }),
+      toggleSystemApp: (app) => set((state) => ({
+        activeSystemApp: state.activeSystemApp === app ? null : app
+      })),
 
       orchestratorMode: 'json',
       setOrchestratorMode: (mode) => set({ orchestratorMode: mode }),

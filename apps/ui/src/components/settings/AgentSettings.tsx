@@ -36,17 +36,44 @@ interface ModelOption {
 }
 
 interface AgentSettingsProps {
-  config: CardAgentState;
-  availableRoles: { id: string; name: string; category: string }[]; 
-  availableModels: ModelOption[];
-  onUpdate: (newConfig: CardAgentState) => void;
+  cardId?: string;
+  onSave?: () => void;
+  config?: CardAgentState;
+  availableRoles?: { id: string; name: string; category: string }[]; 
+  availableModels?: ModelOption[];
+  onUpdate?: (newConfig: CardAgentState) => void;
   fileSystem?: {
     currentPath: string;
     onNavigate: (path: string) => void;
   };
 }
 
-const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, availableModels, onUpdate }) => {
+const DEFAULT_CONFIG: CardAgentState = {
+  roleId: 'junior-coder',
+  modelId: 'gemini-flash',
+  isLocked: false,
+  temperature: 0.7,
+  maxTokens: 2048,
+};
+
+const DEFAULT_ROLES = [
+  { id: 'junior-coder', name: 'Junior Coder', category: 'Engineering' },
+  { id: 'architect', name: 'System Architect', category: 'Engineering' },
+  { id: 'general', name: 'General Assistant', category: 'General' },
+];
+
+const DEFAULT_MODELS: ModelOption[] = [
+  { id: 'gemini-flash', name: 'Gemini 2.5 Flash', provider: 'Google', supportsTools: true },
+  { id: 'claude-3-5', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', supportsTools: true },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', supportsTools: true },
+];
+
+export const AgentSettings: React.FC<AgentSettingsProps> = ({ 
+  config = DEFAULT_CONFIG, 
+  availableRoles = DEFAULT_ROLES, 
+  availableModels = DEFAULT_MODELS, 
+  onUpdate = () => {} 
+}) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [showAdjustmentDetails, setShowAdjustmentDetails] = useState(false);
 
@@ -316,3 +343,5 @@ const AgentSettings: React.FC<AgentSettingsProps> = ({ config, availableRoles, a
     </div>
   );
 };
+
+export default AgentSettings;

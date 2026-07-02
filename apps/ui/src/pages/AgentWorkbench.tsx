@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useMemo, useRef, Suspense, lazy } from 'react';
 import { useParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useHotkeys } from '../hooks/useHotkeys.js';
 import { SwappableCard } from '../components/work-order/SwappableCard.js';
 import { useWorkspaceStore, type CardData } from '../stores/workspace.store.js';
 import { useBuilderStore } from '../stores/builder.store.js';
 import layoutData from '../../../badbuilder/agentworkbench.layout.json';
 import { useColumnFocus } from '../hooks/useColumnFocus.js';
+import { PropertyPanel } from '../components/nebula/system/PropertyPanel.js';
+import { AgentSettings } from '../components/settings/AgentSettings.js';
 import DockLayout from 'rc-dock';
 import type { LayoutData, TabData, PanelData } from 'rc-dock';
 import 'rc-dock/dist/rc-dock.css';
@@ -26,6 +28,10 @@ const VoiceWorkflow     = lazy(() => import('../features/workflows/VoiceWorkflow
 
 // ─────────────────────────────────────────────────────────────────────────────
 import { AgentWorkbenchScaffold } from '../components/cooperative/AgentWorkbenchScaffold.js';
+import { TopWorkbenchBar } from '../components/cooperative/TopWorkbenchBar.js';
+import { ChatCard } from '../components/apps/ChatCard.js';
+import { DocsCard } from '../components/apps/DocsCard.js';
+import { ProjectManagerCard } from '../components/apps/ProjectManagerCard.js';
 import { ProjectManagerPanel } from '../components/work-order/ProjectManagerPanel.js';
 import { OpenWebUIDenseChat } from '../components/cooperative/OpenWebUIDenseChat.js';
 
@@ -351,26 +357,159 @@ export default function AgentWorkbench({ className }: { className?: string }) {
     }
   }, [dockLayoutData]);
 
+  const activeSystemApp = useWorkspaceStore(s => s.activeSystemApp);
+  const setActiveSystemApp = useWorkspaceStore(s => s.setActiveSystemApp);
+
+  // Vertical Stacking Accordion State (active card per column)
+  const [activeColumnCards, setActiveColumnCards] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    setActiveColumnCards((prev) => {
+      const next = { ...prev };
+      for (let i = 0; i < columns; i++) {
+        const colCards = cardsByColumn[i] || [];
+        if (colCards.length > 0 && (!next[i] || !colCards.some(c => c.id === next[i]))) {
+          next[i] = colCards[colCards.length - 1].id;
+        }
+      }
+      return next;
+    });
+  }, [columns, cardsByColumn]);
+
   return (
-    <div className={cn('h-full w-full flex overflow-hidden relative bg-[var(--color-background)]', className)}>
-      {/* LEFT COLUMN: Workspace & Tools Panel */}
-      <div className="w-[300px] border-r border-zinc-800 flex-shrink-0 flex flex-col bg-zinc-950 overflow-hidden">
-          <ProjectManagerPanel />
+    <div className={cn('h-full w-full flex flex-col overflow-hidden relative bg-[#121212]', className)}>
+      {/* TOP WORKBENCH BAR */}
+      <TopWorkbenchBar />
+
+      {/* COOPERATIVE 2-COLUMN GRID */}
+      <div 
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          width: '100%',
+          height: 'calc(100vh - 48px)',
+          gap: '4px',
+          padding: '4px',
+          backgroundColor: '#121212'
+        }}
+      >
+        {Array.from({ length: 2 }).map((_, colIndex) => {
+          const colCards = cardsByColumn[colIndex] || [];
+          const activeCardId = activeColumnCards[colIndex] || (colCards[colCards.length - 1]?.id ?? '');
+          const focusedCard = colCards.find(c => c.id === activeCardId) || colCards[0];
+          const otherCards = colCards.filter(c => c.id !== focusedCard?.id);
+
+          // Condition A: 1 Card
+          // Condition B: 2 Cards -> 1 strip above focused card
+          // Condition C: 3+ Cards -> Tab bar (for 3rd+ cards) + 1 strip directly above focused card
+          const mostRecentBackgroundedCard = otherCards.length > 0 ? otherCards[otherCards.length - 1] : null;
+          const tabCards = otherCards.length > 1 ? otherCards.slice(0, otherCards.length - 1) : [];
+
+          return (
+            <div 
+              key={`col-${colIndex}`} 
+              className="flex flex-col h-full bg-[#18181a] border border-[#2a2a2d] rounded overflow-hidden"
+            >
+              {/* CONDITION C: Tab Bar (For 3rd, 4th, 5th+ cards in column) */}
+              {colCards.length >= 3 && tabCards.length > 0 && (
+                <div className="h-6 bg-[#121212] border-b border-[#2a2a2d] px-2 flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
+                  {tabCards.map(card => (
+                    <button
+                      key={card.id}
+                      onClick={() => setActiveColumnCards(p => ({ ...p, [colIndex]: card.id }))}
+                      className="px-2 py-0.5 bg-[#18181a] hover:bg-[#252528] border border-[#2a2a2d] text-[9px] font-mono text-zinc-400 hover:text-zinc-200 rounded whitespace-nowrap"
+                    >
+                      📁 {card.activeTool || card.id.slice(0, 8)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* CONDITION B & C: Condensed Strip (Sitting directly ABOVE Focused Card's App Menu Bar) */}
+              {colCards.length >= 2 && mostRecentBackgroundedCard && (
+                <SwappableCard 
+                  id={mostRecentBackgroundedCard.id} 
+                  isFocused={false} 
+                  isCondensed={true}
+                  onFocus={() => setActiveColumnCards(p => ({ ...p, [colIndex]: mostRecentBackgroundedCard.id }))}
+                />
+              )}
+
+              {/* CONDITION A, B, C: Focused Card View */}
+              <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col">
+                {focusedCard ? (
+                  <SwappableCard 
+                    id={focusedCard.id} 
+                    isFocused={true} 
+                    isCondensed={false}
+                  />
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-zinc-900 m-2 rounded-lg text-zinc-600">
+                    <span className="text-[10px] font-mono uppercase tracking-wider">Empty Column Grid Zone</span>
+                    <button 
+                      onClick={() => handleSpawnCard(colIndex)}
+                      className="px-3 py-1 bg-indigo-950 hover:bg-indigo-900 text-indigo-400 border border-indigo-800 rounded text-xs font-bold font-mono flex items-center gap-1"
+                    >
+                      <Plus size={12} /> Spawn App Card
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* RIGHT COLUMN: Execution Window & Open WebUI Chat Split */}
-      <div className="flex-1 relative overflow-hidden bg-zinc-950 flex flex-row">
-        <div className="flex-1 relative overflow-hidden">
-          <DockLayout
-            ref={dockLayoutRef}
-            defaultLayout={dockLayoutData}
-            style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, border: 'none' }}
-          />
+      {/* SYSTEM APP OVERLAY CONTAINER */}
+      {activeSystemApp && (
+        <div className="absolute right-0 top-0 bottom-0 w-[500px] max-w-full border-l border-zinc-800 bg-zinc-950 z-[100] flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+          <div className="h-10 bg-zinc-900 border-b border-zinc-800 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-200 font-mono">
+                System App: {activeSystemApp}
+              </span>
+            </div>
+            <button 
+              onClick={() => setActiveSystemApp(null)}
+              className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-zinc-100 transition-colors"
+              title="Close System App"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto p-2 bg-zinc-950">
+            {activeSystemApp === 'project-manager' && <ProjectManagerCard />}
+            {activeSystemApp === 'properties' && <PropertyPanel />}
+            {activeSystemApp === 'settings' && (
+              <Suspense fallback={<div className="p-4 text-xs text-zinc-500 font-mono">Loading Settings...</div>}>
+                <SettingsWorkflow />
+              </Suspense>
+            )}
+            {activeSystemApp === 'provider' && (
+              <Suspense fallback={<div className="p-4 text-xs text-zinc-500 font-mono">Loading Provider...</div>}>
+                <ProviderWorkflow />
+              </Suspense>
+            )}
+            {activeSystemApp === 'accounts' && (
+              <div className="p-4 text-xs text-zinc-300">
+                <h3 className="font-bold text-sm mb-2 text-emerald-400">Account Profile</h3>
+                <p className="text-zinc-500 mb-4">EVAIX Cooperative Session & User Identity Management</p>
+                <div className="p-3 bg-zinc-900 border border-zinc-800 rounded space-y-2 font-mono">
+                  <div>User ID: sys-user-01</div>
+                  <div>Role: Cooperative Lead</div>
+                  <div>Status: Authenticated</div>
+                </div>
+              </div>
+            )}
+            {activeSystemApp === 'models' && (
+              <div className="p-4">
+                <AgentSettings cardId="system" onSave={() => setActiveSystemApp(null)} />
+              </div>
+            )}
+          </div>
         </div>
-        <div className="w-[360px] h-full flex-shrink-0 border-l border-zinc-800">
-          <OpenWebUIDenseChat />
-        </div>
-      </div>
+      )}
     </div>
   );
 }

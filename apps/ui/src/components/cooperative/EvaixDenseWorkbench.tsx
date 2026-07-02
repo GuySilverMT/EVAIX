@@ -8,6 +8,7 @@ import BatteryStdIcon from '@mui/icons-material/BatteryStd';
 import GridViewIcon from '@mui/icons-material/GridView';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
+import { ModelBar } from './ModelBar.js';
 import { toast } from 'sonner';
 
 export default function EvaixDenseWorkbench() {
@@ -61,18 +62,36 @@ export default function EvaixDenseWorkbench() {
       {/* LEFT: SYSTEM & PROJECT MENU */}
       <Box sx={{ display: 'flex', alignItems: 'center', width: '60%', borderRight: 1, borderColor: 'divider' }}>
         
-        {/* Accounts & Settings */}
+        {/* Accounts, Settings & Property Manager System Apps */}
         <IconButton 
-          onClick={() => toast.info('Account profile details')}
+          onClick={() => {
+            useWorkspaceStore.getState().toggleSystemApp('accounts');
+            toast.info('Toggled Accounts System App');
+          }}
+          title="Accounts System App"
           sx={{ color: 'primary.main', borderRight: 1, borderColor: 'divider', width: '36px', height: '36px' }}
         >
           <AccountCircleIcon fontSize="small" />
         </IconButton>
         <IconButton 
-          onClick={() => useWorkspaceStore.getState().setActiveWorkflow('settings')}
+          onClick={() => {
+            useWorkspaceStore.getState().toggleSystemApp('settings');
+            toast.info('Toggled Settings System App');
+          }}
+          title="Settings System App"
           sx={{ color: 'primary.main', borderRight: 1, borderColor: 'divider', width: '36px', height: '36px' }}
         >
           <SettingsIcon fontSize="small" />
+        </IconButton>
+        <IconButton 
+          onClick={() => {
+            useWorkspaceStore.getState().toggleSystemApp('project-manager');
+            toast.info('Toggled Project Tree System App');
+          }}
+          title="Project Tree Manager"
+          sx={{ color: 'secondary.main', borderRight: 1, borderColor: 'divider', width: '36px', height: '36px' }}
+        >
+          <Typography sx={{ fontFamily: "monospace", fontSize: '11px', fontWeight: 'bold' }}>PT</Typography>
         </IconButton>
 
         {/* Date & Time (Google Calendar / Scheduler Triggers) */}
@@ -128,78 +147,9 @@ export default function EvaixDenseWorkbench() {
         </IconButton>
       </Box>
 
-      {/* RIGHT: MODEL BAR (Hovering / Preempting active app stack) */}
+      {/* RIGHT: MODEL BAR (The Preemptive Model Bar) */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', width: '40%', bgcolor: '#464649' }}>
-        
-        {/* Orchestrator Mode Toggle: JSON-mode vs Code-mode (LSP) */}
-        <Box 
-          onClick={handleToggleMode}
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            px: 1.5, 
-            height: '100%', 
-            cursor: 'pointer', 
-            borderRight: 1, 
-            borderColor: 'divider',
-            bgcolor: orchestratorMode === 'code' ? '#1e1b4b' : 'transparent',
-            '&:hover': { bgcolor: orchestratorMode === 'code' ? '#312e81' : '#374151' }
-          }}
-        >
-          <Typography sx={{ 
-            fontSize: '11px', 
-            fontFamily: 'monospace', 
-            fontWeight: 'bold',
-            color: orchestratorMode === 'code' ? '#818cf8' : '#9ca3af'
-          }}>
-            MODE: {orchestratorMode === 'code' ? 'CODE (LSP)' : 'JSON'}
-          </Typography>
-        </Box>
-
-        {/* Model Selection Logic (S) & Provider (P) */}
-        <IconButton 
-          onClick={() => useWorkspaceStore.getState().setActiveWorkflow('settings')}
-          sx={{ color: 'success.main', borderRight: 1, borderColor: 'divider', width: '36px', height: '36px' }}
-        >
-          <Typography sx={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 'bold' }}>S</Typography>
-        </IconButton>
-        <IconButton 
-          onClick={() => useWorkspaceStore.getState().setActiveWorkflow('provider')}
-          sx={{ color: 'success.main', borderRight: 1, borderColor: 'divider', width: '36px', height: '36px' }}
-        >
-          <Typography sx={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 'bold' }}>P</Typography>
-        </IconButton>
-
-        {/* Context Estimator */}
-        <Box sx={{ px: 2, height: '100%', display: 'flex', alignItems: 'center', borderRight: 1, borderColor: 'divider' }}>
-          <Typography sx={{ color: 'primary.main', fontSize: '12px', fontFamily: "'Playfair Display', serif" }}>
-            48/256K
-          </Typography>
-        </Box>
-
-        {/* Run Agent / Context Context Menu */}
-        <IconButton 
-          onClick={() => handleExecuteAgent('default')}
-          onContextMenu={handlePlayRightClick}
-          sx={{ color: 'primary.main', width: '36px', height: '36px', bgcolor: '#18181a', '&:hover': { bgcolor: '#2a2a2d' } }}
-        >
-          <PlayArrowIcon fontSize="small" />
-        </IconButton>
-
-        {/* Right-Click Context Stack Selector */}
-        <Menu
-          open={contextMenu !== null}
-          onClose={handleClose}
-          anchorReference="anchorPosition"
-          anchorPosition={
-            contextMenu !== null ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
-          }
-          sx={{ '& .MuiPaper-root': { bgcolor: '#0e0e0f', color: '#7c6bff', border: '1px solid #606062', borderRadius: 0 } }}
-        >
-          <MenuItem onClick={() => handleExecuteAgent('Visible Tab')} sx={{ fontSize: '12px', py: 0.5 }}>Visible Tab</MenuItem>
-          <MenuItem onClick={() => handleExecuteAgent('Visible Card')} sx={{ fontSize: '12px', py: 0.5 }}>Visible Card</MenuItem>
-          <MenuItem onClick={() => handleExecuteAgent('Full Stack')} sx={{ fontSize: '12px', py: 0.5 }}>Full Stack</MenuItem>
-        </Menu>
+        <ModelBar />
       </Box>
     </Box>
   );

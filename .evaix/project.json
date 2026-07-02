@@ -9,9 +9,9 @@
           {
             "id": "1",
             "roleId": "",
-            "activeTool": "data",
+            "activeTool": "chat",
             "metadata": {
-              "viewMode": "data",
+              "viewMode": "chat",
               "activeFile": "/home/guy/EVAIX/cspell.json",
               "url": "https://google.com"
             }
