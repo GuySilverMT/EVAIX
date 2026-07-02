@@ -15,7 +15,7 @@ export class ExecutionStrategies {
         let match;
 
         while ((match = blockRegex.exec(text)) !== null) {
-            let lang = match[1]?.toLowerCase().trim();
+            const lang = match[1]?.toLowerCase().trim();
             const content = match[2].trim();
 
             if (lang === 'json') {

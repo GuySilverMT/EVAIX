@@ -3,7 +3,7 @@ import type { FileSystemProviderType } from './FileSystemTypes.js';
 import { trpc } from '../utils/trpc.js';
 import { FileSystemContext } from './FileSystemContext.js';
 
-export interface SshConfig {
+interface SshConfig {
   host: string;
   port: number;
   username: string;

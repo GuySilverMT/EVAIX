@@ -15,7 +15,7 @@ function flattenTokens(obj: Record<string, unknown>, prefix = '--'): Record<stri
   }, {} as Record<string, string>);
 }
 
-export const cssVariables = flattenTokens(designTokens);
+const cssVariables = flattenTokens(designTokens);
 
 export function injectCssVariables() {
   const root = document.documentElement;

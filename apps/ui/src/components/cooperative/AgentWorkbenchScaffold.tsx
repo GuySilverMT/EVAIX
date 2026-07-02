@@ -1,6 +1,6 @@
 import React from 'react';
 
-export interface AgentWorkbenchScaffoldProps {
+interface AgentWorkbenchScaffoldProps {
   header?: React.ReactNode;
   content?: React.ReactNode;
 }

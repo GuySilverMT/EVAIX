@@ -201,7 +201,7 @@ export class AgentService {
           roleId,
           modelId: resolvedModelId!,
           providerId: resolvedProviderId,
-          internalId: (bestModel as any)?.id || resolvedModelId!, // bestModel is from line 165
+          internalId: (bestModel)?.id || resolvedModelId!, // bestModel is from line 165
           isLocked: false,
           temperature: modelConfig.temperature,
           maxTokens: effectiveMaxTokens,
@@ -219,12 +219,12 @@ export class AgentService {
 
         ctx.runtime = await AgentRuntime.create(undefined, ctx.tools, tier, ctx.executionMode, ctx.silenceConfirmation);
         if (ctx.input.context?.screenspaceId) {
-            (ctx.runtime as any).baggage = { ...((ctx.runtime as any).baggage || {}), screenspaceId: ctx.input.context.screenspaceId };
+            (ctx.runtime).baggage = { ...((ctx.runtime).baggage || {}), screenspaceId: ctx.input.context.screenspaceId };
         }
         return ctx;
       })
       .addStep("execute_loop", async (ctx) => {
-        const agent = await createVolcanoAgent(ctx.agentConfig!);
+        const agent = await createVolcanoAgent(ctx.agentConfig);
         const initialResponse = await ctx.runtime!.generateWithContext(
           agent,
           ctx.role?.basePrompt || "",

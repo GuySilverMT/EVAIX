@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import type { NebulaTree } from '@repo/nebula';
 
 // Mock data definition
-export interface ProjectData {
+interface ProjectData {
   id: string;
   name: string;
   tree: NebulaTree; 

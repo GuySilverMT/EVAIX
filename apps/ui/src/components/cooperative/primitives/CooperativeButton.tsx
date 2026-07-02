@@ -1,5 +1,5 @@
 
-export interface CooperativeButtonProps {
+interface CooperativeButtonProps {
   label?: string;
   variant?: "primary" | "secondary" | "ghost";
   actionId?: string;

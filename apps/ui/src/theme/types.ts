@@ -1,7 +1,7 @@
-export type ThemeMode = 'light' | 'dark';
+type ThemeMode = 'light' | 'dark';
 
 // 1. ASSETS: The key to "Importing" things without code changes
-export interface ThemeAssets {
+interface ThemeAssets {
   fonts: {
     // e.g. "Google Inter": "https://fonts.googleapis.com/css2?family=Inter..."
     urls: string[]; 
@@ -22,14 +22,14 @@ export interface ThemeAssets {
   };
 }
 
-export interface ThemeGradients {
+interface ThemeGradients {
   enabled: boolean;
   primary: string;   // e.g. "linear-gradient(to right, #...)"
   secondary: string;
   surface: string;
 }
 
-export interface ThemeColors {
+interface ThemeColors {
   primary: string;
   secondary: string;
   accent: string;
@@ -40,14 +40,14 @@ export interface ThemeColors {
   border: string;
 }
 
-export interface VisualSettings {
+interface VisualSettings {
   borderRadius: number;
   borderWidth: number;
   opacity: number;
   blur: number; // Backdrop blur px
 }
 
-export interface ThemeComponents {
+interface ThemeComponents {
   menuBar: {
     height: string;
     background: string;
