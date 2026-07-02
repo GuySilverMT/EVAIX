@@ -32,7 +32,6 @@ import {
 const writingExtensions: any[] = [
   StarterKit,
   Placeholder.configure({ placeholder: 'Start writing...' }),
-  TiptapUnderline,
   NovelCommand,
   TextStyle,
   FontFamily,
@@ -283,12 +282,16 @@ const ComposedEditor = ({
             },
           }}
           onCreate={({ editor }) => {
-            setCapturedEditor(editor);
-            onEditorReady?.(editor);
+            setTimeout(() => {
+              setCapturedEditor(editor);
+              onEditorReady?.(editor);
+            }, 0);
           }}
           onUpdate={({ editor }) => {
-            setCapturedEditor(editor);
-            onEditorReady?.(editor);
+            setTimeout(() => {
+              setCapturedEditor(editor);
+              onEditorReady?.(editor);
+            }, 0);
             if (fileName.endsWith('.json')) {
               onChange(JSON.stringify(editor.getJSON(), null, 2));
             } else {
