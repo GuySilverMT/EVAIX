@@ -4,9 +4,9 @@ import DualRangeSlider from '../../../components/ui/DualRangeSlider.js';
 import { Check, Cpu, Eye, Image, Mic, Zap, FileText, Shield, Hammer, FlaskConical, Terminal, type LucideIcon } from 'lucide-react';
 import { cn } from '../../../lib/utils.js';
 
-export type FilterMode = 'CHAT' | 'VISION' | 'AUDIO' | 'EMBEDDING' | 'REASONING' | 'IMAGE_GEN' | 'COMPLIANCE' | 'JUDGE' | 'RESEARCH';
+type FilterMode = 'CHAT' | 'VISION' | 'AUDIO' | 'EMBEDDING' | 'REASONING' | 'IMAGE_GEN' | 'COMPLIANCE' | 'JUDGE' | 'RESEARCH';
 
-export interface FilterCriteria {
+interface FilterCriteria {
     minContext: number;
     maxContext: number;
     mode: FilterMode;

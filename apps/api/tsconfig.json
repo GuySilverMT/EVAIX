@@ -18,6 +18,7 @@
   "exclude": ["node_modules", "dist", "../../node_modules/.pnpm/@jsvfs*/**"],
   "references": [
     { "path": "../../packages/api-contract" },
-    { "path": "../../packages/mcp-server-vfs" }
+    { "path": "../../packages/mcp-server-vfs" },
+    { "path": "../../packages/arbitrage" }
   ]
 }

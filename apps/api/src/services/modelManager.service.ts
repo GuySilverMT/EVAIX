@@ -399,7 +399,7 @@ export async function resolveModelForRole(role: any, estimatedInputTokens?: numb
   }
 
   // 2. Standard Routing
-  const metadata = (role.metadata || {}) as any;
+  const metadata = (role.metadata || {});
   const requirements = metadata.requirements || {};
 
   const roleReq: RoleRequirement = {

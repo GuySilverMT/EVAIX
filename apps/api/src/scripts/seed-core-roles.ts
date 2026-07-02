@@ -26,7 +26,7 @@ async function seedCoreRoles() {
   }
 
   // 2. Ensure Nebula Architect
-    let nebulaArchitect = await prisma.role.upsert({
+    const nebulaArchitect = await prisma.role.upsert({
     where: { name: 'Nebula Architect' },
     update: {
       description: 'The Master Builder. Designs and constructs UI using the Nebula runtime.',
@@ -308,7 +308,7 @@ You are the master designer of the Nebula ecosystem. Your mission is to construc
   }
 
   // 6. Ensure System Judge (for JUDGE assessment strategy)
-    let judgeRole = await prisma.role.upsert({
+    const judgeRole = await prisma.role.upsert({
     where: { name: 'System Judge' },
     update: {
       description: 'The impartial arbiter. Reviews agent work against strict quality and safety standards.',
@@ -395,7 +395,7 @@ Always output your judgment in JSON:
   }
 
   // 7. Ensure Librarian (for LIBRARIAN assessment/context)
-    let librarianRole = await prisma.role.upsert({
+    const librarianRole = await prisma.role.upsert({
     where: { name: 'Librarian' },
     update: {
       description: 'The knowledge keeper. Organizes project structure and verifies documentation consistency.',
@@ -468,7 +468,7 @@ You use "Exploratory" context to scan the file tree and "Vector Search" to find 
   }
 
   // 8. Ensure Prompt Architect
-    let promptArchitect = await prisma.role.upsert({
+    const promptArchitect = await prisma.role.upsert({
     where: { name: 'Prompt Architect' },
     update: {
       description: 'Specializes in crafting and refining high-performance system prompts and DNA identities.',
