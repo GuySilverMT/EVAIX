@@ -74,6 +74,11 @@ interface WorkspaceState {
   // [NEW] Workflow system — drives AgentWorkbench column layout
   activeWorkflow: string | null; // e.g. 'provider' | 'org' | 'datacenter' | 'settings' | 'voice'
   setActiveWorkflow: (workflow: string | null) => void;
+
+  // [NEW] LSP-style Orchestrator Mode (JSON-mode vs Code-mode)
+  orchestratorMode: 'json' | 'code';
+  setOrchestratorMode: (mode: 'json' | 'code') => void;
+  toggleOrchestratorMode: () => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -158,7 +163,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         };
       }),
 
-      initializeFromWorkspace: (projectType: string) => set((state) => {
+      initializeFromWorkspace: (projectType: string) => set(() => {
         let initialCards: CardData[] = [];
         if (projectType === 'CODE') {
            initialCards = [
@@ -206,6 +211,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       activeWorkflow: null,
       setActiveWorkflow: (workflow) => set({ activeWorkflow: workflow }),
+
+      orchestratorMode: 'json',
+      setOrchestratorMode: (mode) => set({ orchestratorMode: mode }),
+      toggleOrchestratorMode: () => set((state) => ({
+        orchestratorMode: state.orchestratorMode === 'json' ? 'code' : 'json'
+      })),
     }),
     {
       name: 'workspace-storage',
@@ -220,7 +231,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         activeProject: state.activeProject,
         activeModelId: state.activeModelId,
         recentProjects: state.recentProjects,
-        // Do NOT persist activeWorkflow — always start fresh
+        orchestratorMode: state.orchestratorMode,
       }),
     }
   )

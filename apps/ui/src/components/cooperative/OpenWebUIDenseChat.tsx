@@ -18,7 +18,6 @@ import {
   Terminal,
   FileText,
   Mic,
-  Copy,
   PlusCircle,
   Play,
   Zap,
@@ -27,6 +26,7 @@ import {
 } from 'lucide-react';
 import { trpc } from '../../utils/trpc.js';
 import { toast } from 'sonner';
+import { useWorkspaceStore } from '../../stores/workspace.store.js';
 
 export interface ChatMessage {
   id: string;
@@ -75,6 +75,8 @@ export function OpenWebUIDenseChat({ className }: { className?: string }) {
     scrollToBottom();
   }, [messages, isStreaming]);
 
+  const orchestratorMode = useWorkspaceStore(s => s.orchestratorMode);
+
   // Handle Send Message
   const handleSend = async (autoDeployOverride = false) => {
     const text = inputVal.trim();
@@ -95,6 +97,7 @@ export function OpenWebUIDenseChat({ className }: { className?: string }) {
       const result = await sendMessageMutation.mutateAsync({
         message: text,
         autoDeploy: autoDeployOverride,
+        orchestratorMode,
       });
 
       const assistantMsg: ChatMessage = {
@@ -230,14 +233,14 @@ export function OpenWebUIDenseChat({ className }: { className?: string }) {
           <Cpu size={12} style={{ color: '#6366f1' }} />
           <span>OPEN WEBUI STREAM</span>
           <Chip
-            label="EDGE-DENSE"
+            label={orchestratorMode === 'code' ? "CODE (LSP)" : "JSON"}
             size="small"
             sx={{
               height: '14px',
               fontSize: '8px',
               fontWeight: 800,
-              backgroundColor: '#312e81',
-              color: '#a5b4fc',
+              backgroundColor: orchestratorMode === 'code' ? '#3730a3' : '#1e293b',
+              color: orchestratorMode === 'code' ? '#818cf8' : '#94a3b8',
               borderRadius: 0,
               px: '2px',
             }}

@@ -46,6 +46,15 @@ export default function EvaixDenseWorkbench() {
     handleClose();
   };
 
+  const orchestratorMode = useWorkspaceStore(s => s.orchestratorMode);
+  const toggleOrchestratorMode = useWorkspaceStore(s => s.toggleOrchestratorMode);
+
+  const handleToggleMode = () => {
+    toggleOrchestratorMode();
+    const nextMode = orchestratorMode === 'json' ? 'CODE (LSP)' : 'JSON';
+    toast.info(`Orchestrator Mode toggled to: ${nextMode}`);
+  };
+
   return (
     <Box sx={{ display: 'flex', width: '100vw', height: '36px', bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
       
@@ -119,9 +128,34 @@ export default function EvaixDenseWorkbench() {
         </IconButton>
       </Box>
 
-      {/* RIGHT: MODEL BAR */}
+      {/* RIGHT: MODEL BAR (Hovering / Preempting active app stack) */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', width: '40%', bgcolor: '#464649' }}>
         
+        {/* Orchestrator Mode Toggle: JSON-mode vs Code-mode (LSP) */}
+        <Box 
+          onClick={handleToggleMode}
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            px: 1.5, 
+            height: '100%', 
+            cursor: 'pointer', 
+            borderRight: 1, 
+            borderColor: 'divider',
+            bgcolor: orchestratorMode === 'code' ? '#1e1b4b' : 'transparent',
+            '&:hover': { bgcolor: orchestratorMode === 'code' ? '#312e81' : '#374151' }
+          }}
+        >
+          <Typography sx={{ 
+            fontSize: '11px', 
+            fontFamily: 'monospace', 
+            fontWeight: 'bold',
+            color: orchestratorMode === 'code' ? '#818cf8' : '#9ca3af'
+          }}>
+            MODE: {orchestratorMode === 'code' ? 'CODE (LSP)' : 'JSON'}
+          </Typography>
+        </Box>
+
         {/* Model Selection Logic (S) & Provider (P) */}
         <IconButton 
           onClick={() => useWorkspaceStore.getState().setActiveWorkflow('settings')}

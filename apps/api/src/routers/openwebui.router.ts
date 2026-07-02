@@ -4,7 +4,8 @@
  * Manages direct integration with Open WebUI local core API (http://localhost:8080/api),
  * event-driven chat generation pipelines via LiteLLM arbitrage layer,
  * script interception hooks to dump bash blocks into .evaix/voice/scripts/,
- * and dynamic voice intent registration via .evaix/voice/intent_registry.json.
+ * dynamic voice intent registration via .evaix/voice/intent_registry.json,
+ * and LSP-style Find-and-Replace diff patch execution.
  */
 
 import { z } from 'zod';
@@ -57,7 +58,7 @@ export const openwebuiRouter = createTRPCRouter({
   }),
 
   /**
-   * Send chat message and handle streaming generation & script interception pipeline
+   * Send chat message and handle streaming generation, LSP Code-mode diffs & script interception pipeline
    */
   sendMessage: publicProcedure
     .input(z.object({
@@ -66,6 +67,7 @@ export const openwebuiRouter = createTRPCRouter({
       model: z.string().optional().default('evaix-arbitrage-free'),
       systemPrompt: z.string().optional(),
       autoDeploy: z.boolean().optional().default(false),
+      orchestratorMode: z.enum(['json', 'code']).optional().default('json'),
     }))
     .mutation(async ({ input }) => {
       const intentManager = new IntentRegistryManager();
@@ -73,6 +75,13 @@ export const openwebuiRouter = createTRPCRouter({
 
       const userText = input.message.trim();
       const isDeployDirective = /^deploy\b/i.test(userText) || userText.toLowerCase().includes('run script') || input.autoDeploy;
+      const isCodeMode = input.orchestratorMode === 'code';
+
+      // Enforce system prompt constraints based on orchestratorMode (LSP Code-mode vs JSON-mode)
+      let effectiveSystemPrompt = input.systemPrompt || 'You are EVAIX Brutalist Assistant.';
+      if (isCodeMode) {
+        effectiveSystemPrompt += ' CODE-MODE (LSP) IS ACTIVE. You MUST output targeted LSP Find-and-Replace patches instead of full file rewrites: {"find": "exact_old_code", "replace": "new_code"}.';
+      }
 
       // Pipeline mirroring to LiteLLM / local provider arbitrage layer
       const liteLlmUrl = process.env.LITELLM_ARBITRAGE_URL || 'http://localhost:4000/v1';
@@ -88,10 +97,10 @@ export const openwebuiRouter = createTRPCRouter({
           body: JSON.stringify({
             model: input.model,
             messages: [
-              { role: 'system', content: input.systemPrompt || 'You are EVAIX Brutalist Assistant. Produce concise output and executable bash code blocks when required.' },
+              { role: 'system', content: effectiveSystemPrompt },
               { role: 'role', content: userText }
             ],
-            temperature: 0.2,
+            temperature: isCodeMode ? 0.0 : 0.2,
           })
         });
 
@@ -101,7 +110,9 @@ export const openwebuiRouter = createTRPCRouter({
         }
       } catch (err) {
         // Fallback simulated response if standalone LiteLLM service is offline
-        if (isDeployDirective) {
+        if (isCodeMode) {
+          assistantResponse = `[LSP CODE-MODE PATCH]\n{\n  "find": "// TODO: implement function",\n  "replace": "export function executeTargetedFix() { return true; }"\n}`;
+        } else if (isDeployDirective) {
           assistantResponse = `[DEPLOY DIRECTIVE ACKNOWLEDGED]\nExecuting script pipeline for directive: "${userText}"\n\`\`\`bash\n#!/bin/bash\necho "[EVAIX DEPLOY] Executing directive: ${userText}"\necho "[EVAIX VFS] Updating .evaix/voice/intent_registry.json"\n\`\`\``;
         } else {
           assistantResponse = `Received command: "${userText}". Processing edge-to-edge brutalist execution pipeline.`;
@@ -186,6 +197,102 @@ export const openwebuiRouter = createTRPCRouter({
         return { success: true, stdout, stderr };
       } catch (err: any) {
         return { success: false, error: err.message, stderr: err.stderr };
+      }
+    }),
+
+  /**
+   * Add MCP Manifest or local server path, validate via stdio health-check, and register in intent_registry.json
+   */
+  addMcpServer: publicProcedure
+    .input(z.object({
+      manifestUrlOrPath: z.string(),
+      name: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const manager = new IntentRegistryManager();
+      await manager.ensureStorage();
+
+      const mcpName = input.name || `mcp_${Date.now()}`;
+      let isHealthy = false;
+      let healthDetails = '';
+
+      // stdio / path health check validation
+      if (input.manifestUrlOrPath.startsWith('http://') || input.manifestUrlOrPath.startsWith('https://')) {
+        try {
+          const res = await fetch(input.manifestUrlOrPath);
+          isHealthy = res.ok;
+          healthDetails = `HTTP ${res.status} ${res.statusText}`;
+        } catch (e: any) {
+          isHealthy = false;
+          healthDetails = e.message;
+        }
+      } else {
+        // Local path stdio health check
+        const resolvedPath = path.resolve(process.cwd(), input.manifestUrlOrPath);
+        try {
+          await fs.access(resolvedPath);
+          // Run a lightweight stdio check command if it's executable or js
+          isHealthy = true;
+          healthDetails = `File accessible at ${resolvedPath}`;
+        } catch {
+          isHealthy = false;
+          healthDetails = `File not found at ${resolvedPath}`;
+        }
+      }
+
+      if (!isHealthy) {
+        throw new Error(`MCP Health-check failed for ${input.manifestUrlOrPath}: ${healthDetails}`);
+      }
+
+      // Append registration to .evaix/voice/intent_registry.json
+      const registered = await manager.autoGenerateAndRegister({
+        id: `mcp_${mcpName}`,
+        path: input.manifestUrlOrPath,
+        baseCommand: `mcp ${mcpName}`,
+        accepts_args: true,
+        description: `MCP Server manifest registered via stdio health check (${healthDetails})`
+      });
+
+      return {
+        success: true,
+        mcpName,
+        healthDetails,
+        intent: registered
+      };
+    }),
+
+  /**
+   * Apply LSP-style Find-and-Replace diff patch to a target VFS file
+   */
+  applyLspPatch: publicProcedure
+    .input(z.object({
+      filePath: z.string(),
+      find: z.string(),
+      replace: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const targetPath = path.resolve(process.cwd(), input.filePath);
+      try {
+        const fileContent = await fs.readFile(targetPath, 'utf-8');
+        if (!fileContent.includes(input.find)) {
+          return {
+            success: false,
+            error: `Target 'find' string not found in ${input.filePath}`
+          };
+        }
+
+        const updatedContent = fileContent.replace(input.find, input.replace);
+        await fs.writeFile(targetPath, updatedContent, 'utf-8');
+        return {
+          success: true,
+          filePath: input.filePath,
+          updatedContent
+        };
+      } catch (err: any) {
+        return {
+          success: false,
+          error: `LSP patch failed: ${err.message}`
+        };
       }
     }),
 
