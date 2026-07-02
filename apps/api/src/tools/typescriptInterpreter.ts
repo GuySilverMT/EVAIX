@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import type { SandboxTool } from '../types.js';
+import { CodePatchService } from '../services/CodePatchService.js';
 
 const execAsync = promisify(exec);
 
@@ -107,7 +108,12 @@ const ast = {
 
 const tree = __tree; // Read-only access
 
-// 2. Add a "Log" helper so the agent "sees" what it did
+// 2. Add patcher access so the agent can safely apply structural changes
+const patch = async (targetFile, findBlock, replaceBlock) => {
+  __actions.push({ action: 'patch', targetFile, findBlock, replaceBlock });
+};
+
+// 3. Add a "Log" helper so the agent "sees" what it did
 const console = {
   log: (...args) => {
     __logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
@@ -155,15 +161,27 @@ if (__actions.length > 0) {
       );
       
       let finalOutput = stdout.trim();
-      let resultActions: unknown[] = [];
+      let resultActions: any[] = [];
 
       // Check if we have a structured Nebula result
       if (stdout.includes('---NEBULA_RESULT---')) {
         const parts = stdout.split('---NEBULA_RESULT---');
         try {
-          const structured = JSON.parse(parts[1].trim()) as { actions: unknown[]; logs: string[] };
+          const structured = JSON.parse(parts[1].trim()) as { actions: any[]; logs: string[] };
           resultActions = structured.actions;
           finalOutput = structured.logs.join('\\n');
+
+          // Apply any patches that were requested via CodePatchService
+          for (const action of resultActions) {
+            if (action.action === 'patch') {
+              try {
+                await CodePatchService.ApplyPatch(action.targetFile, action.findBlock, action.replaceBlock);
+                finalOutput += `\\n✅ Successfully applied patch to ${action.targetFile}`;
+              } catch (patchErr) {
+                finalOutput += `\\n❌ Failed to apply patch to ${action.targetFile}: ${patchErr instanceof Error ? patchErr.message : String(patchErr)}`;
+              }
+            }
+          }
         } catch (e) {
           process.stdout.write(`[TypeScriptInterpreter] Failed to parse Nebula result: ${(e as Error).message}\n`);
         }
