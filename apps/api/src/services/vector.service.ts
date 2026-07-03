@@ -69,7 +69,7 @@ export class PgVectorStore {
       // 1. Try pgvector first
       const vectorString = `[${queryVector.join(',')}]`;
       if (workspaceId) {
-        const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+        const results = await prisma.$queryRawUnsafe(
           `SELECT "id", "content", "filePath", "metadata",
                   1 - ("vector" <=> $1::vector) as similarity
            FROM "VectorEmbedding"
@@ -82,7 +82,7 @@ export class PgVectorStore {
         );
         return this.mapResults(results);
       } else {
-        const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+        const results = await prisma.$queryRawUnsafe(
           `SELECT "id", "content", "filePath", "metadata",
                   1 - ("vector" <=> $1::vector) as similarity
            FROM "VectorEmbedding"
@@ -102,7 +102,7 @@ export class PgVectorStore {
         // For production without pgvector, fetching and calculating in JS or using a specialized function is better.
         let results;
         if (workspaceId) {
-           results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+           results = await prisma.$queryRawUnsafe(
             `SELECT "id", "content", "filePath", "metadata", 0 as similarity
              FROM "VectorEmbedding"
              WHERE "workspaceId" = $1
@@ -110,7 +110,7 @@ export class PgVectorStore {
              workspaceId
           );
         } else {
-           results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
+           results = await prisma.$queryRawUnsafe(
             `SELECT "id", "content", "filePath", "metadata", 0 as similarity
              FROM "VectorEmbedding"
              LIMIT 1000` // Limit scan for performance

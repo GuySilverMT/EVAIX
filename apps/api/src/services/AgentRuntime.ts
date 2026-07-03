@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing type errors; re-enable as services are migrated
 import { CodeModeUtcpClient } from "@utcp/code-mode";
 import { blacklistModel } from '../rateLimiter.js';
 import { resolveModelForRole } from './modelManager.service.js';

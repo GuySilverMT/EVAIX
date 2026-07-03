@@ -1,9 +1,9 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 import { ProviderFactory } from '../utils/ProviderFactory.js';
 import { type BaseLLMProvider, type LLMModel } from '../utils/BaseLLMProvider.js';
 import { IProviderManager } from '../interfaces/IProviderManager.js';
 import { IProviderRepository } from '../interfaces/IProviderRepository.js';
 import { ProviderRepository } from '../repositories/ProviderRepository.js';
-import { type ProviderConfig } from '@prisma/client';
 import { OLLAMA_DEFAULT_HOST, OLLAMA_PROVIDER_ID, OPENROUTER_API_URL, GROQ_API_URL, NVIDIA_API_URL, DEFAULT_FETCH_TIMEOUT_MS } from '../config/constants.js';
 
 const MS_PER_SECOND = 1000;

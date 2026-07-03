@@ -16,9 +16,7 @@
     "ingest": "tsx src/scripts/ingest_models_robust.ts",
     "ingest:models": "tsx src/scripts/ingest_models_robust.ts",
     "ingest:models:custom": "tsx src/scripts/ingest_models_robust.ts",
-    "seed:models": "tsx src/scripts/seed-ghost-records.ts",
-    "premigrate": "npx tsx src/scripts/export_db_to_json.ts",
-    "postmigrate": "npx prisma db push && npx tsx src/scripts/seed-core-roles.ts && npx tsx src/scripts/sync_roles_from_json.ts"
+    "seed:models": "tsx src/scripts/seed-ghost-records.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.7",
@@ -36,7 +34,6 @@
     "@opentelemetry/resources": "1.29.0",
     "@opentelemetry/sdk-node": "^0.56.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
-    "@prisma/client": "5.19.1",
     "@repo/agents": "workspace:*",
     "@repo/api-contract": "workspace:*",
     "@repo/common": "workspace:*",
@@ -98,7 +95,6 @@
     "glob": "^13.0.0",
     "globals": "^15.15.0",
     "playwright": "^1.59.1",
-    "prisma": "5.19.1",
     "tsx": "^4.15.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0",

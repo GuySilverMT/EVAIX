@@ -1,6 +1,6 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 import { prisma } from '../db.js';
 import { createVolcanoAgent } from './VolcanoAgent.js';
-import { Job } from '@prisma/client';
 
 export class JobScheduler {
   private isRunning = false;

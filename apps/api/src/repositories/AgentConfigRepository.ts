@@ -1,6 +1,6 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, FileIndex, Job, RoleVariant } from '../prisma-types.js';
 import { prisma } from '../db.js';
 import type { ModelDef } from '../interfaces/IAgentConfigRepository.js';
-import type { Role, Model } from '@prisma/client';
 
 export class AgentConfigRepository {
   static async getRole(roleId: string): Promise<Role | null> {
@@ -29,7 +29,7 @@ export class AgentConfigRepository {
         // Pack transient/spec fields into the specs JSON
         costPer1k: modelDef.costPer1k ?? 0,
         // isFree: modelDef.isFree ?? false,
-        providerData: (modelDef.providerData ?? {}) as unknown as import('@prisma/client/runtime/library').InputJsonValue,
+        providerData: (modelDef.providerData ?? {}) as unknown as unknown,
         capabilities: {
           create: {
             contextWindow: modelDef.contextWindow ?? 4096,

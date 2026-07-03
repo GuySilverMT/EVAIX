@@ -6,7 +6,6 @@ import yaml from 'js-yaml';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { McpToolSyncService } from '../services/McpToolSyncService.js';
-import { Prisma } from '@prisma/client';
 
 const t = initTRPC.create();
 

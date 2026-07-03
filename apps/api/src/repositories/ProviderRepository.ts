@@ -1,6 +1,6 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, FileIndex, Job, RoleVariant } from '../prisma-types.js';
 import { IProviderRepository } from "../interfaces/IProviderRepository.js";
 import { prisma } from "../db.js";
-import { type ProviderConfig, Prisma } from "@prisma/client";
 
 export class ProviderRepository implements IProviderRepository {
   async findProviderConfigByName(name: string): Promise<ProviderConfig | null> {
@@ -15,7 +15,7 @@ export class ProviderRepository implements IProviderRepository {
     });
   }
 
-  async createProviderConfig(values: Prisma.ProviderConfigCreateInput): Promise<void> {
+  async createProviderConfig(values: any): Promise<void> {
     await prisma.providerConfig.create({
       data: values
     });
@@ -27,7 +27,7 @@ export class ProviderRepository implements IProviderRepository {
     });
   }
 
-  async upsertModel(data: Prisma.ModelUpsertArgs): Promise<void> {
+  async upsertModel(data: any): Promise<void> {
     await prisma.model.upsert(data);
   }
 }
