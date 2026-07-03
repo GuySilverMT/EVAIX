@@ -52,6 +52,7 @@ export class ProviderManager implements IProviderManager {
 
       // Environment variable mappings for direct access
       const envMappings: Record<string, string> = {
+        'openai': 'LITELLM_MASTER_KEY',
         'google': 'GOOGLE_GENERATIVE_AI_API_KEY',
         'mistral': 'MISTRAL_API_KEY',
         'openrouter': 'OPENROUTER_API_KEY',
@@ -128,6 +129,9 @@ export class ProviderManager implements IProviderManager {
 
   private async bootstrapFromEnv() {
     const mappings = [
+      // Add LiteLLM as the primary router
+      { env: 'LITELLM_MASTER_KEY', type: 'openai', label: 'LiteLLM Router', url: 'http://localhost:4000/v1' },
+      
       { env: 'GOOGLE_GENERATIVE_AI_API_KEY', type: 'google', label: 'Google AI Studio (Env)' },
       { env: 'MISTRAL_API_KEY', type: 'mistral', label: 'Mistral API (Env)' },
       { env: 'OPENROUTER_API_KEY', type: 'openrouter', label: 'OpenRouter (Env)', url: OPENROUTER_API_URL },
@@ -140,21 +144,17 @@ export class ProviderManager implements IProviderManager {
     for (const map of mappings) {
       const key = process.env[map.env];
       if (key) {
-        // Check if already exists to avoid duplicates
         const existing = await this.repository.findProviderConfigByName(map.label);
 
         if (!existing) {
           console.log(`[ProviderManager] 🚀 Bootstrapping ${map.label} from .env...`);
-          // Create a stable, human-readable ID instead of a random UUID.
-          // e.g., "OpenRouter (Env)" -> "openrouter-env"
-          const stableId = map.type;
-
+          const stableId = map.type === 'openai' && map.label.includes('LiteLLM') ? 'litellm-router' : map.type;
+          
           const now = new Date();
           await this.repository.createProviderConfig({
             id: stableId,
             name: map.label,
             type: map.type,
-            // apiKey: encrypt(key), // REMOVED: Keys are now in env only
             baseUrl: map.url || '',
             isEnabled: true,
             createdAt: now,

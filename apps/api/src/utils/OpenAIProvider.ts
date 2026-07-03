@@ -7,10 +7,12 @@ import { LLM_TIMEOUT_COMPLEX_MS, LLM_TIMEOUT_STANDARD_MS, LLM_MAX_RETRIES } from
 
 export class OpenAIProvider implements BaseLLMProvider {
   id: string;
+  baseURL?: string;
   private client: OpenAI;
 
   constructor(config: { id: string; apiKey: string; baseURL?: string }) {
     this.id = config.id;
+    this.baseURL = config.baseURL;
     const proxy = process.env.HTTPS_PROXY;
     const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
 

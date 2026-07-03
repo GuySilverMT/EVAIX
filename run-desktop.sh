@@ -20,45 +20,48 @@ else
   fuser -k -n tcp 5173 &>/dev/null || true
 fi
 
-# 2. Start PostgreSQL and Redis containers using Podman
-echo "🐳 Checking database & cache container status..."
+# 2. Start PostgreSQL and LiteLLM containers using Podman
+echo "🐳 Checking database & router container status..."
 CONTAINERS_STARTED=false
 
-# Try to start existing containers directly (much faster than docker-compose/podman-compose up)
-if podman inspect evaix_postgres_1 &>/dev/null && podman inspect evaix_redis_1 &>/dev/null; then
-  echo "  - Starting existing containers (evaix_postgres_1, evaix_redis_1)..."
-  podman start evaix_postgres_1 evaix_redis_1
+# Check if both exist
+if podman inspect evaix_postgres_1 &>/dev/null && podman inspect evaix_litellm_1 &>/dev/null; then
+  echo "  - Starting existing containers (evaix_postgres_1, evaix_litellm_1)..."
+  podman start evaix_postgres_1 evaix_litellm_1
   CONTAINERS_STARTED=true
 else
-  echo "  - Containers not found. Bringing them up via podman-compose..."
+  echo "  - Containers not found. Bringing them up..."
   podman-compose -f docker-compose.db.yml up -d
+  
+  # Inject LiteLLM explicitly if it's missing from the docker-compose.db.yml
+  if ! podman inspect evaix_litellm_1 &>/dev/null; then
+    echo "  - Starting standalone LiteLLM container on port 4000..."
+    podman run -d \
+      --name evaix_litellm_1 \
+      -p 4000:4000 \
+      -e LITELLM_MASTER_KEY="sk-litellm-key" \
+      ghcr.io/berriai/litellm:main-latest
+  fi
   CONTAINERS_STARTED=true
 fi
 
-# 3. Wait for PostgreSQL to be ready to accept connections
+# 3. Wait for Services
 if [ "$CONTAINERS_STARTED" = true ]; then
-  echo "⏳ Waiting for PostgreSQL to be ready..."
+  echo "⏳ Waiting for PostgreSQL..."
   for i in {1..30}; do
-    # Try using pg_isready inside the container
     if podman exec evaix_postgres_1 pg_isready -U myuser -d mydb &>/dev/null; then
       echo "✅ PostgreSQL is ready!"
       break
     fi
-    if [ $i -eq 30 ]; then
-      echo "⚠️ PostgreSQL startup check timed out. Attempting to proceed anyway..."
-    fi
     sleep 1
   done
 
-  # 4. Wait for Redis to be ready
-  echo "⏳ Waiting for Redis to be ready..."
+  echo "⏳ Waiting for LiteLLM Proxy Router..."
   for i in {1..30}; do
-    if podman exec evaix_redis_1 redis-cli ping 2>/dev/null | grep -q "PONG"; then
-      echo "✅ Redis is ready!"
+    # LiteLLM health endpoint
+    if curl -s http://localhost:4000/health > /dev/null; then
+      echo "✅ LiteLLM Router is online!"
       break
-    fi
-    if [ $i -eq 30 ]; then
-      echo "⚠️ Redis startup check timed out. Attempting to proceed anyway..."
     fi
     sleep 1
   done
