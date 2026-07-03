@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 
 // Lazy load the role selector
-import CompactRoleSelector from '../CompactRoleSelector.js';
+// import CompactRoleSelector from '../CompactRoleSelector.js';
 
 type ButtonState = 'idle' | 'active' | 'menu' | 'role_select' | 'config';
 
@@ -407,10 +407,9 @@ export const SuperAiButton: React.FC<SuperAiButtonProps> = ({
             {/* Content */}
             <div className="max-h-80 overflow-y-auto custom-scrollbar">
               {state === 'role_select' && (
-                <CompactRoleSelector
-                  onSelect={handleRoleSelect}
-                  selectedRoleId={selectedRoleId}
-                />
+                <div className="p-4 text-xs text-muted-foreground text-center">
+                  Role selector temporarily disabled in Orchestrator mode.
+                </div>
               )}
               {state === 'config' && (
                 <div className="p-2 space-y-1">

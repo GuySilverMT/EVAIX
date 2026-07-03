@@ -5,11 +5,16 @@ export interface CardData {
   id: string;
   roleId: string;
   column: number;
+  columnId?: number;
+  rowIndex?: number;
   screenspaceId: number;
+  displayId?: number;
   title?: string;
   type?: string;
   activeTool?: string | null;
   metadata?: Record<string, unknown>;
+  appId?: string;
+  props?: Record<string, unknown>;
 }
 
 interface Screenspace {
@@ -80,16 +85,22 @@ interface WorkspaceState {
   setActiveSystemApp: (app: string | null) => void;
   toggleSystemApp: (app: string) => void;
 
-  // [NEW] LSP-style Orchestrator Mode (JSON-mode vs Code-mode)
-  orchestratorMode: 'json' | 'code';
-  setOrchestratorMode: (mode: 'json' | 'code') => void;
-  toggleOrchestratorMode: () => void;
+  // [NEW] Voice Wrapper Mode (Visual / Icon vs Command / Text)
+  voiceMode: 'icon' | 'text';
+  setVoiceMode: (mode: 'icon' | 'text') => void;
+  toggleVoiceMode: () => void;
+
+  // [NEW] Strict Spatial Routing Actions (No Dragging)
+  moveCard: (cardId: string, direction: 'up' | 'down' | 'left' | 'right') => void;
+  cloneCard: (cardId: string, targetDirection?: 'left' | 'right') => void;
+  spawnApp: (appId: string, props?: Record<string, unknown>) => void;
+  executeAgent: (contextStrategy?: string) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set) => ({
-      columns: 3,
+      columns: 2,
       // Clamp to 1–4; workflows may lock this value
       setColumns: (columns) => set({ columns: Math.max(1, Math.min(4, columns)) }),
       showSidebar: false,
@@ -98,28 +109,142 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       
       showControlPlane: false,
       toggleControlPlane: () => set((state) => ({ showControlPlane: !state.showControlPlane })),
-      cards: [
-        { id: '1', roleId: '', column: 0, screenspaceId: 1 },
-        { id: '2', roleId: '', column: 0, screenspaceId: 1 },
-        { id: '3', roleId: '', column: 1, screenspaceId: 1 },
-        { id: '4', roleId: '', column: 1, screenspaceId: 1 },
-        { id: '5', roleId: '', column: 2, screenspaceId: 1 },
-        { id: '6', roleId: '', column: 2, screenspaceId: 1 },
-        // Refactor screenspace
-        { id: 'r1', roleId: '', column: 0, screenspaceId: 2 },
-        { id: 'r2', roleId: '', column: 1, screenspaceId: 2 },
-        { id: 'r3', roleId: '', column: 2, screenspaceId: 2 },
-        // Logs screenspace
-        { id: 'l1', roleId: '', column: 0, screenspaceId: 3 },
-        { id: 'l2', roleId: '', column: 1, screenspaceId: 3 },
-        { id: 'l3', roleId: '', column: 2, screenspaceId: 3 },
-      ],
+      cards: [],
       setCards: (cards) => set({ cards }),
       addCard: (card) => set((state) => ({ cards: [...state.cards, card] })),
       removeCard: (id) => set((state) => ({ cards: state.cards.filter(c => c.id !== id) })),
       updateCard: (id, updates) => set((state) => ({
         cards: state.cards.map(c => c.id === id ? { ...c, ...updates } : c)
       })),
+
+      moveCard: (cardId, direction) => set((state) => {
+        const cardIndex = state.cards.findIndex(c => c.id === cardId);
+        if (cardIndex === -1) return state;
+
+        const card = state.cards[cardIndex];
+        const currentCol = card.columnId ?? card.column ?? 0;
+        const currentDisplay = card.displayId ?? card.screenspaceId ?? 0;
+
+        if (direction === 'left' || direction === 'right') {
+          let targetCol = direction === 'left' ? currentCol - 1 : currentCol + 1;
+          let targetDisplay = currentDisplay;
+
+          if (direction === 'left' && targetCol < 0) {
+            // Move to last column of previous displayId
+            const maxDisplay = state.screenspaces.length > 0 ? state.screenspaces.length - 1 : 0;
+            targetDisplay = currentDisplay > 0 ? currentDisplay - 1 : maxDisplay;
+            targetCol = Math.max(0, state.columns - 1);
+          } else if (direction === 'right' && targetCol >= state.columns) {
+            // Move to first column of next displayId
+            const maxDisplay = state.screenspaces.length > 0 ? state.screenspaces.length - 1 : 0;
+            targetDisplay = currentDisplay < maxDisplay ? currentDisplay + 1 : 0;
+            targetCol = 0;
+          }
+
+          // Get cards in target display & target column to calculate new rowIndex
+          const targetColCards = state.cards.filter(c => 
+            (c.displayId ?? c.screenspaceId ?? 0) === targetDisplay && 
+            (c.columnId ?? c.column ?? 0) === targetCol &&
+            c.id !== cardId
+          );
+
+          const updatedCards = state.cards.map(c => {
+            if (c.id === cardId) {
+              return {
+                ...c,
+                column: targetCol,
+                columnId: targetCol,
+                displayId: targetDisplay,
+                screenspaceId: targetDisplay,
+                rowIndex: targetColCards.length
+              };
+            }
+            return c;
+          });
+
+          return { cards: updatedCards };
+        }
+
+        // 'up' | 'down' -> Swap rowIndex of card with neighbor in same column
+        const colCards = state.cards
+          .filter(c => 
+            (c.displayId ?? c.screenspaceId ?? 0) === currentDisplay && 
+            (c.columnId ?? c.column ?? 0) === currentCol
+          )
+          .sort((a, b) => (a.rowIndex ?? 0) - (b.rowIndex ?? 0));
+
+        const idxInCol = colCards.findIndex(c => c.id === cardId);
+        if (idxInCol === -1) return state;
+
+        const targetIdxInCol = direction === 'up' ? idxInCol - 1 : idxInCol + 1;
+        if (targetIdxInCol < 0 || targetIdxInCol >= colCards.length) return state;
+
+        const targetCard = colCards[targetIdxInCol];
+        const currentRowIndex = colCards[idxInCol].rowIndex ?? idxInCol;
+        const targetRowIndex = targetCard.rowIndex ?? targetIdxInCol;
+
+        const updatedCards = state.cards.map(c => {
+          if (c.id === cardId) {
+            return { ...c, rowIndex: targetRowIndex };
+          }
+          if (c.id === targetCard.id) {
+            return { ...c, rowIndex: currentRowIndex };
+          }
+          return c;
+        });
+
+        return { cards: updatedCards };
+      }),
+
+      spawnApp: (appId, props) => set((state) => {
+        // Auto-assign to next column based on current card count to distribute them
+        const nextCol = state.cards.length % state.columns;
+        const colCards = state.cards.filter(c => (c.columnId ?? c.column ?? 0) === nextCol);
+        const displayId = state.activeScreenspaceId || 0;
+        const newCard: CardData = {
+          id: `card-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          roleId: '',
+          column: nextCol,
+          columnId: nextCol,
+          rowIndex: colCards.length,
+          screenspaceId: displayId,
+          displayId: displayId,
+          appId,
+          props
+        };
+        return { cards: [...state.cards, newCard] };
+      }),
+
+      executeAgent: (contextStrategy = 'Visible Card') => set((state) => {
+        const timestamp = new Date().toLocaleTimeString();
+        const info = `[EXECUTE AGENT] Strategy: ${contextStrategy} | Context Scope: ${state.aiContext.scope} | Time: ${timestamp}`;
+        return {
+          aiContext: {
+            ...state.aiContext,
+            contextBuffer: [...state.aiContext.contextBuffer, info]
+          }
+        };
+      }),
+
+      cloneCard: (cardId, targetDirection = 'right') => set((state) => {
+        const card = state.cards.find(c => c.id === cardId);
+        if (!card) return state;
+
+        const targetCol = targetDirection === 'left'
+          ? Math.max(0, card.column - 1)
+          : Math.min(state.columns - 1, card.column + 1);
+
+        const newId = `card-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const clonedCard: CardData = {
+          ...card,
+          id: newId,
+          column: targetCol,
+          title: card.title ? `${card.title} (Copy)` : undefined,
+          metadata: card.metadata ? { ...card.metadata } : undefined
+        };
+
+        return { cards: [...state.cards, clonedCard] };
+      }),
 
       activeWorkspace: null,
       activeWorkspaceId: null,
@@ -223,10 +348,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         activeSystemApp: state.activeSystemApp === app ? null : app
       })),
 
-      orchestratorMode: 'json',
-      setOrchestratorMode: (mode) => set({ orchestratorMode: mode }),
-      toggleOrchestratorMode: () => set((state) => ({
-        orchestratorMode: state.orchestratorMode === 'json' ? 'code' : 'json'
+      voiceMode: 'icon',
+      setVoiceMode: (mode) => set({ voiceMode: mode }),
+      toggleVoiceMode: () => set((state) => ({
+        voiceMode: state.voiceMode === 'icon' ? 'text' : 'icon'
       })),
     }),
     {
@@ -242,7 +367,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         activeProject: state.activeProject,
         activeModelId: state.activeModelId,
         recentProjects: state.recentProjects,
-        orchestratorMode: state.orchestratorMode,
+        voiceMode: state.voiceMode,
       }),
     }
   )

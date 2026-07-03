@@ -3,15 +3,31 @@ import { createTheme } from '@mui/material/styles';
 export const evaixTheme = createTheme({
   palette: {
     mode: 'dark',
-    primary: { main: '#7c6bff' }, // Playfair theme primary
-    secondary: { main: '#892481' }, // Modelbar theme primary
-    background: { default: '#0e0e0f', paper: '#18181a' },
-    divider: '#606062',
-    success: { main: '#16c522' }, // model-high
+    primary: {
+      main: '#c4bac3'
+    },
+    background: {
+      default: '#c4bac3',
+      paper: '#18181a'
+    },
+    text: {
+      primary: '#c4bac3',
+      secondary: '#c4bac3'
+    },
+    divider: '#c4bac3',
+    error: {
+      main: '#c4bac3'
+    },
+    success: {
+      main: '#c4bac3'
+    },
+    warning: {
+      main: '#c4bac3'
+    }
   },
   typography: {
-    fontFamily: "'Playfair Display', 'Syne', sans-serif",
-    fontSize: 12, // Base scale down
+    fontFamily: "'Montserrat', sans-serif",
+    fontSize: 22,
     button: { textTransform: 'none' }
   },
   components: {
@@ -25,11 +41,6 @@ export const evaixTheme = createTheme({
         root: { padding: 2, borderRadius: 0 }
       }
     },
-    MuiBox: {
-      styleOverrides: {
-        root: { padding: 0, margin: 0 }
-      }
-    } as any,
     MuiInputBase: {
       styleOverrides: {
         input: { padding: '0px !important', fontSize: '14px' }

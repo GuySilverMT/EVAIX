@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { UniversalCardWrapper } from './work-order/UniversalCardWrapper.js';
-import ResearchBrowser from './ResearchBrowser.js';
+
 import { 
   Globe, ArrowLeft, ArrowRight, RotateCw, Lock, 
   Star, Crosshair, ChevronDown, ExternalLink, Folder
@@ -482,19 +481,12 @@ export const WebNode: React.FC<WebNodeProps> = ({
                         </button>
                     </div>
                     
-                    <div 
-                      className="flex-1 relative group"
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('text/plain', url);
-                        e.dataTransfer.effectAllowed = 'copy';
-                      }}
-                    >
+                    <div className="flex-1 relative group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
                             <Lock size={12} className="opacity-50" />
                         </div>
                         <input 
-                            className="w-full bg-card/50 text-foreground text-xs font-mono rounded py-1.5 pl-8 pr-12 border border-border focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all cursor-grab active:cursor-grabbing"
+                            className="w-full bg-card/50 text-foreground text-xs font-mono rounded py-1.5 pl-8 pr-12 border border-border focus:bg-card focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleGo(); }}
@@ -659,61 +651,34 @@ export const WebNode: React.FC<WebNodeProps> = ({
                         <p className="text-warning/60 text-sm mb-4">
                             The native web view requires the Electron app for persistence and deep integration.
                         </p>
-                        <button 
-                            type="button"
-                            onClick={() => setShowDebugView(true)}
-                            className="px-4 py-2 bg-warning hover:bg-warning/80 text-black font-bold rounded transition-colors"
-                        >
-                            Switch to Remote Browser
-                        </button>
                     </div>
                  </div>
             )}
 
-            {showDebugView ? (
-                <div className="w-full h-full bg-card">
-                    <ResearchBrowser key={`research-${cardId}`} cardId={cardId} initialUrl={url} />
+            <>
+              {tabs.map(tab => (
+                <div key={tab.id} className={cn("w-full h-full", activeTabId === tab.id ? "block" : "hidden")}>
+                  <PersistentBrowser 
+                    id={tab.id}
+                    url={tab.url}
+                    webviewRef={(node) => {
+                      if (node) webviewRefs.current.set(tab.id, node);
+                      else webviewRefs.current.delete(tab.id);
+                    }}
+                    onReady={onReady}
+                    onFail={onFail}
+                    mobileUA={mobileUA}
+                    isReaderMode={isReaderMode}
+                    isElectron={!!isElectron()}
+                  />
                 </div>
-            ) : (
-                <>
-                  {tabs.map(tab => (
-                    <div key={tab.id} className={cn("w-full h-full", activeTabId === tab.id ? "block" : "hidden")}>
-                      <PersistentBrowser 
-                        id={tab.id}
-                        url={tab.url}
-                        webviewRef={(node) => {
-                          if (node) webviewRefs.current.set(tab.id, node);
-                          else webviewRefs.current.delete(tab.id);
-                        }}
-                        onReady={onReady}
-                        onFail={onFail}
-                        mobileUA={mobileUA}
-                        isReaderMode={isReaderMode}
-                        isElectron={!!isElectron()}
-                      />
-                    </div>
-                  ))}
-                </>
-            )}
+              ))}
+            </>
         </div>
     </div>
   );
 
-  if (hideWrapper) return content;
-
-  return (
-    <UniversalCardWrapper
-      id={id}
-      title="Web Node"
-      icon={Globe}
-      aiContext={url}
-      settings={settingsContent}
-      headerEnd={headerEnd}
-      hideAiButton={true}
-    >
-        {content}
-    </UniversalCardWrapper>
-  );
+  return content;
 };
 
 // Backward compatibility export
