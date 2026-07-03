@@ -25,7 +25,7 @@ export const openwebuiRouter = createTRPCRouter({
   getConfig: publicProcedure.query(async () => {
     return {
       baseUrl: process.env.OPENWEBUI_API_URL || 'http://localhost:8080/api',
-      liteLlmUrl: process.env.LITELLM_ARBITRAGE_URL || 'http://localhost:4000/v1',
+      liteLlmUrl: process.env.LITELLM_ARBITRAGE_URL || 'http://localhost:4001/v1',
       defaultModel: process.env.DEFAULT_MODEL || 'evaix-arbitrage-free',
       voiceStoragePath: '.evaix/voice',
       scriptsPath: '.evaix/voice/scripts',
@@ -84,7 +84,7 @@ export const openwebuiRouter = createTRPCRouter({
       }
 
       // Pipeline mirroring to LiteLLM / local provider arbitrage layer
-      const liteLlmUrl = process.env.LITELLM_ARBITRAGE_URL || 'http://localhost:4000/v1';
+      const liteLlmUrl = process.env.LITELLM_ARBITRAGE_URL || 'http://localhost:4001/v1';
       let assistantResponse = '';
 
       try {

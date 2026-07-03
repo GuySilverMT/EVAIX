@@ -130,7 +130,7 @@ export class ProviderManager implements IProviderManager {
   private async bootstrapFromEnv() {
     const mappings = [
       // Add LiteLLM as the primary router
-      { env: 'LITELLM_MASTER_KEY', type: 'openai', label: 'LiteLLM Router', url: 'http://localhost:4000/v1' },
+      { env: 'LITELLM_MASTER_KEY', type: 'openai', label: 'LiteLLM Router', url: 'http://localhost:4001/v1' },
       
       { env: 'GOOGLE_GENERATIVE_AI_API_KEY', type: 'google', label: 'Google AI Studio (Env)' },
       { env: 'MISTRAL_API_KEY', type: 'mistral', label: 'Mistral API (Env)' },

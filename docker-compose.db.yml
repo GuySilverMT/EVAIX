@@ -15,8 +15,65 @@ services:
     networks:
       - app-network
 
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: evaix_litellm_core
+    ports:
+      - "4001:4000"
+    environment:
+      - CORS_ALLOWED_ORIGINS=*
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:z
+    command: [ "--config", "/app/config.yaml" ]
+    restart: always
+    networks:
+      - app-network
+
+  terminal:
+    image: docker.io/tsl0922/ttyd:latest
+    container_name: evaix_terminal
+    ports:
+      - "7681:7681"
+    command: [ "-W", "bash" ]
+    restart: always
+    networks:
+      - app-network
+
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: evaix_openwebui
+    environment:
+      - OPENAI_API_BASE_URL=http://evaix_litellm_core:4000
+      - OPENAI_API_KEY=sk-litellm-master-key # Standard default to match litellm
+    ports:
+      - "8080:8080"
+    volumes:
+      - openwebui_data:/app/backend/data
+    restart: always
+    networks:
+      - app-network
+
+  filebrowser:
+    image: docker.io/filebrowser/filebrowser:latest
+    container_name: evaix_filebrowser
+    ports:
+      - "8081:80"
+    volumes:
+      - /home/guy/EVAIX:/srv # Mount the workspace directory
+      - filebrowser_data:/database # Persist config/db
+    command: ["--noauth"] # Disable login screen for internal desktop use
+    restart: always
+    networks:
+      - app-network
+
 volumes:
   postgres_data:
+  openwebui_data:
+  filebrowser_data:
 
 networks:
   app-network:

@@ -36,6 +36,10 @@ interface WorkspaceState {
   addCard: (card: CardData) => void;
   removeCard: (id: string) => void;
   updateCard: (id: string, updates: Partial<CardData>) => void;
+
+  // Aliases/compatibility properties for initial bootstrap / client code
+  activeCards: CardData[];
+  setCardContent: (id: string, componentId: string) => void;
   
   // Workspace Loading
   activeWorkspace: string | null;
@@ -93,15 +97,18 @@ interface WorkspaceState {
   // [NEW] Strict Spatial Routing Actions (No Dragging)
   moveCard: (cardId: string, direction: 'up' | 'down' | 'left' | 'right') => void;
   cloneCard: (cardId: string, targetDirection?: 'left' | 'right') => void;
-  spawnApp: (appId: string, props?: Record<string, unknown>) => void;
+  spawnApp: (appId: string, props?: Record<string, unknown>, targetColumn?: number) => void;
   executeAgent: (contextStrategy?: string) => void;
+
+  // [NEW] Column Focus State
+  focusedCardIds: Record<number, string>;
+  setFocusedCardId: (colIndex: number, cardId: string) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set) => ({
       columns: 2,
-      // Clamp to 1–4; workflows may lock this value
       setColumns: (columns) => set({ columns: Math.max(1, Math.min(4, columns)) }),
       showSidebar: false,
       toggleSidebar: () => set((state) => ({ showSidebar: !state.showSidebar })),
@@ -109,13 +116,94 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       
       showControlPlane: false,
       toggleControlPlane: () => set((state) => ({ showControlPlane: !state.showControlPlane })),
-      cards: [],
-      setCards: (cards) => set({ cards }),
-      addCard: (card) => set((state) => ({ cards: [...state.cards, card] })),
-      removeCard: (id) => set((state) => ({ cards: state.cards.filter(c => c.id !== id) })),
-      updateCard: (id, updates) => set((state) => ({
-        cards: state.cards.map(c => c.id === id ? { ...c, ...updates } : c)
+      cards: [
+        {
+          id: 'card-1',
+          roleId: '',
+          column: 0,
+          columnId: 0,
+          rowIndex: 0,
+          screenspaceId: 1,
+          displayId: 1,
+          appId: 'litellm-ui',
+          title: 'LITELLM-UI',
+          props: { initialUrl: 'http://127.0.0.1:4001/ui' }
+        },
+        {
+          id: 'card-2',
+          roleId: '',
+          column: 1,
+          columnId: 1,
+          rowIndex: 0,
+          screenspaceId: 1,
+          displayId: 1,
+          appId: 'openwebui',
+          title: 'OPENWEBUI',
+          props: { initialUrl: 'http://localhost:8080' }
+        }
+      ],
+      activeCards: [
+        {
+          id: 'card-1',
+          roleId: '',
+          column: 0,
+          columnId: 0,
+          rowIndex: 0,
+          screenspaceId: 1,
+          displayId: 1,
+          appId: 'litellm-ui',
+          title: 'LITELLM-UI',
+          props: { initialUrl: 'http://127.0.0.1:4001/ui' }
+        },
+        {
+          id: 'card-2',
+          roleId: '',
+          column: 1,
+          columnId: 1,
+          rowIndex: 0,
+          screenspaceId: 1,
+          displayId: 1,
+          appId: 'openwebui',
+          title: 'OPENWEBUI',
+          props: { initialUrl: 'http://localhost:8080' }
+        }
+      ],
+      focusedCardIds: {
+        0: 'card-1',
+        1: 'card-2'
+      },
+      setFocusedCardId: (colIndex, cardId) => set((state) => ({
+        focusedCardIds: { ...state.focusedCardIds, [colIndex]: cardId }
       })),
+      setCards: (cards) => set({ cards, activeCards: cards }),
+      addCard: (card) => set((state) => {
+        const nextCards = [...state.cards, card];
+        const targetCol = card.columnId ?? card.column ?? 0;
+        return { 
+          cards: nextCards, 
+          activeCards: nextCards,
+          focusedCardIds: { ...state.focusedCardIds, [targetCol]: card.id }
+        };
+      }),
+      removeCard: (id) => set((state) => {
+        const nextCards = state.cards.filter(c => c.id !== id);
+        return { cards: nextCards, activeCards: nextCards };
+      }),
+      updateCard: (id, updates) => set((state) => {
+        const nextCards = state.cards.map(c => c.id === id ? { ...c, ...updates } : c);
+        return { cards: nextCards, activeCards: nextCards };
+      }),
+      setCardContent: (id, componentId) => set((state) => {
+        const nextCards = state.cards.map(c => 
+          c.id === id ? { 
+            ...c, 
+            appId: componentId, 
+            activeTool: componentId, 
+            metadata: { ...c.metadata, viewMode: componentId } 
+          } : c
+        );
+        return { cards: nextCards, activeCards: nextCards };
+      }),
 
       moveCard: (cardId, direction) => set((state) => {
         const cardIndex = state.cards.findIndex(c => c.id === cardId);
@@ -130,18 +218,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           let targetDisplay = currentDisplay;
 
           if (direction === 'left' && targetCol < 0) {
-            // Move to last column of previous displayId
             const maxDisplay = state.screenspaces.length > 0 ? state.screenspaces.length - 1 : 0;
             targetDisplay = currentDisplay > 0 ? currentDisplay - 1 : maxDisplay;
             targetCol = Math.max(0, state.columns - 1);
           } else if (direction === 'right' && targetCol >= state.columns) {
-            // Move to first column of next displayId
             const maxDisplay = state.screenspaces.length > 0 ? state.screenspaces.length - 1 : 0;
             targetDisplay = currentDisplay < maxDisplay ? currentDisplay + 1 : 0;
             targetCol = 0;
           }
 
-          // Get cards in target display & target column to calculate new rowIndex
           const targetColCards = state.cards.filter(c => 
             (c.displayId ?? c.screenspaceId ?? 0) === targetDisplay && 
             (c.columnId ?? c.column ?? 0) === targetCol &&
@@ -162,10 +247,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             return c;
           });
 
-          return { cards: updatedCards };
+          return { 
+            cards: updatedCards, 
+            activeCards: updatedCards,
+            focusedCardIds: { ...state.focusedCardIds, [targetCol]: cardId }
+          };
         }
 
-        // 'up' | 'down' -> Swap rowIndex of card with neighbor in same column
         const colCards = state.cards
           .filter(c => 
             (c.displayId ?? c.screenspaceId ?? 0) === currentDisplay && 
@@ -193,12 +281,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           return c;
         });
 
-        return { cards: updatedCards };
+        return { cards: updatedCards, activeCards: updatedCards };
       }),
 
-      spawnApp: (appId, props) => set((state) => {
-        // Auto-assign to next column based on current card count to distribute them
-        const nextCol = state.cards.length % state.columns;
+      spawnApp: (appId, props, targetColumn) => set((state) => {
+        const nextCol = targetColumn !== undefined ? targetColumn : (state.cards.length % state.columns);
         const colCards = state.cards.filter(c => (c.columnId ?? c.column ?? 0) === nextCol);
         const displayId = state.activeScreenspaceId || 0;
         const newCard: CardData = {
@@ -212,7 +299,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           appId,
           props
         };
-        return { cards: [...state.cards, newCard] };
+        const nextCards = [...state.cards, newCard];
+        return { 
+          cards: nextCards, 
+          activeCards: nextCards,
+          focusedCardIds: { ...state.focusedCardIds, [nextCol]: newCard.id }
+        };
       }),
 
       executeAgent: (contextStrategy = 'Visible Card') => set((state) => {
@@ -243,7 +335,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           metadata: card.metadata ? { ...card.metadata } : undefined
         };
 
-        return { cards: [...state.cards, clonedCard] };
+        const nextCards = [...state.cards, clonedCard];
+        return { cards: nextCards, activeCards: nextCards };
       }),
 
       activeWorkspace: null,
@@ -288,8 +381,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           metadata: { viewMode: 'editor' }
         };
         
+        const nextCards = [...state.cards, newPanel];
         return {
-          cards: [...state.cards, newPanel]
+          cards: nextCards,
+          activeCards: nextCards
         };
       }),
 
@@ -314,7 +409,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
              { id: '3', roleId: '', column: 2, screenspaceId: 1 },
            ];
         }
-        return { cards: initialCards };
+        return { cards: initialCards, activeCards: initialCards };
       }),
 
       aiContext: {
@@ -356,9 +451,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: 'workspace-storage',
+      version: 2, // [NEW] Bump version to forcefully invalidate broken cache
       partialize: (state) => ({
         columns: state.columns,
         cards: state.cards,
+        activeCards: state.cards,
         activeScreenspaceId: state.activeScreenspaceId,
         activeWorkspaceId: state.activeWorkspaceId,
         activeWorkspacePath: state.activeWorkspacePath,

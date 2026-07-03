@@ -28,7 +28,7 @@ import { providerModelRouter } from './providerModel.router.js';
 import { bookmarkRouter } from './bookmark.router.js';
 import { skillRouter } from './skill.router.js';
 import { openwebuiRouter } from './openwebui.router.js';
-
+import { llmRouter } from './llm.router.js';
 export const appRouter = createTRPCRouter({
   agent: agentRouter,
   ingestion: ingestionRouter,
@@ -58,6 +58,7 @@ export const appRouter = createTRPCRouter({
   providerModel: providerModelRouter,
   bookmark: bookmarkRouter,
   openwebui: openwebuiRouter,
+  llm: llmRouter,
 });
 
 export type AppRouter = typeof appRouter;

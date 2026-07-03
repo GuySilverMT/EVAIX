@@ -8,7 +8,7 @@ import { trpc } from '../utils/trpc.js';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils.js';
 import { useWorkspaceStore } from '../stores/workspace.store.js';
-import { SuperAiButton } from './ui/SuperAiButton.js';
+import { ModelBar } from './ui/ModelBar.js';
 import { parseOmniboxInput } from '../utils/browser.utils.js';
 import { Plus, X as CloseIcon } from 'lucide-react';
 import { useAgenticContext } from '../hooks/useAgenticContext.js';
@@ -436,7 +436,7 @@ export const WebNode: React.FC<WebNodeProps> = ({
             </div>
          )}
          
-         {!showDebugView && (
+         {!showDebugView && !hideWrapper && (
             <div className="flex flex-col shrink-0 bg-background border-b border-border z-30 shadow-sm">
                 <div className="h-9 flex items-center bg-muted/20 border-b border-border/50 overflow-x-auto no-scrollbar px-1">
                   {tabs.map(tab => (
@@ -573,11 +573,11 @@ export const WebNode: React.FC<WebNodeProps> = ({
                     </div>
 
                     <div className="flex items-center space-x-1">
-                        <SuperAiButton 
-                            label="Extract Context"
-                            contextId={url}
-                            onGenerate={() => void handleExtractContext()}
-                            style={{ '--ai-btn-primary': 'var(--ai-intent-browser)', '--ai-btn-size': '28px' } as React.CSSProperties}
+                        <ModelBar 
+                            isCondensed={true}
+                            expandDirection="right"
+                            contextLocation={url}
+                            onPlayClick={() => void handleExtractContext()}
                         />
                         <button 
                             type="button" 

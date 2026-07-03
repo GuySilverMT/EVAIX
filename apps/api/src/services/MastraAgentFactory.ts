@@ -9,7 +9,7 @@ export class MastraAgentFactory {
   static createAgent(name: string, instructions: string, tools: any = {}): Agent {
     // Retrieve the bootstrapped LiteLLM config
     const liteLlmProvider = ProviderManager.getProvider('litellm-router') as any;
-    const baseURL = liteLlmProvider?.baseURL || liteLlmProvider?.config?.baseURL || 'http://localhost:4000/v1';
+    const baseURL = liteLlmProvider?.baseURL || liteLlmProvider?.config?.baseURL || 'http://localhost:4001/v1';
     const apiKey = process.env.LITELLM_MASTER_KEY || 'sk-litellm-key';
 
     // LiteLLM is fully compatible with the standard OpenAI SDK

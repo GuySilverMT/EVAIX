@@ -3,7 +3,7 @@
 # A more robust script to stop development servers.
 
 # --- Configuration ---
-PORTS_TO_STOP=(4000 5173) # API port and UI port
+PORTS_TO_STOP=(4000 4001 5173) # API port, LiteLLM port, and UI port
 
 # --- Main Logic ---
 echo "Attempting to stop processes on ports: ${PORTS_TO_STOP[*]}"
