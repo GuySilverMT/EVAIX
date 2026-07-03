@@ -1,22 +1,18 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { bookmarkStorage } from '../utils/bookmarkStorage.js';
 
 /**
  * Bookmark Router - Manages folders and bookmarks for the agentic browser
+ * Uses JSON file storage instead of database
  */
 export const bookmarkRouter = createTRPCRouter({
   // --- Folders ---
   
-  listFolders: publicProcedure.query(async ({ ctx }) => {
+  listFolders: publicProcedure.query(async () => {
     try {
-      return await ctx.prisma.bookmarkFolder.findMany({
-        include: {
-          children: true,
-          bookmarks: true,
-        },
-        orderBy: { name: 'asc' }
-      });
+      return await bookmarkStorage.listFolders();
     } catch (error) {
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
@@ -30,13 +26,11 @@ export const bookmarkRouter = createTRPCRouter({
       name: z.string(),
       parentId: z.string().optional().nullable(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       try {
-        return await ctx.prisma.bookmarkFolder.create({
-          data: {
-            name: input.name,
-            parentId: input.parentId,
-          },
+        return await bookmarkStorage.createFolder({
+          name: input.name,
+          parentId: input.parentId ?? undefined,
         });
       } catch (error) {
         throw new TRPCError({
@@ -52,14 +46,12 @@ export const bookmarkRouter = createTRPCRouter({
       name: z.string().optional(),
       parentId: z.string().optional().nullable(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       try {
-        return await ctx.prisma.bookmarkFolder.update({
-          where: { id: input.id },
-          data: {
-            name: input.name,
-            parentId: input.parentId,
-          },
+        return await bookmarkStorage.updateFolder({
+          id: input.id,
+          ...(input.name && { name: input.name }),
+          ...(input.parentId !== undefined && { parentId: input.parentId }),
         });
       } catch (error) {
         throw new TRPCError({
@@ -71,11 +63,9 @@ export const bookmarkRouter = createTRPCRouter({
 
   deleteFolder: publicProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       try {
-        await ctx.prisma.bookmarkFolder.delete({
-          where: { id: input.id },
-        });
+        await bookmarkStorage.deleteFolder(input.id);
         return { success: true };
       } catch (error) {
         throw new TRPCError({
@@ -89,12 +79,9 @@ export const bookmarkRouter = createTRPCRouter({
 
   listBookmarks: publicProcedure
     .input(z.object({ folderId: z.string().optional().nullable() }))
-    .query(async ({ input, ctx }) => {
+    .query(async ({ input }) => {
       try {
-        return await ctx.prisma.bookmark.findMany({
-          where: input.folderId !== undefined ? { folderId: input.folderId } : {},
-          orderBy: { title: 'asc' }
-        });
+        return await bookmarkStorage.listBookmarks(input.folderId);
       } catch (error) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
@@ -110,15 +97,13 @@ export const bookmarkRouter = createTRPCRouter({
       faviconUrl: z.string().optional().nullable(),
       folderId: z.string().optional().nullable(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       try {
-        return await ctx.prisma.bookmark.create({
-          data: {
-            title: input.title,
-            url: input.url,
-            faviconUrl: input.faviconUrl,
-            folderId: input.folderId,
-          },
+        return await bookmarkStorage.createBookmark({
+          title: input.title,
+          url: input.url,
+          faviconUrl: input.faviconUrl ?? undefined,
+          folderId: input.folderId ?? undefined,
         });
       } catch (error) {
         throw new TRPCError({
@@ -136,16 +121,14 @@ export const bookmarkRouter = createTRPCRouter({
       faviconUrl: z.string().optional().nullable(),
       folderId: z.string().optional().nullable(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       try {
-        return await ctx.prisma.bookmark.update({
-          where: { id: input.id },
-          data: {
-            title: input.title,
-            url: input.url,
-            faviconUrl: input.faviconUrl,
-            folderId: input.folderId,
-          },
+        return await bookmarkStorage.updateBookmark({
+          id: input.id,
+          ...(input.title && { title: input.title }),
+          ...(input.url && { url: input.url }),
+          ...(input.faviconUrl !== undefined && { faviconUrl: input.faviconUrl }),
+          ...(input.folderId !== undefined && { folderId: input.folderId }),
         });
       } catch (error) {
         throw new TRPCError({
@@ -157,11 +140,9 @@ export const bookmarkRouter = createTRPCRouter({
 
   deleteBookmark: publicProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       try {
-        await ctx.prisma.bookmark.delete({
-          where: { id: input.id },
-        });
+        await bookmarkStorage.deleteBookmark(input.id);
         return { success: true };
       } catch (error) {
         throw new TRPCError({

@@ -22,6 +22,8 @@ import { backupService } from './services/BackupService.js';
 // import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
 import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
 import { initializeMockEngines } from './services/voice/mockEngines.js';
+import { initSchedulerDaemon, watchSchedulerFile } from './services/scheduler.service.js';
+import { mountSchedulerRestRoutes } from './routers/scheduler.router.js';
 
 // Initialize Telemetry
 if (process.env.VOLCANO_TELEMETRY_ENABLED === VOLCANO_TELEMETRY_ENABLED) {
@@ -70,6 +72,9 @@ async function startServer() {
   );
   app.use(express.json({ limit: '50mb' }));
   app.use('/badbuilder', express.static(path.join(__dirname, '../../badbuilder')));
+
+  // Mount EVAIX Scheduler REST endpoints
+  mountSchedulerRestRoutes(app);
 
   // REST wrapper for VFS write
   app.post('/api/vfs/write', async (req, res) => {
@@ -181,6 +186,15 @@ async function startServer() {
 
       // Start background services
       console.log('\n🔧 Starting background services...');
+
+      // [EVAIX-SCHEDULER] Start cron daemon + file-watcher
+      try {
+        watchSchedulerFile();          // Set up fs.watch + ensure .userData/scheduler.json exists
+        await initSchedulerDaemon();   // Parse jobs, arm timers
+        console.log('✅ EVAIX Scheduler daemon active.');
+      } catch (schedErr) {
+        console.warn('⚠️ Scheduler daemon failed to start:', schedErr);
+      }
 
       // Start automatic backup service
       try {

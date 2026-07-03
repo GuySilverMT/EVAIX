@@ -1,5 +1,6 @@
 import React from 'react';
 import { WebNode } from '../components/WebNode.js';
+import { EvaixCalendar } from '../components/core/EvaixCalendar.js';
 
 /**
  * @file ComponentRegistry.ts
@@ -19,6 +20,7 @@ export const AppRegistry: Record<string, AppDefinition> = {
   'openwebui': { component: WebNode, props: { initialUrl: 'http://localhost:8080' }, showBrowserBar: false },
   'terminal': { component: WebNode, props: { initialUrl: 'http://localhost:7681' }, showBrowserBar: false },
   'file-explorer': { component: WebNode, props: { initialUrl: 'http://localhost:8081' }, showBrowserBar: false },
+  'scheduler':      { component: EvaixCalendar, props: {}, showBrowserBar: false },
 };
 
 export const getRegisteredApp = (appId: string | null | undefined): AppDefinition | null => {

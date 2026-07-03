@@ -54,7 +54,7 @@ const PersistentBrowser = React.memo(({
       // @ts-ignore Electron event
       webview.removeEventListener('did-fail-load', handleFail);
     };
-  }, [webviewRef, onReady, onFail]);
+  }, [id, onReady, onFail]);
 
   if (!isElectron) return null;
 
@@ -358,12 +358,35 @@ export const WebNode: React.FC<WebNodeProps> = ({
     setTabs(prev => prev.map(t => t.id === id ? { ...t, isReady: true, title: title || t.title } : t));
   }, []);
   
-  const onFail = useCallback((e: any) => {
-    console.warn('WebView failed to load:', e);
-    if (e.errorCode !== -3) {
-      toast.error(`Failed to load: ${e.validatedURL}`, { description: e.errorDescription });
+  const onFail = useCallback((id: string, e: any) => {
+    const tab = tabs.find(tab => tab.id === id);
+    const fallbackUrl = tab?.url || initialUrl;
+    const validatedUrl = e?.validatedURL || fallbackUrl;
+    let errorDescription = e?.errorDescription || 'The page could not be loaded.';
+
+    console.warn(`WebView failed to load for tab ${id}:`, e);
+
+    // Handle ERR_ABORTED separately as it's often not a critical error (e.g., navigation interrupted)
+    if (e?.errorCode === -3) {
+      console.info(`WebView navigation aborted for tab ${id}:`, e);
+      return; // Do not show a toast for aborted navigations
     }
-  }, []);
+
+    // Provide more specific feedback for common Electron webview errors
+    if (e?.errorCode === -102) { // ERR_CONNECTION_REFUSED
+      try {
+        const urlObj = new URL(validatedUrl);
+        errorDescription = `Connection refused. Is the server at ${urlObj.origin} running and accessible?`;
+      } catch (urlError) {
+        errorDescription = `Connection refused. Is the server running and accessible? (URL: ${validatedUrl})`;
+      }
+    } else if (e?.errorCode === -105) { // ERR_NAME_NOT_RESOLVED
+      errorDescription = `Cannot resolve server hostname. Check your internet connection or the URL.`;
+    }
+    // Add more specific error codes if needed, e.g., -106 (ERR_INTERNET_DISCONNECTED)
+
+    toast.error(`Failed to load: ${validatedUrl}`, { description: errorDescription });
+  }, [initialUrl, tabs]);
 
   const settingsContent = (
     <div className="space-y-6 text-foreground">

@@ -1,0 +1,43 @@
+# EVAIX App Integration & Selection Guide
+
+## 1. Core Architectural Directives
+EVAIX is an agentic, self-bootstrapping Desktop Environment built on Fedora. When selecting, designing, or integrating applications into the EVAIX monorepo, AI agents must strictly adhere to the following principles:
+
+*   **No Databases:** Do not introduce Postgres, SQLite, MongoDB, or any traditional RDBMS. All state, configurations, and schedules must be serialized into human- and LLM-readable JSON flat files.
+*   **TypeScript-First:** Prioritize pure TypeScript packages within the monorepo over pre-compiled native Linux apps or closed web apps. Code must be ingestible, type-safe, and reusable across other platforms.
+*   **Agentic Transparency:** Every app must expose its core functions via a lightweight Model Context Protocol (MCP) server or a direct JSON API so the AgentRuntime can manipulate it. 
+*   **UI Constraints:** The frontend relies on React and MUI. UIs should be fast, utilitarian, and distraction-free. Avoid flashy animations or bloated CSS frameworks.
+
+## 2. The App Priority Matrix
+When deciding what applications to build or integrate, evaluate them against this matrix.
+
+| Priority | Category | Integration Standard | Example |
+| :--- | :--- | :--- | :--- |
+| **P0** | **Base OS Utilities** | Typescript Monorepo Package + JSON State | Terminal, Browser, Weekly Scheduler. |
+| **P1** | **Development** | NativeNode Wrapper + MCP Bridge | Code editors, terminal debuggers. |
+| **P2** | **File/System Management** | Typescript + Node FS Module | VFS explorers, system resource monitors (mapped to JSON). |
+| **P3** | **External Comms** | WebNode (iframe) + MCP Bridge | Chat interfaces, email clients. |
+
+## 3. Implementation Standard: The Weekly Scheduler
+*Reference this standard when building the EVAIX calendar/scheduler.*
+
+**The UI Layer:**
+Use an MUI-compatible weekly time-grid component. It must support drag-and-drop and snap to a weekly matrix, similar to native Android schedulers. 
+
+**The Storage Layer:**
+The UI saves events to a local `scheduler.json` file in the following strict format. Agents will read and write to this file to schedule automations:
+
+```json
+{
+  "jobs": [
+    {
+      "id": "job_01",
+      "cron": "0 9 * * 1",
+      "intent": "Review U1 Silvernale clearing parameters with small contract director of harvesting",
+      "automationPayload": {
+        "agent": "jules-orchestrator",
+        "action": "prepare_briefing_doc"
+      }
+    }
+  ]
+}
