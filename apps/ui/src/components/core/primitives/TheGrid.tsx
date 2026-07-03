@@ -18,33 +18,39 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   const totalColumns = useWorkspaceStore(s => s.columns) || 2;
 
   // Filter cards by displayId / screenspaceId
-  const activeCards = cards.filter(
+  const activeCards = React.useMemo(() => cards.filter(
     c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-  );
+  ), [cards, displayId]);
 
-  // Group activeCards by columnId
-  const columnsMap: Record<number, CardData[]> = {};
-  for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
-    columnsMap[colIdx] = [];
-  }
+  const columnsMap = React.useMemo(() => {
+    const map: Record<number, CardData[]> = {};
 
-  activeCards.forEach(card => {
-    const colId = card.columnId ?? card.column ?? 0;
-    if (!columnsMap[colId]) {
-      columnsMap[colId] = [];
+
+    for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
+      map[colIdx] = [];
     }
-    columnsMap[colId].push(card);
-  });
 
-  // Sort cards within each column by rowIndex
-  Object.keys(columnsMap).forEach(colIdStr => {
-    const colId = Number(colIdStr);
-    columnsMap[colId].sort((a, b) => {
-      const rowA = a.rowIndex ?? 0;
-      const rowB = b.rowIndex ?? 0;
-      return rowA - rowB;
+    activeCards.forEach(card => {
+      const colId = card.columnId ?? card.column ?? 0;
+      if (!map[colId]) {
+        map[colId] = [];
+      }
+      map[colId].push(card);
     });
-  });
+
+    Object.keys(map).forEach(colIdStr => {
+      const colId = Number(colIdStr);
+      map[colId].sort((a, b) => {
+        const rowA = a.rowIndex ?? 0;
+        const rowB = b.rowIndex ?? 0;
+        return rowA - rowB;
+      });
+    });
+
+    return map;
+  }, [activeCards, totalColumns]);
+
+
 
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
