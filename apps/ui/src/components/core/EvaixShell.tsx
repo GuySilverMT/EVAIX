@@ -22,7 +22,7 @@ export const EvaixShell: React.FC = () => {
     // Initial Default: If activeCards is empty, dispatch spawnApp for defaults
     if (cards.length === 0) {
       spawnApp('litellm-ui', { initialUrl: 'http://localhost:8080' });
-      spawnApp('openwebui', { initialUrl: 'http://localhost:8080' });
+      spawnApp('openwebui', { initialUrl: 'http://localhost:3000' });
     }
   }, [cards.length, spawnApp]);
 

@@ -15,11 +15,11 @@ export interface AppDefinition {
 }
 
 export const AppRegistry: Record<string, AppDefinition> = {
-  'litellm-ui': { component: WebNode, props: { initialUrl: 'http://localhost:8080' }, showBrowserBar: false },
+  'litellm-ui': { component: WebNode, props: { initialUrl: 'http://localhost:8080' }, showBrowserBar: true },
   'browser': { component: WebNode, props: { initialUrl: 'https://duckduckgo.com' }, showBrowserBar: true },
-  'openwebui': { component: WebNode, props: { initialUrl: 'http://localhost:8080' }, showBrowserBar: false },
-  'terminal': { component: WebNode, props: { initialUrl: 'http://localhost:7681' }, showBrowserBar: false },
-  'file-explorer': { component: WebNode, props: { initialUrl: 'http://localhost:8081' }, showBrowserBar: false },
+  'openwebui': { component: WebNode, props: { initialUrl: 'http://localhost:3000' }, showBrowserBar: true },
+  'terminal': { component: WebNode, props: { initialUrl: 'http://localhost:7681' }, showBrowserBar: true },
+  'file-explorer': { component: WebNode, props: { initialUrl: 'http://localhost:8082' }, showBrowserBar: true },
   'scheduler':      { component: EvaixCalendar, props: {}, showBrowserBar: false },
 };
 

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { ElectronWebView } from './types';
+import type { ElectronWebView } from './types';
 
 interface PersistentBrowserProps {
   url: string;

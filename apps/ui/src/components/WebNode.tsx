@@ -24,7 +24,7 @@ import { BookmarkBar } from './webnode/BookmarkBar';
 import { BillingBanner } from './webnode/BillingBanner';
 import { ReaderView } from './webnode/ReaderView';
 import { PersistentBrowser } from './webnode/PersistentBrowser';
-import { WebViewLoadEvent } from './webnode/types';
+import type { WebViewLoadEvent } from './webnode/types';
 
 export interface WebNodeProps {
   id?: string;

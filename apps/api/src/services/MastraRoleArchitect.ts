@@ -6,7 +6,7 @@ import { prisma } from '../db.js';
 
 // 1. Configure Provider: Route AI SDK through the live LiteLLM Podman container
 const liteLlmProvider = createOpenAI({
-  baseURL: 'http://localhost:4001/v1',
+  baseURL: 'http://localhost:8080/v1',
   apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
 });
 

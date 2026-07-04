@@ -38,7 +38,7 @@ if true; then
   echo "⏳ Waiting for LiteLLM Proxy Router..."
   for i in {1..30}; do
     # LiteLLM health endpoint
-    if curl -s http://localhost:4001/health > /dev/null; then
+    if curl -s http://localhost:8080/health > /dev/null; then
       echo "✅ LiteLLM Router is online!"
       break
     fi
@@ -47,7 +47,7 @@ if true; then
 
   echo "⏳ Waiting for Open WebUI..."
   for i in {1..30}; do
-    if curl -s http://localhost:8080 > /dev/null 2>&1; then
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
       echo "✅ Open WebUI is online!"
       break
     fi

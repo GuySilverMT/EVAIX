@@ -40,12 +40,13 @@ export const AppCard = memo(({ id, isFocused = true, isCondensed = false }: AppC
       {isFocused && <FocusStrip cardId={id} title={viewMode.toUpperCase()} />}
       
       <div className="flex-1 flex overflow-hidden relative w-full h-full min-h-0 min-w-0">
-        <RegisteredComponent 
-          cardId={id} 
-          id={id} 
-          {...card.props} 
-          {...appDef?.props} 
-          hideWrapper={!appDef?.showBrowserBar} 
+        <RegisteredComponent
+          key={viewMode}
+          cardId={id}
+          id={id}
+          {...card.props}
+          {...appDef?.props}
+          hideWrapper={!appDef?.showBrowserBar}
         />
       </div>
     </div>

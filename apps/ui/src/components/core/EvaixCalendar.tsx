@@ -11,7 +11,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Scheduler, type ProcessedEvent, type SchedulerHelpers } from '@aldabil/react-scheduler';
 import { nanoid } from 'nanoid';
 
-const API_BASE = 'http://localhost:5555';
+const API_BASE = 'http://localhost:4000';
 
 // ---------------------------------------------------------------------------
 // Types

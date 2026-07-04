@@ -139,7 +139,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           displayId: 1,
           appId: 'openwebui',
           title: 'OPENWEBUI',
-          props: { initialUrl: 'http://localhost:8080' }
+          props: { initialUrl: 'http://localhost:3000' }
         }
       ],
       activeCards: [
@@ -165,7 +165,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           displayId: 1,
           appId: 'openwebui',
           title: 'OPENWEBUI',
-          props: { initialUrl: 'http://localhost:8080' }
+          props: { initialUrl: 'http://localhost:3000' }
         }
       ],
       focusedCardIds: {

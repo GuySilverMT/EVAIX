@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { BookmarkFolder } from './types';
+import type { BookmarkFolder } from './types';
 
 interface BookmarkPopoverProps {
   show: boolean;

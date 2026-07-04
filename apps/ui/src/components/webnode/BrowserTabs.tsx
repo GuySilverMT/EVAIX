@@ -7,7 +7,7 @@ import React from 'react';
 import { Globe } from 'lucide-react';
 import { Plus, X as CloseIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Tab } from './types';
+import type { Tab } from './types';
 
 interface BrowserTabsProps {
   tabs: Tab[];

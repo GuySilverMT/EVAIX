@@ -3,7 +3,7 @@
  * @description Utility functions for webnode components
  */
 
-import { WebViewLoadEvent } from './types';
+import type { WebViewLoadEvent } from './types';
 
 export function isElectron(): boolean {
   if (typeof window === 'undefined') return false;

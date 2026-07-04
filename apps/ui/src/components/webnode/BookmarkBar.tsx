@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Folder, ChevronDown, ExternalLink, Plus } from 'lucide-react';
-import { BookmarkFolder } from './types';
+import type { BookmarkFolder } from './types';
 
 interface BookmarkBarProps {
   folders: BookmarkFolder[] | undefined;

@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Tab, ElectronWebView } from './types';
+import type { Tab, ElectronWebView } from './types';
 
 interface UseBrowserTabsOptions {
   initialUrl: string;

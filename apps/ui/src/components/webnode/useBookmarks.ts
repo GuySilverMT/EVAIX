@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { toast } from 'sonner';
-import { BookmarkFolder } from './types';
+import type { BookmarkFolder } from './types';
 
 export function useBookmarks() {
   const utils = trpc.useContext();
