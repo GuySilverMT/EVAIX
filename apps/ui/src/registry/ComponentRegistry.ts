@@ -1,26 +1,29 @@
 import React from 'react';
-import { ProjectNavigator } from '../components/work-order/ProjectNavigator.js';
 import { WebNode } from '../components/WebNode.js';
-import { NativeNode } from '../components/core/NativeNode.js';
-import { LiteLLMConfig } from '../components/core/LiteLLMConfig.js';
+import { EvaixCalendar } from '../components/core/EvaixCalendar.js';
 
 /**
  * @file ComponentRegistry.ts
  * @description Master Component Registry for EVAIX Agentic Spatial Window Manager.
- * Maps app IDs directly to React payload components. Under the "Orchestrator Paradigm",
- * this primarily wraps URLs via WebNode or X11 windows via NativeNode.
+ * Maps app IDs to AppDefinitions containing components and their injected props.
  */
-export const ComponentRegistry: Record<string, React.ComponentType<any>> = {
-  'project-navigator': ProjectNavigator,
-  'webnode': WebNode,
-  'nativenode': NativeNode,
-  'lite-llm-config': LiteLLMConfig,
+
+export interface AppDefinition {
+  component: React.ComponentType<any>;
+  props: Record<string, any>;
+  showBrowserBar: boolean;
+}
+
+export const AppRegistry: Record<string, AppDefinition> = {
+  'litellm-ui': { component: WebNode, props: { initialUrl: 'http://localhost:8080/ui' }, showBrowserBar: false },
+  'browser': { component: WebNode, props: { initialUrl: 'https://duckduckgo.com' }, showBrowserBar: true },
+  'openwebui': { component: WebNode, props: { initialUrl: 'http://localhost:3000' }, showBrowserBar: false },
+  'terminal': { component: WebNode, props: { initialUrl: 'http://localhost:7681' }, showBrowserBar: false },
+  'file-explorer': { component: WebNode, props: { initialUrl: 'http://localhost:8082' }, showBrowserBar: false },
+  'scheduler':      { component: EvaixCalendar, props: {}, showBrowserBar: false },
 };
 
-export const APP_REGISTRY = ComponentRegistry;
-export const COMPONENT_REGISTRY = ComponentRegistry;
-
-export const getRegisteredComponent = (appId: string | null | undefined): React.ComponentType<any> | null => {
+export const getRegisteredApp = (appId: string | null | undefined): AppDefinition | null => {
   if (!appId) return null;
-  return ComponentRegistry[appId.toLowerCase()] || null;
+  return AppRegistry[appId.toLowerCase()] || null;
 };

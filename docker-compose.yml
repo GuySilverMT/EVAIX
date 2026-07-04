@@ -12,7 +12,7 @@ services:
     networks:
       - app-network
     environment:
-      LOOTBOX_URL: 'http://lootbox:3000'
+      LOOTBOX_URL: "http://lootbox:3000"
 
   ui:
     build:

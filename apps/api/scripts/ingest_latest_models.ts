@@ -1,6 +1,5 @@
 #!/usr/bin/env ts-node
 
-import { PrismaClient, Prisma } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 

@@ -1,4 +1,4 @@
-import { Role, Model, Prisma, RoleTool, Tool } from "@prisma/client";
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, FileIndex, Job, RoleVariant } from '../prisma-types.js';
 
 // Definition of the model creation DTO used throughout the API
 export interface ModelDef {
@@ -26,5 +26,5 @@ export interface IAgentConfigRepository {
     getModel(providerId: string, modelId: string): Promise<Model | null>;
     createModel(modelDef: ModelDef): Promise<Model>;
 
-    createRole(data: Prisma.RoleCreateInput): Promise<Role>;
+    createRole(data: any): Promise<Role>;
 }

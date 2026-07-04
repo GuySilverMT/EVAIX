@@ -1,6 +1,6 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 import { prisma } from '../db.js';
 import { BaseLLMProvider, LLMModel } from '../utils/BaseLLMProvider.js';
-import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
 interface RawSnapshotData extends LLMModel {
@@ -78,7 +78,7 @@ export class RegistrySyncService {
                 let modelsToSync = models;
 
                 // Filter OpenRouter for free models ONLY if requested by user
-                if (providerType === 'openrouter' && config?.enforceFreeOnly) {
+                if (providerType === 'openrouter' && (config as any)?.enforceFreeOnly) {
                     modelsToSync = models.filter(m => {
                         const modelWithPricing = m as RawModelWithPricing;
                         const p = modelWithPricing.pricing;
@@ -100,7 +100,7 @@ export class RegistrySyncService {
                     activeModelIds.add(stableId);
 
                     const cost = m.costPer1k;
-                    const providerData = m as unknown as Prisma.InputJsonValue;
+                    const providerData = m as unknown as any;
 
                     let underlyingProvider = providerLabel;
                     const metaClass = meta?.providerClass || 'FOUNDATIONAL';
@@ -176,7 +176,7 @@ export class RegistrySyncService {
         return { success: true };
     }
 
-    private static calculateChecksum(data: Prisma.InputJsonValue): string {
+    private static calculateChecksum(data: any): string {
         return crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
     }
 

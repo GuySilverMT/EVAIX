@@ -1,10 +1,10 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 import { prisma } from '../db.js';
 import { resolveModelForRole } from './modelManager.service.js';
 import ivm from 'isolated-vm';
 
 
 // import { saveModelKnowledge } from './ModelKnowledgeBase.js';
-import type { Model, ProviderConfig, ModelCapabilities } from '@prisma/client';
 
 /**
  * SURVEYOR SERVICE

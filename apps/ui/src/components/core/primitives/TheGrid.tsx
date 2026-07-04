@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWorkspaceStore, type CardData } from '../../../stores/workspace.store.js';
 import { AppCard } from '../../work-order/AppCard.js';
+import { AppRegistry } from '../../../registry/ComponentRegistry.js';
 
 /**
  * @file TheGrid.tsx
  * @description The spatial window matrix renderer.
- * Groups active cards by columnId, renders columns in flex-row,
- * and sorts cards within each column by rowIndex.
+ * Implements the 3-Tier Progressive Architecture:
+ * 1. Top Tab Strip (Inactive Cards)
+ * 2. Viewport (Focused Card)
+ * 3. Bottom Spawner (+ New App)
  */
 
 export interface TheGridProps {
@@ -14,11 +17,16 @@ export interface TheGridProps {
 }
 
 export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
-  const cards = useWorkspaceStore(s => s.cards);
+  const activeCardsStore = useWorkspaceStore(s => s.activeCards || s.cards || []);
   const totalColumns = useWorkspaceStore(s => s.columns) || 2;
+  const focusedCardIds = useWorkspaceStore(s => s.focusedCardIds);
+  const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
+  const spawnApp = useWorkspaceStore(s => s.spawnApp);
+  const [pickerColIndex, setPickerColIndex] = useState<number | null>(null);
+  const appIds = Object.keys(AppRegistry);
 
   // Filter cards by displayId / screenspaceId
-  const activeCards = React.useMemo(() => cards.filter(
+  const activeCards = activeCardsStore.filter(
     c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
   ), [cards, displayId]);
 
@@ -30,55 +38,78 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
       map[colIdx] = [];
     }
 
-    activeCards.forEach(card => {
-      const colId = card.columnId ?? card.column ?? 0;
-      if (!map[colId]) {
-        map[colId] = [];
-      }
-      map[colId].push(card);
-    });
-
-    Object.keys(map).forEach(colIdStr => {
-      const colId = Number(colIdStr);
-      map[colId].sort((a, b) => {
-        const rowA = a.rowIndex ?? 0;
-        const rowB = b.rowIndex ?? 0;
-        return rowA - rowB;
-      });
-    });
-
-    return map;
-  }, [activeCards, totalColumns]);
-
-
-
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
       {Array.from({ length: totalColumns }).map((_, colIndex) => {
         const colCards = columnsMap[colIndex] || [];
+        
+        // Determine the focused card for this column
+        const storedFocusedId = focusedCardIds[colIndex];
+        const focusedCard = colCards.find(c => c.id === storedFocusedId) || colCards[0];
+        const inactiveCards = colCards.filter(c => c.id !== focusedCard?.id);
 
         return (
           <div
             key={`column-${colIndex}`}
-            className="flex flex-col flex-1 h-full bg-[var(--colors-background)] overflow-hidden"
+            className="flex flex-col flex-1 h-full bg-[var(--colors-background)] overflow-hidden relative"
           >
-            {colCards.map((card, idx) => {
-              const isFocused = idx === 0;
-              return (
-                <div
-                  key={card.id}
-                  className={`w-full flex flex-col overflow-hidden ${
-                    isFocused ? 'flex-1 min-h-0' : 'h-7 shrink-0'
-                  }`}
-                >
-                  <AppCard
-                    id={card.id}
-                    isFocused={isFocused}
-                    isCondensed={!isFocused}
-                  />
+            {/* TIER 1: TOP TAB STRIP */}
+            {inactiveCards.length > 0 && (
+              <div className="flex w-full h-7 shrink-0 bg-[#18181b] border-b border-[#3f3f46] overflow-x-auto hide-scrollbar">
+                {inactiveCards.map(card => (
+                  <button
+                    key={card.id}
+                    onClick={() => setFocusedCardId(colIndex, card.id)}
+                    className="flex-1 min-w-[100px] border-r border-[#3f3f46] px-3 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 hover:bg-[#27272a] hover:text-zinc-200 truncate flex items-center transition-colors cursor-pointer"
+                    title={card.appId?.toUpperCase() || 'APP'}
+                  >
+                    {card.appId?.toUpperCase() || 'APP'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* TIER 2: VIEWPORT (Focused App) */}
+            <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden bg-black relative">
+              {focusedCard ? (
+                <AppCard
+                  id={focusedCard.id}
+                  isFocused={true}
+                  isCondensed={false}
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-zinc-700 font-mono text-sm">
+                  NO ACTIVE TILE
                 </div>
-              );
-            })}
+              )}
+            </div>
+
+            {/* TIER 3: BOTTOM SPAWNER */}
+            <div className="relative shrink-0">
+              {pickerColIndex === colIndex && (
+                <div className="absolute bottom-6 left-0 right-0 z-40 bg-zinc-950 border border-[#3f3f46] flex flex-col max-h-40 overflow-y-auto">
+                  {appIds.map(appId => (
+                    <button
+                      key={appId}
+                      onClick={() => {
+                        spawnApp(appId, undefined, colIndex);
+                        setPickerColIndex(null);
+                      }}
+                      className="h-6 px-2 text-left text-[10px] font-mono uppercase tracking-wider text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-b border-[#27272a] last:border-b-0 cursor-pointer"
+                    >
+                      {appId}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setPickerColIndex(pickerColIndex === colIndex ? null : colIndex)}
+                className="h-6 w-full bg-zinc-950 border-t border-[#3f3f46] hover:bg-zinc-800 text-zinc-600 hover:text-zinc-300 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
+              >
+                <span className="material-icons text-[12px]">add</span>
+                <span>New Tile</span>
+              </button>
+            </div>
           </div>
         );
       })}

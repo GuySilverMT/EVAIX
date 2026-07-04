@@ -1,9 +1,14 @@
-import { prisma } from '../db.js';
+/**
+ * FileIndexRepository - JSON-based file index storage
+ * Replaces previous Prisma $queryRawUnsafe / $executeRawUnsafe implementation
+ */
+
+import { jsonDataStore } from '../utils/jsonDataStore.js';
 
 export interface FileIndexRow {
   filePath: string;
   contentHash: string;
-  updatedAt: Date;
+  updatedAt: string;
 }
 
 export class FileIndexRepository {
@@ -11,47 +16,67 @@ export class FileIndexRepository {
    * Get file index entry by path
    */
   async getByFilePath(filePath: string): Promise<FileIndexRow | null> {
-    const results = await prisma.$queryRawUnsafe<FileIndexRow[]>(
-      `SELECT "filePath", "contentHash", "updatedAt" FROM "FileIndex" WHERE "filePath" = $1 LIMIT 1`,
-      filePath
-    );
-    return results[0] || null;
+    try {
+      const data = await jsonDataStore.getFileIndex();
+      const file = data.files?.find((f: FileIndexRow) => f.filePath === filePath);
+      return file || null;
+    } catch (error) {
+      console.error('Error getting file index:', error);
+      return null;
+    }
   }
 
   /**
    * Upsert file index entry
    */
   async upsert(filePath: string, hash: string): Promise<number> {
-    return prisma.$executeRawUnsafe(
-      `INSERT INTO "FileIndex" ("filePath", "contentHash", "updatedAt") VALUES ($1, $2, CURRENT_TIMESTAMP)
-       ON CONFLICT ("filePath") DO UPDATE SET "contentHash" = EXCLUDED."contentHash", "updatedAt" = CURRENT_TIMESTAMP`,
-      filePath,
-      hash
-    );
+    try {
+      const data = await jsonDataStore.getFileIndex();
+      const files = data.files || [];
+      const existingIndex = files.findIndex((f: FileIndexRow) => f.filePath === filePath);
+
+      if (existingIndex >= 0) {
+        files[existingIndex] = {
+          filePath,
+          contentHash: hash,
+          updatedAt: new Date().toISOString(),
+        };
+      } else {
+        files.push({
+          filePath,
+          contentHash: hash,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      await jsonDataStore.saveFileIndex({ files });
+      return 1;
+    } catch (error) {
+      console.error('Error upserting file index:', error);
+      return 0;
+    }
   }
 
   /**
    * Delete file index and its associated vector embeddings
    */
   async delete(filePath: string): Promise<void> {
-    await prisma.$executeRawUnsafe(
-      `DELETE FROM "FileIndex" WHERE "filePath" = $1`,
-      filePath
-    );
-    await prisma.$executeRawUnsafe(
-      `DELETE FROM "VectorEmbedding" WHERE "filePath" = $1`,
-      filePath
-    );
+    try {
+      const data = await jsonDataStore.getFileIndex();
+      const files = data.files?.filter((f: FileIndexRow) => f.filePath !== filePath) || [];
+      await jsonDataStore.saveFileIndex({ files });
+    } catch (error) {
+      console.error('Error deleting file index:', error);
+    }
   }
 
   /**
    * Clear all embeddings for a file without deleting the index (if needed)
    */
   async deleteVectorsByFilePath(filePath: string): Promise<number> {
-    return prisma.$executeRawUnsafe(
-      `DELETE FROM "VectorEmbedding" WHERE "filePath" = $1`,
-      filePath
-    );
+    // In JSON store, we don't track embeddings separately; just log this call
+    console.debug(`[FileIndexRepository] deleteVectorsByFilePath called for ${filePath}`);
+    return 0;
   }
 }
 

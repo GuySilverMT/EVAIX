@@ -1,0 +1,42 @@
+{
+  "folders": {
+    "f1": {
+      "id": "f1",
+      "name": "Development",
+      "parentId": null,
+      "children": [],
+      "bookmarks": [],
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "f2": {
+      "id": "f2",
+      "name": "Documentation",
+      "parentId": null,
+      "children": [],
+      "bookmarks": [],
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  },
+  "bookmarks": {
+    "b1": {
+      "id": "b1",
+      "title": "GitHub",
+      "url": "https://github.com",
+      "faviconUrl": "https://github.com/favicon.ico",
+      "folderId": "f1",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    "b2": {
+      "id": "b2",
+      "title": "MDN Web Docs",
+      "url": "https://developer.mozilla.org",
+      "faviconUrl": "https://developer.mozilla.org/favicon.ico",
+      "folderId": "f2",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  }
+}

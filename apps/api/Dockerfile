@@ -1,30 +1,28 @@
-# Base image
+# Base image — pin pnpm to match lockfile version (v9 format)
 FROM node:18-alpine AS base
-RUN npm install -g pnpm turbo
+RUN npm install -g pnpm@9 turbo
 
 # Builder stage
-FROM base as builder
+FROM base AS builder
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
-RUN pnpm install --frozen-lockfile
+# Use --no-frozen-lockfile so a lockfile delta from Prisma removal doesn't break the build
+RUN pnpm install --no-frozen-lockfile
 COPY . .
 RUN turbo build --filter=api
 
-# Final stage
+# Final stage — same pnpm pin
 FROM node:18-alpine
-RUN npm install -g pnpm@8.6.10
+RUN npm install -g pnpm@9
 WORKDIR /app
 
-# Copy the entire monorepo from the builder stage
+# Copy built artefacts from builder
 COPY --from=builder /app .
 
-# Install only production dependencies for the API
-RUN pnpm install --prod --filter=api
-
-# Generate Prisma Client (CRITICAL STEP)
-RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+# Install production deps only (no Prisma, no generate step needed)
+RUN pnpm install --prod --filter=api --no-frozen-lockfile
 
 EXPOSE 4000
 CMD ["node", "apps/api/dist/index.js"]

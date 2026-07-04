@@ -1,6 +1,5 @@
 // import { AgentFactoryService } from './AgentFactory.js';
 import { ProviderManager } from "./ProviderManager.js";
-import { PrismaAgentConfigRepository } from '../repositories/PrismaAgentConfigRepository.js';
 import type { CardAgentState } from '../types.js';
 
 /**
@@ -32,7 +31,6 @@ export class ConfidenceAgent {
   constructor() {
       // this.agentFactory = new AgentFactoryService(
       //   ProviderManager.getInstance(),
-      //   new PrismaAgentConfigRepository()
       // );
   }
 

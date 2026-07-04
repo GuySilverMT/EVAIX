@@ -43,6 +43,7 @@ interface ProviderState {
   setActiveModel: (id: string | null) => void;
   setActiveRole: (role: string | null) => void;
   setRoles: (roles: RoleConfig[]) => void;
+  setProviders: (providers: ProviderConfig[]) => void;
 }
 
 const DEFAULT_ROLES: RoleConfig[] = [
@@ -97,9 +98,44 @@ export const useProviderStore = create<ProviderState>()(
       setActiveModel: (id) => set({ activeModelId: id }),
       setActiveRole: (role) => set({ activeRoleId: role }),
       setRoles: (roles) => set({ roles }),
+      setProviders: (providers) => set({ providers }),
     }),
     {
       name: 'evaix-provider-storage'
     }
   )
 );
+
+// Add the sync function
+export const syncProvidersWithLiteLLM = async () => {
+  try {
+    const res = await fetch('http://127.0.0.1:4000/trpc/llm.getConfigModels');
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(`API Error: ${data.error?.message || res.statusText}`);
+    }
+    
+    // TRPC wraps successful responses in result.data
+    const remoteModels = data.result?.data || [];
+
+    const litellmProvider: ProviderConfig = {
+      id: 'litellm',
+      name: 'LiteLLM',
+      enabled: true,
+      color: '#a855f7',
+      models: remoteModels
+    };
+    
+    const store = useProviderStore.getState();
+    store.setProviders([litellmProvider]);
+    if (!store.activeProviderId) {
+      store.setActiveProvider('litellm');
+    }
+    if (!store.activeModelId && remoteModels.length > 0) {
+      store.setActiveModel(remoteModels[0].id);
+    }
+  } catch (e) {
+    console.error("LiteLLM not reachable yet:", e);
+  }
+};

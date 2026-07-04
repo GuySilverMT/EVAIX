@@ -1,9 +1,9 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 import { identityArchitect, getIdentityFallback, IdentityConfig } from './IdentityArchitect.js';
 import { cortexArchitect, getCortexFallback, CortexConfig } from './CortexArchitect.js';
 import { contextArchitect, getContextFallback, ContextConfig } from './ContextArchitect.js';
 import { governanceArchitect, getGovernanceFallback, GovernanceConfig } from './GovernanceArchitect.js';
 import { executeJsonMode } from './architectHelpers.js';
-import { RoleVariant, Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { ProviderManager } from './ProviderManager.js';
 import { type BaseLLMProvider } from '../utils/BaseLLMProvider.js';
@@ -218,10 +218,10 @@ process.stdout.write(JSON.stringify(__result));
         const variant = await prisma.roleVariant.create({
             data: {
                 roleId: roleId,
-                identityConfig: identityConfig as unknown as Prisma.InputJsonValue,
-                cortexConfig: cortexConfig as unknown as Prisma.InputJsonValue,
-                governanceConfig: governanceConfig as unknown as Prisma.InputJsonValue,
-                contextConfig: contextConfig as unknown as Prisma.InputJsonValue,
+                identityConfig: identityConfig as unknown as any,
+                cortexConfig: cortexConfig as unknown as any,
+                governanceConfig: governanceConfig as unknown as any,
+                contextConfig: contextConfig as unknown as any,
                 isActive: true
             }
         });
@@ -234,7 +234,7 @@ process.stdout.write(JSON.stringify(__result));
              meta.sourceOfTruth = 'DB';
              await prisma.role.update({
                   where: { id: roleId },
-                  data: { metadata: meta as Prisma.JsonObject }
+                  data: { metadata: meta as any }
              });
         }
 
