@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useWorkspaceStore, type CardData } from '../../../stores/workspace.store.js';
 import { AppCard } from '../../work-order/AppCard.js';
 import { AppRegistry } from '../../../registry/ComponentRegistry.js';
+
+const APP_IDS = Object.keys(AppRegistry);
 
 /**
  * @file TheGrid.tsx
@@ -23,26 +25,29 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
   const spawnApp = useWorkspaceStore(s => s.spawnApp);
   const [pickerColIndex, setPickerColIndex] = useState<number | null>(null);
-  const appIds = Object.keys(AppRegistry);
 
-  // Filter cards by displayId / screenspaceId
-  const activeCards = activeCardsStore.filter(
-    c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-  );
+  const columnsMap = useMemo(() => {
+    // Filter cards by displayId / screenspaceId
+    const activeCards = activeCardsStore.filter(
+      c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
+    );
 
-  // Group activeCards by columnId
-  const columnsMap: Record<number, CardData[]> = {};
-  for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
-    columnsMap[colIdx] = [];
-  }
-
-  activeCards.forEach(card => {
-    const colId = card.columnId ?? card.column ?? 0;
-    if (!columnsMap[colId]) {
-      columnsMap[colId] = [];
+    // Group activeCards by columnId
+    const map: Record<number, CardData[]> = {};
+    for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
+      map[colIdx] = [];
     }
-    columnsMap[colId].push(card);
-  });
+
+    activeCards.forEach(card => {
+      const colId = card.columnId ?? card.column ?? 0;
+      if (!map[colId]) {
+        map[colId] = [];
+      }
+      map[colId].push(card);
+    });
+
+    return map;
+  }, [activeCardsStore, displayId, totalColumns]);
 
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
@@ -94,7 +99,7 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
             <div className="relative shrink-0">
               {pickerColIndex === colIndex && (
                 <div className="absolute bottom-6 left-0 right-0 z-40 bg-zinc-950 border border-[#3f3f46] flex flex-col max-h-40 overflow-y-auto">
-                  {appIds.map(appId => (
+                  {APP_IDS.map(appId => (
                     <button
                       key={appId}
                       onClick={() => {
