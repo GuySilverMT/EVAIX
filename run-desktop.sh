@@ -44,6 +44,33 @@ if true; then
     fi
     sleep 1
   done
+
+  echo "⏳ Waiting for Open WebUI..."
+  for i in {1..30}; do
+    if curl -s http://localhost:8080 > /dev/null 2>&1; then
+      echo "✅ Open WebUI is online!"
+      break
+    fi
+    sleep 1
+  done
+
+  echo "⏳ Waiting for Terminal (ttyd)..."
+  for i in {1..30}; do
+    if curl -s http://localhost:7681 > /dev/null 2>&1; then
+      echo "✅ Terminal is online!"
+      break
+    fi
+    sleep 1
+  done
+
+  echo "⏳ Waiting for File Browser..."
+  for i in {1..30}; do
+    if curl -s http://localhost:8081 > /dev/null 2>&1; then
+      echo "✅ File Browser is online!"
+      break
+    fi
+    sleep 1
+  done
 fi
 
 # 5. Build and launch the desktop application

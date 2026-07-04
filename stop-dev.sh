@@ -3,7 +3,11 @@
 # A more robust script to stop development servers.
 
 # --- Configuration ---
-PORTS_TO_STOP=(4000 4001 5173) # API port, LiteLLM port, and UI port
+PORTS_TO_STOP=(4000 4001 5173 8080 7681 8081) # API port, LiteLLM port, UI port, OpenWebUI, Terminal, FileBrowser
+
+# Also stop Podman containers
+echo "Stopping Docker/Podman containers..."
+podman-compose -f docker-compose.db.yml down 2>/dev/null || true
 
 # --- Main Logic ---
 echo "Attempting to stop processes on ports: ${PORTS_TO_STOP[*]}"

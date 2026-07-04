@@ -377,14 +377,14 @@ export const WebNode: React.FC<WebNodeProps> = ({
       try {
         const urlObj = new URL(validatedUrl);
         errorDescription = `Connection reset. Is the server at ${urlObj.origin} running and accepting connections?`;
-      } catch (urlError) {
+      } catch {
         errorDescription = `Connection reset. Is the server running and accepting connections? (URL: ${validatedUrl})`;
       }
     } else if (e?.errorCode === -102) { // ERR_CONNECTION_REFUSED
       try {
         const urlObj = new URL(validatedUrl);
         errorDescription = `Connection refused. Is the server at ${urlObj.origin} running and accessible?`;
-      } catch (urlError) {
+      } catch {
         errorDescription = `Connection refused. Is the server running and accessible? (URL: ${validatedUrl})`;
       }
     } else if (e?.errorCode === -105) { // ERR_NAME_NOT_RESOLVED
