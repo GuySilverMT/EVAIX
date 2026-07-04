@@ -3,17 +3,22 @@
   "language": "en",
   "words": [
     "checkpointing",
-    "listdir",
-    "unvalidated",
-    "numpy",
-    "modelcapabilities",
-    "vosk",
-    "picovoice",
-    "Subcat",
+    "chromeless",
     "contenteditable",
+    "EVAIX",
     "Fira",
-    "uibuilder",
+    "listdir",
     "mediatek",
-    "Refactorer"
+    "modelcapabilities",
+    "navigations",
+    "numpy",
+    "Omnibox",
+    "picovoice",
+    "Refactorer",
+    "Subcat",
+    "uibuilder",
+    "unvalidated",
+    "vosk",
+    "webnode"
   ]
 }
