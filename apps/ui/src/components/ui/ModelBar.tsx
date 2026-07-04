@@ -102,7 +102,7 @@ export const ModelBar: React.FC<ModelBarProps> = ({
       return (
         <Tooltip title="Gateway: Link LiteLLM Provider" placement={expandDirection === 'left' ? 'bottom-end' : 'bottom-start'}>
           <button
-            onClick={() => spawnApp('lite-llm-config')}
+            onClick={() => spawnApp('litellm-ui')}
             className="px-3 h-7 text-[10px] font-bold rounded bg-green-950/80 hover:bg-green-900 text-green-300 border border-green-500/50 flex items-center gap-2 transition-all shadow-lg animate-pulse cursor-pointer uppercase tracking-widest"
           >
             <LinkIcon size={12} />

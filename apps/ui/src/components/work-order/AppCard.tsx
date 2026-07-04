@@ -44,8 +44,8 @@ export const AppCard = memo(({ id, isFocused = true, isCondensed = false }: AppC
           key={viewMode}
           cardId={id}
           id={id}
-          {...card.props}
           {...appDef?.props}
+          {...card.props}
           hideWrapper={!appDef?.showBrowserBar}
         />
       </div>

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWorkspaceStore, type CardData } from '../../../stores/workspace.store.js';
 import { AppCard } from '../../work-order/AppCard.js';
+import { AppRegistry } from '../../../registry/ComponentRegistry.js';
 
 /**
  * @file TheGrid.tsx
@@ -21,6 +22,8 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   const focusedCardIds = useWorkspaceStore(s => s.focusedCardIds);
   const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
   const spawnApp = useWorkspaceStore(s => s.spawnApp);
+  const [pickerColIndex, setPickerColIndex] = useState<number | null>(null);
+  const appIds = Object.keys(AppRegistry);
 
   // Filter cards by displayId / screenspaceId
   const activeCards = activeCardsStore.filter(
@@ -88,13 +91,31 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
             </div>
 
             {/* TIER 3: BOTTOM SPAWNER */}
-            <button
-              onClick={() => spawnApp('file-explorer', undefined, colIndex)}
-              className="h-6 w-full shrink-0 bg-zinc-950 border-t border-[#3f3f46] hover:bg-zinc-800 text-zinc-600 hover:text-zinc-300 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
-            >
-              <span className="material-icons text-[12px]">add</span>
-              <span>New Tile</span>
-            </button>
+            <div className="relative shrink-0">
+              {pickerColIndex === colIndex && (
+                <div className="absolute bottom-6 left-0 right-0 z-40 bg-zinc-950 border border-[#3f3f46] flex flex-col max-h-40 overflow-y-auto">
+                  {appIds.map(appId => (
+                    <button
+                      key={appId}
+                      onClick={() => {
+                        spawnApp(appId, undefined, colIndex);
+                        setPickerColIndex(null);
+                      }}
+                      className="h-6 px-2 text-left text-[10px] font-mono uppercase tracking-wider text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 border-b border-[#27272a] last:border-b-0 cursor-pointer"
+                    >
+                      {appId}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setPickerColIndex(pickerColIndex === colIndex ? null : colIndex)}
+                className="h-6 w-full bg-zinc-950 border-t border-[#3f3f46] hover:bg-zinc-800 text-zinc-600 hover:text-zinc-300 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
+              >
+                <span className="material-icons text-[12px]">add</span>
+                <span>New Tile</span>
+              </button>
+            </div>
           </div>
         );
       })}
