@@ -21,7 +21,7 @@ export const EvaixShell: React.FC = () => {
   useEffect(() => {
     // Initial Default: If activeCards is empty, dispatch spawnApp for defaults
     if (cards.length === 0) {
-      spawnApp('litellm-ui', { initialUrl: 'http://127.0.0.1:4001/ui' });
+      spawnApp('litellm-ui', { initialUrl: 'http://localhost:8080' });
       spawnApp('openwebui', { initialUrl: 'http://localhost:8080' });
     }
   }, [cards.length, spawnApp]);

@@ -127,7 +127,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           displayId: 1,
           appId: 'litellm-ui',
           title: 'LITELLM-UI',
-          props: { initialUrl: 'http://127.0.0.1:4001/ui' }
+          props: { initialUrl: 'http://localhost:8080' }
         },
         {
           id: 'card-2',
@@ -153,7 +153,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           displayId: 1,
           appId: 'litellm-ui',
           title: 'LITELLM-UI',
-          props: { initialUrl: 'http://127.0.0.1:4001/ui' }
+          props: { initialUrl: 'http://localhost:8080' }
         },
         {
           id: 'card-2',
