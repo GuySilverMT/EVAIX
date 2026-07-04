@@ -25,29 +25,20 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
   const spawnApp = useWorkspaceStore(s => s.spawnApp);
   const [pickerColIndex, setPickerColIndex] = useState<number | null>(null);
+  const appIds = Object.keys(AppRegistry);
 
-  const columnsMap = useMemo(() => {
-    // Filter cards by displayId / screenspaceId
-    const activeCards = activeCardsStore.filter(
-      c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-    );
+  // Filter cards by displayId / screenspaceId
+  const activeCards = activeCardsStore.filter(
+    c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
+  ), [cards, displayId]);
 
-    // Group activeCards by columnId
+  const columnsMap = React.useMemo(() => {
     const map: Record<number, CardData[]> = {};
+
+
     for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
       map[colIdx] = [];
     }
-
-    activeCards.forEach(card => {
-      const colId = card.columnId ?? card.column ?? 0;
-      if (!map[colId]) {
-        map[colId] = [];
-      }
-      map[colId].push(card);
-    });
-
-    return map;
-  }, [activeCardsStore, displayId, totalColumns]);
 
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">

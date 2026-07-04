@@ -26,10 +26,10 @@ podman-compose -f docker-compose.db.yml up -d
 
 # 3. Wait for Services
 if true; then
-  echo "⏳ Waiting for PostgreSQL..."
+  echo "⏳ Waiting for LiteLLM Database (litellm-db)..."
   for i in {1..30}; do
-    if podman exec evaix_postgres_1 pg_isready -U myuser -d mydb &>/dev/null; then
-      echo "✅ PostgreSQL is ready!"
+    if podman exec evaix_litellm_db pg_isready -U litellm -d litellm &>/dev/null; then
+      echo "✅ LiteLLM Database is ready!"
       break
     fi
     sleep 1

@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { Menu, MenuItem, Popover, Tooltip, Divider } from '@mui/material';
 import { Sparkles, Play, Link as LinkIcon, Eye, Zap, Database, Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils.js';
+import type { ProviderConfig } from '../../stores/provider.store.js';
 
 export type ContextStrategy = 'Visible Card' | 'Visible Tab' | 'Full Stack';
 
@@ -13,6 +14,8 @@ export interface ModelBarProps {
   expandDirection?: 'left' | 'right' | 'up' | 'down';
   className?: string;
   onPlayClick?: () => void;
+  contextDepth?: number;
+  onContextDepthChange?: (depth: number) => void;
 }
 
 export const ModelBar: React.FC<ModelBarProps> = ({
@@ -20,7 +23,9 @@ export const ModelBar: React.FC<ModelBarProps> = ({
   isCondensed = false,
   expandDirection = 'left',
   className,
-  onPlayClick
+  onPlayClick,
+  contextDepth = 10,
+  onContextDepthChange
 }) => {
   const providers = useProviderStore(s => s.providers);
   const roles = useProviderStore(s => s.roles);
@@ -33,9 +38,40 @@ export const ModelBar: React.FC<ModelBarProps> = ({
   const setActiveRole = useProviderStore(s => s.setActiveRole);
   const toggleProvider = useProviderStore(s => s.toggleProvider);
   const toggleModel = useProviderStore(s => s.toggleModel);
+  const setProviders = useProviderStore(s => s.setProviders);
 
   const spawnApp = useWorkspaceStore(s => s.spawnApp);
   const executeAgent = useWorkspaceStore(s => s.executeAgent);
+
+  // Hardcoded model list matching our active gateway targets
+  const hardcodedModels = [
+    { id: 'xai/grok-3', name: 'Grok 3', enabled: true, color: '#a855f7' },
+    { id: 'meta/llama-3.3-70b-instruct', name: 'NVIDIA Llama', enabled: true, color: '#0ea5e9' },
+    { id: 'together/llama3-70b', name: 'Together Llama', enabled: true, color: '#10b981' },
+    { id: 'openrouter/claude-3.5-sonnet', name: 'OpenRouter Claude', enabled: true, color: '#f59e0b' }
+  ];
+  
+  // Initialize provider store with hardcoded models
+  React.useEffect(() => {
+    const hardcodedProvider: ProviderConfig = {
+      id: 'gateway',
+      name: 'AI Gateway',
+      enabled: true,
+      color: '#a855f7',
+      models: hardcodedModels
+    };
+    
+    // Update provider store with hardcoded models
+    setProviders([hardcodedProvider]);
+    
+    // Set as active if not already set
+    if (!activeProviderId) {
+      setActiveProvider('gateway');
+      if (hardcodedModels[0]) {
+        setActiveModel(hardcodedModels[0].id);
+      }
+    }
+  }, [activeProviderId, setActiveProvider, setActiveModel, setProviders]);
 
   // Dropdown States
   const [menuAnchorEl, setMenuAnchorEl] = useState<{ element: HTMLElement; type: 'system' | 'provider' | 'model' | 'role' } | null>(null);
@@ -55,7 +91,7 @@ export const ModelBar: React.FC<ModelBarProps> = ({
   const closeMenu = () => setMenuAnchorEl(null);
 
   const activeProvider = providers.find(p => p.id === activeProviderId) || providers[0];
-  const availableModels = activeProvider?.models || [];
+  const availableModels = activeProvider?.models || hardcodedModels;
 
   const handlePlayClick = () => {
     if (onPlayClick) {
@@ -98,20 +134,6 @@ export const ModelBar: React.FC<ModelBarProps> = ({
 
   // The actual Matrix HUD
   const renderMatrix = () => {
-    if (providers.length === 0) {
-      return (
-        <Tooltip title="Gateway: Link LiteLLM Provider" placement={expandDirection === 'left' ? 'bottom-end' : 'bottom-start'}>
-          <button
-            onClick={() => spawnApp('litellm-ui')}
-            className="px-3 h-7 text-[10px] font-bold rounded bg-green-950/80 hover:bg-green-900 text-green-300 border border-green-500/50 flex items-center gap-2 transition-all shadow-lg animate-pulse cursor-pointer uppercase tracking-widest"
-          >
-            <LinkIcon size={12} />
-            <span>Link Gateway</span>
-          </button>
-        </Tooltip>
-      );
-    }
-
     return (
       <div className="flex items-center gap-1.5 h-7">
         <Tooltip title="[S] System & Scope Config" placement="bottom">
@@ -151,13 +173,24 @@ export const ModelBar: React.FC<ModelBarProps> = ({
           </button>
         </Tooltip>
 
-        <Tooltip title={`Context: ${contextStrategy} | Location: ${contextLocation}`} placement="bottom">
+        <Tooltip title={`Context: ${contextStrategy} | Location: ${contextLocation} | Depth: ${contextDepth} messages`} placement="bottom">
           <div
             className="h-7 px-2.5 rounded bg-[#18181b] border border-[#3f3f46] flex flex-col items-center justify-center cursor-default hover:border-zinc-500 transition-colors shadow-sm min-w-[60px]"
           >
             <span className={cn("text-[9px] font-mono font-bold tracking-tight", getContextColor())}>
               {getContextEstimate()}
             </span>
+            {onContextDepthChange && (
+              <input
+                type="range"
+                min="1"
+                max="50"
+                value={contextDepth}
+                onChange={(e) => onContextDepthChange(Number(e.target.value))}
+                className="w-16 h-1 mt-0.5 appearance-none bg-zinc-700 rounded-full cursor-pointer accent-blue-500"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
           </div>
         </Tooltip>
 
@@ -286,9 +319,6 @@ export const ModelBar: React.FC<ModelBarProps> = ({
         {/* MODEL MENU */}
         {menuAnchorEl?.type === 'model' && (
           <div className="p-1 max-h-[300px] overflow-y-auto custom-scrollbar">
-            {availableModels.length === 0 && (
-              <div className="px-3 py-2 text-xs text-zinc-500 text-center">No models loaded.</div>
-            )}
             {availableModels.map(model => (
               <MenuItem 
                 key={model.id}
