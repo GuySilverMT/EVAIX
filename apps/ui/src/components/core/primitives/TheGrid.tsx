@@ -28,21 +28,15 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   // Filter cards by displayId / screenspaceId
   const activeCards = activeCardsStore.filter(
     c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-  );
+  ), [cards, displayId]);
 
-  // Group activeCards by columnId
-  const columnsMap: Record<number, CardData[]> = {};
-  for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
-    columnsMap[colIdx] = [];
-  }
+  const columnsMap = React.useMemo(() => {
+    const map: Record<number, CardData[]> = {};
 
-  activeCards.forEach(card => {
-    const colId = card.columnId ?? card.column ?? 0;
-    if (!columnsMap[colId]) {
-      columnsMap[colId] = [];
+
+    for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
+      map[colIdx] = [];
     }
-    columnsMap[colId].push(card);
-  });
 
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
