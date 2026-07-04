@@ -451,7 +451,24 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: 'workspace-storage',
-      version: 2, // [NEW] Bump version to forcefully invalidate broken cache
+      version: 3,
+      migrate: () => {
+        return {
+          columns: 2,
+          cards: [],
+          activeCards: [],
+          activeScreenspaceId: 1,
+          activeWorkspaceId: null,
+          activeWorkspacePath: null,
+          projectName: null,
+          projectType: null,
+          activeProject: { name: null, type: null },
+          activeModelId: null,
+          recentProjects: [],
+          voiceMode: 'icon' as const,
+          focusedCardIds: {},
+        };
+      },
       partialize: (state) => ({
         columns: state.columns,
         cards: state.cards,
@@ -465,6 +482,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         activeModelId: state.activeModelId,
         recentProjects: state.recentProjects,
         voiceMode: state.voiceMode,
+        focusedCardIds: state.focusedCardIds,
       }),
     }
   )

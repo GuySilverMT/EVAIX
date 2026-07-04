@@ -18,7 +18,7 @@ const __dirname = dirname(__filename);
 const connectionString = process.env.DATABASE_URL || 'postgresql://myuser:mypassword@127.0.0.1:5432/mydb';
 
 // Path to the JSON file
-const jsonFilePath = join(__dirname, '../../apps/api/apps/api/.evaix/vectorEmbeddings.json');
+const jsonFilePath = join(__dirname, '../apps/api/.evaix/vectorEmbeddings.json');
 
 interface VectorData {
   id: string;
@@ -66,7 +66,7 @@ async function migrateJsonToPostgres() {
     console.log(`📊 Found ${data.vectors.length} vector embeddings to migrate`);
     
     // Prepare batch insert
-    const batchSize = 100;
+    const batchSize = 10; // Reduced batch size for stability
     let successCount = 0;
     let errorCount = 0;
     
@@ -74,17 +74,19 @@ async function migrateJsonToPostgres() {
       const batch = data.vectors.slice(i, i + batchSize);
       
       try {
-        // Build insert query with proper vector casting
+        // Build insert query with proper vector casting using SQL template
         for (const vectorData of batch) {
-          await sql`
+          const vectorString = vectorData.vector.join(',');
+          
+          await sql.unsafe(`
             INSERT INTO agent_dna (agent_id, chunk_content, embedding)
             VALUES (
-              ${vectorData.id || ''},
-              ${vectorData.content},
-              ${sql`${vectorData.vector}`}::vector
+              '${(vectorData.id || '').replace(/'/g, "''")}',
+              '${(vectorData.content.replace(/'/g, "''"))}',
+              ARRAY[${vectorString}]::vector
             )
             ON CONFLICT DO NOTHING
-          `;
+          `);
           successCount++;
         }
         

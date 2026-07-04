@@ -33,7 +33,7 @@ export type VectorSearchParams = z.infer<typeof VectorSearchSchema>;
 export const StoreMemorySchema = z.object({
   agentId: z.string().describe('The agent ID that owns this memory'),
   content: z.string().describe('The text content to store as memory'),
-  embedding: z.array(z.number()).length(1536).describe('1536-dimensional vector embedding'),
+  embedding: z.array(z.number()).length(384).describe('384-dimensional vector embedding'),
 });
 
 export type StoreMemoryParams = z.infer<typeof StoreMemorySchema>;
@@ -187,13 +187,13 @@ export class VectorMemoryTool {
    * In production, this would call an embedding service like OpenAI's text-embedding-3-small
    * 
    * @param text - The text to generate an embedding for
-   * @returns 1536-dimensional vector array
+   * @returns 384-dimensional vector array
    */
   private async generateEmbedding(text: string): Promise<number[]> {
     // TODO: Integrate with actual embedding service
     // For now, return a zero vector as placeholder
     console.warn('Embedding generation not implemented - using placeholder zero vector');
-    return new Array(1536).fill(0);
+    return new Array(384).fill(0);
   }
 
   /**

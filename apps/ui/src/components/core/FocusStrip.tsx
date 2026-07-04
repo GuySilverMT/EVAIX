@@ -1,12 +1,6 @@
 import React from 'react';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { AppRegistry } from '../../registry/ComponentRegistry.js';
-import { 
-  ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
-  Maximize2, Minimize2, Settings, Command, GripVertical, Copy
-} from 'lucide-react';
-import { cn } from '../../lib/utils.js';
-
 import { Select, MenuItem } from '@mui/material';
 
 /**
@@ -17,19 +11,17 @@ import { Select, MenuItem } from '@mui/material';
 
 export interface FocusStripProps {
   cardId: string;
-  title?: string;
   icon?: React.ReactNode;
 }
 
 export const FocusStrip: React.FC<FocusStripProps> = ({
   cardId,
-  title = 'Application',
   icon
 }) => {
   const moveCard = useWorkspaceStore(s => s.moveCard);
   const setCardContent = useWorkspaceStore(s => s.setCardContent);
   const card = useWorkspaceStore(s => s.cards.find(c => c.id === cardId));
-  const currentAppId = card?.appId || card?.activeTool || card?.metadata?.viewMode || 'file-explorer';
+  const currentAppId = card?.appId || card?.activeTool || 'file-explorer';
 
   const handleAppChange = (newAppId: string) => {
     setCardContent(cardId, newAppId);
@@ -43,8 +35,8 @@ export const FocusStrip: React.FC<FocusStripProps> = ({
         {/* Dynamic App Swapper Dropdown (MUI) */}
         <Select
           size="small"
-          value={String(currentAppId).toLowerCase()}
-          onChange={(e) => handleAppChange(e.target.value as string)}
+          value={currentAppId}
+          onChange={(e) => handleAppChange(String(e.target.value))}
           sx={{ 
             height: 24, 
             fontSize: '0.70rem', 

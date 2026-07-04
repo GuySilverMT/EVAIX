@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS agent_dna (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id TEXT NOT NULL,
     chunk_content TEXT NOT NULL,
-    embedding VECTOR(1536),
+    embedding VECTOR(384),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -31,7 +31,7 @@ COMMENT ON TABLE agent_dna IS 'Stores vector embeddings for agentic memory and s
 COMMENT ON COLUMN agent_dna.id IS 'Unique identifier for each memory chunk';
 COMMENT ON COLUMN agent_dna.agent_id IS 'Identifier for the agent that owns this memory';
 COMMENT ON COLUMN agent_dna.chunk_content IS 'Text content of the memory chunk';
-COMMENT ON COLUMN agent_dna.embedding IS '1536-dimensional vector embedding (OpenAI text-embedding-3-small)';
+COMMENT ON COLUMN agent_dna.embedding IS '384-dimensional vector embedding (OpenAI text-embedding-3-small)';
 COMMENT ON INDEX agent_dna_embedding_idx IS 'HNSW index for fast cosine similarity search';
 
 -- Create a function to update the updated_at timestamp

@@ -37,7 +37,7 @@ export const AppCard = memo(({ id, isFocused = true, isCondensed = false }: AppC
 
   return (
     <div className="flex h-full w-full rounded-none border-0 bg-[var(--colors-background)] overflow-hidden relative flex-col">
-      {isFocused && <FocusStrip cardId={id} title={viewMode.toUpperCase()} />}
+      {isFocused && <FocusStrip cardId={id} />}
       
       <div className="flex-1 flex overflow-hidden relative w-full h-full min-h-0 min-w-0">
         <RegisteredComponent
@@ -52,3 +52,5 @@ export const AppCard = memo(({ id, isFocused = true, isCondensed = false }: AppC
     </div>
   );
 });
+
+AppCard.displayName = 'AppCard';
