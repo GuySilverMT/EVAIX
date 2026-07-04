@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useWorkspaceStore, type CardData } from '../../../stores/workspace.store.js';
 import { AppCard } from '../../work-order/AppCard.js';
 import { AppRegistry } from '../../../registry/ComponentRegistry.js';
+
+const APP_IDS = Object.keys(AppRegistry);
 
 /**
  * @file TheGrid.tsx
@@ -88,7 +90,7 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
             <div className="relative shrink-0">
               {pickerColIndex === colIndex && (
                 <div className="absolute bottom-6 left-0 right-0 z-40 bg-zinc-950 border border-[#3f3f46] flex flex-col max-h-40 overflow-y-auto">
-                  {appIds.map(appId => (
+                  {APP_IDS.map(appId => (
                     <button
                       key={appId}
                       onClick={() => {
