@@ -1,139 +1,244 @@
 {
+  "version": "1.0.0",
+  "lastUpdated": "2026-07-02T10:24:39.579Z",
   "intents": [
     {
-      "id": "system.wifi.on",
-      "description": "Turn on Wi-Fi connection",
-      "triggers": ["turn on wifi", "enable wifi", "start wifi"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/wifi.sh on"
-      }
+      "id": "filesystem_management",
+      "path": "filesystem",
+      "accepts_args": true,
+      "triggers": [
+        "read a file",
+        "write a file",
+        "open file",
+        "edit file",
+        "save file",
+        "change file",
+        "create a new file",
+        "update file",
+        "modify file",
+        "show me the file content"
+      ]
     },
     {
-      "id": "system.wifi.off",
-      "description": "Turn off Wi-Fi connection",
-      "triggers": ["turn off wifi", "disable wifi", "stop wifi"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/wifi.sh off"
-      }
+      "id": "git_operations",
+      "path": "git",
+      "accepts_args": true,
+      "triggers": [
+        "commit changes",
+        "push code",
+        "pull repository",
+        "create a branch",
+        "git status",
+        "check git logs",
+        "merge branch",
+        "revert commit",
+        "git diff",
+        "version control"
+      ]
     },
     {
-      "id": "system.wifi.toggle",
-      "description": "Toggle Wi-Fi connection",
-      "triggers": ["toggle wifi", "switch wifi"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/wifi.sh toggle"
-      }
+      "id": "code_search",
+      "path": "search_codebase",
+      "accepts_args": true,
+      "triggers": [
+        "search the code",
+        "find in files",
+        "look up a function",
+        "search repository",
+        "grep codebase",
+        "find this string",
+        "where is this defined",
+        "search for a variable",
+        "code search",
+        "explore codebase"
+      ]
     },
     {
-      "id": "system.bluetooth.on",
-      "description": "Turn on Bluetooth",
-      "triggers": ["turn on bluetooth", "enable bluetooth", "start bluetooth"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/bluetooth.sh on"
-      }
+      "id": "browser_automation",
+      "path": "browser_playwright",
+      "accepts_args": true,
+      "triggers": [
+        "open the browser",
+        "scrape a website",
+        "fetch page",
+        "read the website",
+        "navigate to url",
+        "click the button",
+        "fill out the form",
+        "run a web test",
+        "capture screenshot",
+        "browser automation"
+      ]
     },
     {
-      "id": "system.bluetooth.off",
-      "description": "Turn off Bluetooth",
-      "triggers": ["turn off bluetooth", "disable bluetooth", "stop bluetooth"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/bluetooth.sh off"
-      }
+      "id": "database_management",
+      "path": "postgres",
+      "accepts_args": true,
+      "triggers": [
+        "run sql query",
+        "query the database",
+        "select from table",
+        "insert data",
+        "update database",
+        "delete row",
+        "check database schema",
+        "connect to postgres",
+        "db operations",
+        "manage tables"
+      ]
     },
     {
-      "id": "system.bluetooth.toggle",
-      "description": "Toggle Bluetooth",
-      "triggers": ["toggle bluetooth", "switch bluetooth"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/bluetooth.sh toggle"
-      }
+      "id": "role_management",
+      "path": "role_architect",
+      "accepts_args": true,
+      "triggers": [
+        "list ai roles",
+        "create a new persona",
+        "update role config",
+        "evolve role variant",
+        "manage agents",
+        "show available roles",
+        "hire a specialist",
+        "patch role",
+        "assign role",
+        "architect role"
+      ]
     },
     {
-      "id": "system.notifications.on",
-      "description": "Enable notifications",
-      "triggers": ["enable notifications", "turn on notifications", "unpause notifications", "show notifications"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/notifications.sh on"
-      }
+      "id": "ui_building",
+      "path": "ui_architect",
+      "accepts_args": true,
+      "triggers": [
+        "inspect ui tree",
+        "mutate ui node",
+        "generate layout",
+        "build a component",
+        "create a new ui",
+        "modify the layout",
+        "update frontend",
+        "render canvas",
+        "design interface",
+        "ui architectural changes"
+      ]
     },
     {
-      "id": "system.notifications.off",
-      "description": "Disable or pause notifications",
-      "triggers": ["disable notifications", "turn off notifications", "pause notifications", "hide notifications", "do not disturb"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/notifications.sh off"
-      }
+      "id": "memory_management",
+      "path": "memory",
+      "accepts_args": true,
+      "triggers": [
+        "save to memory",
+        "remember this",
+        "recall information",
+        "search memory",
+        "forget this",
+        "store context",
+        "retrieve data",
+        "access memory block",
+        "read from storage",
+        "update memory"
+      ]
     },
     {
-      "id": "system.notifications.toggle",
-      "description": "Toggle notifications",
-      "triggers": ["toggle notifications", "switch notifications"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/notifications.sh toggle"
-      }
+      "id": "planning_system",
+      "path": "planning",
+      "accepts_args": true,
+      "triggers": [
+        "create a plan",
+        "execute system command",
+        "review plan",
+        "update tasks",
+        "check system status",
+        "start planning",
+        "manage tasks",
+        "list processes",
+        "system operations",
+        "orchestrate tasks"
+      ]
     },
     {
-      "id": "system.sound.on",
-      "description": "Turn on sound (unmute)",
-      "triggers": ["unmute sound", "turn on sound", "enable sound", "unmute speakers", "enable speakers"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/sound.sh on"
-      }
+      "id": "terminal_execution",
+      "path": "terminal",
+      "accepts_args": true,
+      "triggers": [
+        "run terminal command",
+        "execute in bash",
+        "open shell",
+        "run script",
+        "bash command",
+        "console output",
+        "terminal execute",
+        "launch in terminal",
+        "command line",
+        "shell execution"
+      ]
     },
     {
-      "id": "system.sound.off",
-      "description": "Turn off sound (mute)",
-      "triggers": ["mute sound", "turn off sound", "disable sound", "mute speakers", "disable speakers"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/sound.sh off"
-      }
+      "id": "start_voice_input",
+      "path": "start-voice-input.sh",
+      "accepts_args": false,
+      "triggers": [
+        "start voice input",
+        "enable speech to text",
+        "launch voice recognition",
+        "turn on listening",
+        "activate mic",
+        "listen to me",
+        "voice command mode",
+        "run voice script",
+        "start listening",
+        "open voice app"
+      ]
     },
     {
-      "id": "system.sound.toggle",
-      "description": "Toggle sound mute state",
-      "triggers": ["toggle sound", "toggle mute", "toggle speakers"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/sound.sh toggle"
-      }
+      "id": "start_ui",
+      "path": "start-ui.sh",
+      "accepts_args": false,
+      "triggers": [
+        "start the ui",
+        "launch user interface",
+        "open frontend",
+        "run the web app",
+        "start frontend server",
+        "spin up ui",
+        "display the interface",
+        "open dashboard",
+        "start web interface",
+        "show the app"
+      ]
     },
     {
-      "id": "system.mic.on",
-      "description": "Turn on microphone (unmute)",
-      "triggers": ["unmute mic", "unmute microphone", "turn on mic", "turn on microphone", "enable mic", "enable microphone"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/mic.sh on"
-      }
+      "id": "stop_dev",
+      "path": "stop-dev.sh",
+      "accepts_args": false,
+      "triggers": [
+        "stop development",
+        "kill servers",
+        "shut down dev environment",
+        "stop the app",
+        "halt processes",
+        "close dev mode",
+        "terminate servers",
+        "quit application",
+        "end session",
+        "stop running scripts"
+      ]
     },
     {
-      "id": "system.mic.off",
-      "description": "Turn off microphone (mute)",
-      "triggers": ["mute mic", "mute microphone", "turn off mic", "turn off microphone", "disable mic", "disable microphone"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/mic.sh off"
-      }
-    },
-    {
-      "id": "system.mic.toggle",
-      "description": "Toggle microphone mute state",
-      "triggers": ["toggle mic", "toggle microphone"],
-      "action": {
-        "type": "shell",
-        "command": ".evaix/voice/scripts/system/mic.sh toggle"
-      }
+      "id": "run_desktop",
+      "path": "run-desktop.sh",
+      "accepts_args": false,
+      "triggers": [
+        "run desktop app",
+        "launch desktop version",
+        "start desktop client",
+        "open application window",
+        "desktop mode",
+        "execute desktop app",
+        "start native app",
+        "run natively",
+        "open desktop software",
+        "launch native client"
+      ]
     }
   ]
 }

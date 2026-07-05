@@ -1,0 +1,24 @@
+model_list:
+  - model_name: xai/grok-3
+    litellm_params:
+      model: xai/grok-3
+      api_key: ${XAI_API_KEY}
+  
+  - model_name: meta/llama-3.3-70b-instruct
+    litellm_params:
+      model: meta/llama-3.3-70b-instruct
+      api_key: ${NVIDIA_API_KEY}
+  
+  - model_name: together/llama3-70b
+    litellm_params:
+      model: together/llama3-70b
+      api_key: ${TOGETHER_API_KEY}
+  
+  - model_name: openrouter/claude-3.5-sonnet
+    litellm_params:
+      model: openrouter/claude-3.5-sonnet
+      api_key: ${OPENROUTER_API_KEY}
+
+general_settings:
+  master_key: sk-litellm-key
+  drop_params: true

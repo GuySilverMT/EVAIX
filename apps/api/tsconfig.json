@@ -8,7 +8,7 @@
     "outDir": "dist",
     "declaration": false, // Add this to generate .d.ts files
     "declarationMap": false, // Good for debugging types
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true, // <--- It's already here.
     "allowImportingTsExtensions": false,

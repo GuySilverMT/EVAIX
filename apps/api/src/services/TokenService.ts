@@ -158,8 +158,7 @@ export class TokenService {
     };
   }> {
     try {
-      const { PrismaClient } = await import('@prisma/client');
-      const prisma = new PrismaClient();
+      const { prisma } = await import('../db.js');
 
       // 1. Fetch Model Specs
       const model = await prisma.model.findUnique({ 
@@ -256,14 +255,13 @@ export class TokenService {
    */
   async getTokenLimits(modelId: string): Promise<{ contextWindow: number; maxOutput: number }> {
     try {
-        const { PrismaClient } = await import('@prisma/client');
-        const prisma = new PrismaClient();
+        const { prisma } = await import('../db.js');
         const model = await prisma.model.findUnique({
             where: { id: modelId },
             include: { capabilities: true }
         });
         if (!model) return { contextWindow: 4096, maxOutput: 4096 };
-        const caps = model.capabilities;
+        const caps = (model as any)?.capabilities;
         return {
             contextWindow: caps?.contextWindow || 4096,
             maxOutput: caps?.maxOutput || 4096

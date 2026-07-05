@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen } = require('electron');
+const { app, BrowserWindow, screen, nativeTheme } = require('electron');
 const path = require('path');
 
 // Disable GPU/Vulkan to prevent driver warnings on systems without proper GPU access
@@ -15,13 +15,14 @@ function createWindow() {
     height: height,
     webPreferences: {
       webviewTag: true,
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
   // Force native dark mode rendering for web contents
-  mainWindow.webContents.forceDark = true;
+  nativeTheme.themeSource = 'dark';
 
   const isDev = !app.isPackaged;
   // In dev, wait for Vite to serve. In prod, load the local index.html

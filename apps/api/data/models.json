@@ -1,0 +1,30 @@
+[
+  {
+    "id": "xai/grok-3",
+    "name": "Grok 3",
+    "provider": "xAI",
+    "enabled": true,
+    "color": "#a855f7"
+  },
+  {
+    "id": "meta/llama-3.3-70b-instruct",
+    "name": "NVIDIA Llama",
+    "provider": "NVIDIA",
+    "enabled": true,
+    "color": "#0ea5e9"
+  },
+  {
+    "id": "together/llama3-70b",
+    "name": "Together Llama",
+    "provider": "Together",
+    "enabled": true,
+    "color": "#10b981"
+  },
+  {
+    "id": "openrouter/claude-3.5-sonnet",
+    "name": "OpenRouter Claude",
+    "provider": "OpenRouter",
+    "enabled": true,
+    "color": "#f59e0b"
+  }
+]

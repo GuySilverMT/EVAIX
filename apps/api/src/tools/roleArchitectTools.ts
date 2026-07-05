@@ -1,5 +1,6 @@
 import { prisma } from "../db.js";
 import { RoleFactoryService } from "../services/RoleFactoryService.js";
+import { CodePatchService } from "../services/CodePatchService.js";
 import type { SandboxTool } from "../types.js";
 
 interface RoleVariantEventArgs {
@@ -246,6 +247,38 @@ Status: Ready for deployment.`,
       ];
     },
   },
+  {
+    name: "role_config_patch",
+    description: "Patch an existing agent markdown file configuration safely using structural patching.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        targetFile: { type: "string", description: "The path to the agent markdown file." },
+        findBlock: { type: "string", description: "The exact block to search for." },
+        replaceBlock: { type: "string", description: "The new block to replace it with." }
+      },
+      required: ["targetFile", "findBlock", "replaceBlock"]
+    },
+    handler: async (args: unknown) => {
+      const typedArgs = args as { targetFile: string; findBlock: string; replaceBlock: string };
+      try {
+        const result = await CodePatchService.ApplyPatch(typedArgs.targetFile, typedArgs.findBlock, typedArgs.replaceBlock);
+        return [
+          {
+            type: "text",
+            text: `✅ Role config patch applied successfully to ${typedArgs.targetFile}`
+          }
+        ];
+      } catch (err: unknown) {
+        return [
+          {
+            type: "text",
+            text: `❌ Failed to patch role config: ${err instanceof Error ? err.message : String(err)}`
+          }
+        ];
+      }
+    }
+  }
 ];
 
 export async function canUseRoleArchitectTools(

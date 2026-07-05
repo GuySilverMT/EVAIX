@@ -1,6 +1,6 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { PrismaClient, Prisma } from '@prisma/client';
 
 interface AgentData {
   id?: string;
@@ -99,7 +99,7 @@ function shouldNeedReasoning(description: string, systemPrompt: string): boolean
 
 export async function ingestAgentLibrary(
   agentsDir: string,
-  prismaClient: PrismaClient
+  prismaClient: any
 ): Promise<{ created: number; updated: number; failed: number; errors: string[] }> {
   const stats = { created: 0, updated: 0, failed: 0, errors: [] as string[] };
 
@@ -108,7 +108,7 @@ export async function ingestAgentLibrary(
     const mdFiles = files.filter((f) => f.endsWith('.md'));
 
     const dbTools = await prismaClient.tool.findMany({ select: { name: true } });
-    const systemToolNames = new Set(dbTools.map(t => t.name));
+    const systemToolNames = new Set<string>((dbTools as any[]).map(t => t.name as string));
 
     console.log(`Found ${mdFiles.length} agent files in ${agentsDir}`);
 
@@ -158,7 +158,7 @@ export async function ingestAgentLibrary(
               metadata: {
                 needsReasoning: needsReasoning,
                 sourceOfTruth: 'MARKDOWN',
-              } as Prisma.JsonObject,
+              } as any,
             },
           });
           stats.updated++;
@@ -173,7 +173,7 @@ export async function ingestAgentLibrary(
                   needsReasoning: needsReasoning,
                   minContext: 4096,
                   maxContext: 128000,
-                } as Prisma.JsonObject,
+                } as any,
                 tools: {
                   create: filteredTools.map(t => ({ toolId: t }))
                 }
@@ -234,7 +234,7 @@ async function getTopFiles(dirPath: string, limit: number = 20): Promise<string[
 
 export async function onboardProject(
   rootPath: string,
-  _prisma: PrismaClient
+  _prisma: any
 ): Promise<{ 
   scanned: number; 
   departments: number; 

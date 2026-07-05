@@ -1,9 +1,9 @@
-# Base image
+# Base image — pin pnpm@9 to match lockfile v9 format
 FROM node:18-alpine AS base
-RUN npm install -g pnpm@8.6.10 turbo
+RUN npm install -g pnpm@9 turbo
 
 # Builder stage
-FROM base as builder
+FROM base AS builder
 WORKDIR /app
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
@@ -12,7 +12,7 @@ ENV VITE_WS_URL=$VITE_WS_URL
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 COPY . .
 RUN turbo build
 

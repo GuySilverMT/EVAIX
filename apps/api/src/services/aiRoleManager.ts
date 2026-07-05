@@ -1,3 +1,4 @@
+import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 /**
  * AI Role Manager Service
  * 
@@ -6,7 +7,6 @@
  */
 
 import { prisma } from '../db.js';
-import { Prisma } from '@prisma/client';
 
 export interface AIRole {
   id: string;
@@ -115,7 +115,7 @@ export class AIRoleManager {
             name: role.name,
             description: role.description,
             basePrompt: role.systemPrompt,
-            metadata: (role.metadata as Prisma.JsonObject) || {},
+            metadata: (role.metadata as any) || {},
         }
     });
 

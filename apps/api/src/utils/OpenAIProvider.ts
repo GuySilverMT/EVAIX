@@ -7,10 +7,12 @@ import { LLM_TIMEOUT_COMPLEX_MS, LLM_TIMEOUT_STANDARD_MS, LLM_MAX_RETRIES } from
 
 export class OpenAIProvider implements BaseLLMProvider {
   id: string;
+  baseURL?: string;
   private client: OpenAI;
 
   constructor(config: { id: string; apiKey: string; baseURL?: string }) {
     this.id = config.id;
+    this.baseURL = config.baseURL;
     const proxy = process.env.HTTPS_PROXY;
     const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
 
@@ -62,6 +64,26 @@ export class OpenAIProvider implements BaseLLMProvider {
         console.error("Failed to fetch OpenAI models", e);
         return [];
     }
+  }
+
+  async generateEmbedding(text: string, modelId?: string): Promise<number[]> {
+    const resolvedModel = modelId || process.env.LITELLM_EMBEDDING_MODEL || 'text-embedding-3-small';
+
+    if (!resolvedModel || resolvedModel.trim() === '') {
+      throw new Error('OpenAIProvider: embedding model is required');
+    }
+
+    const response = await this.client.embeddings.create({
+      model: resolvedModel,
+      input: text,
+    } as any);
+
+    const embedding = response.data?.[0]?.embedding;
+    if (!embedding) {
+      throw new Error('OpenAIProvider: embedding response did not contain data');
+    }
+
+    return embedding;
   }
 
   async generateCompletion(request: CompletionRequest): Promise<{ text: string, usage?: any }> {

@@ -20,45 +20,54 @@ else
   fuser -k -n tcp 5173 &>/dev/null || true
 fi
 
-# 2. Start PostgreSQL and Redis containers using Podman
-echo "🐳 Checking database & cache container status..."
-CONTAINERS_STARTED=false
+# 2. Start all backend containers
+echo "🐳 Starting Backend Services via Podman..."
+podman-compose -f docker-compose.db.yml up -d
 
-# Try to start existing containers directly (much faster than docker-compose/podman-compose up)
-if podman inspect evaix_postgres_1 &>/dev/null && podman inspect evaix_redis_1 &>/dev/null; then
-  echo "  - Starting existing containers (evaix_postgres_1, evaix_redis_1)..."
-  podman start evaix_postgres_1 evaix_redis_1
-  CONTAINERS_STARTED=true
-else
-  echo "  - Containers not found. Bringing them up via podman-compose..."
-  podman-compose -f docker-compose.db.yml up -d
-  CONTAINERS_STARTED=true
-fi
-
-# 3. Wait for PostgreSQL to be ready to accept connections
-if [ "$CONTAINERS_STARTED" = true ]; then
-  echo "⏳ Waiting for PostgreSQL to be ready..."
+# 3. Wait for Services
+if true; then
+  echo "⏳ Waiting for LiteLLM Database (litellm-db)..."
   for i in {1..30}; do
-    # Try using pg_isready inside the container
-    if podman exec evaix_postgres_1 pg_isready -U myuser -d mydb &>/dev/null; then
-      echo "✅ PostgreSQL is ready!"
+    if podman exec evaix_litellm_db pg_isready -U litellm -d litellm &>/dev/null; then
+      echo "✅ LiteLLM Database is ready!"
       break
-    fi
-    if [ $i -eq 30 ]; then
-      echo "⚠️ PostgreSQL startup check timed out. Attempting to proceed anyway..."
     fi
     sleep 1
   done
 
-  # 4. Wait for Redis to be ready
-  echo "⏳ Waiting for Redis to be ready..."
+  echo "⏳ Waiting for LiteLLM Proxy Router..."
   for i in {1..30}; do
-    if podman exec evaix_redis_1 redis-cli ping 2>/dev/null | grep -q "PONG"; then
-      echo "✅ Redis is ready!"
+    # LiteLLM health endpoint
+    if curl -s http://localhost:8080/health > /dev/null; then
+      echo "✅ LiteLLM Router is online!"
       break
     fi
-    if [ $i -eq 30 ]; then
-      echo "⚠️ Redis startup check timed out. Attempting to proceed anyway..."
+    sleep 1
+  done
+
+  echo "⏳ Waiting for Open WebUI..."
+  for i in {1..30}; do
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+      echo "✅ Open WebUI is online!"
+      break
+    fi
+    sleep 1
+  done
+
+  echo "⏳ Waiting for Terminal (ttyd)..."
+  for i in {1..30}; do
+    if curl -s http://localhost:7681 > /dev/null 2>&1; then
+      echo "✅ Terminal is online!"
+      break
+    fi
+    sleep 1
+  done
+
+  echo "⏳ Waiting for File Browser..."
+  for i in {1..30}; do
+    if curl -s http://localhost:8081 > /dev/null 2>&1; then
+      echo "✅ File Browser is online!"
+      break
     fi
     sleep 1
   done

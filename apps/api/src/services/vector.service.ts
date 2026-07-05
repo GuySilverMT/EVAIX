@@ -5,7 +5,8 @@ export interface Vector {
   similarity?: number;
 }
 
-import { prisma } from '../db.js';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 
 interface DbVectorResult {
   id: string;
@@ -16,120 +17,82 @@ interface DbVectorResult {
 }
 
 export class PgVectorStore {
+  private getStoragePath(): string {
+    return join(process.cwd(), 'apps/api/.evaix/vectorEmbeddings.json');
+  }
+
+  private async readStore(): Promise<Record<string, any>> {
+    try {
+      const content = await fs.readFile(this.getStoragePath(), 'utf-8');
+      return JSON.parse(content);
+    } catch {
+      return { vectors: [] };
+    }
+  }
+
+  private async writeStore(data: Record<string, any>): Promise<void> {
+    const dir = join(process.cwd(), 'apps/api/.evaix');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(this.getStoragePath(), JSON.stringify(data, null, 2), 'utf-8');
+  }
+
   async add(vectors: Vector[]) {
+    const store = await this.readStore();
+    const existing = Array.isArray(store.vectors) ? store.vectors : [];
+    const byId = new Map(existing.map((item: any) => [item.id, item]));
+
     for (const v of vectors) {
       const workspaceId = v.metadata.workspaceId as string | undefined || null;
-
-      try {
-        await prisma.vectorEmbedding.upsert({
-          where: { id: v.id },
-          update: {
-            vector: v.vector,
-            content: v.metadata.chunk as string || '',
-            metadata: v.metadata as any,
-            workspaceId: workspaceId,
-          },
-          create: {
-            id: v.id,
-            vector: v.vector,
-            content: v.metadata.chunk as string || '',
-            filePath: v.metadata.filePath as string || '',
-            metadata: v.metadata as any,
-            workspaceId: workspaceId,
-          }
-        });
-      } catch (err) {
-        console.error(`[PgVectorStore] Failed to upsert vector ${v.id}:`, err);
-        // Fallback to raw SQL if Prisma model is not yet recognized
-        const vectorArray = `{${v.vector.join(',')}}`;
-        await prisma.$executeRawUnsafe(
-          `INSERT INTO "VectorEmbedding" ("id", "vector", "content", "filePath", "metadata", "workspaceId")
-           VALUES ($1, $2::float8[], $3, $4, $5, $6)
-           ON CONFLICT ("id") DO UPDATE SET
-           "vector" = EXCLUDED."vector",
-           "content" = EXCLUDED."content",
-           "metadata" = EXCLUDED."metadata",
-           "workspaceId" = EXCLUDED."workspaceId"`,
-          v.id,
-          vectorArray,
-          v.metadata.chunk || '',
-          v.metadata.filePath || '',
-          v.metadata,
-          workspaceId
-        );
-      }
+      const row = {
+        id: v.id,
+        content: (v.metadata.chunk as string) || '',
+        filePath: (v.metadata.filePath as string) || '',
+        metadata: v.metadata,
+        workspaceId,
+        vector: v.vector,
+      };
+      byId.set(v.id, row);
     }
-    console.log(`Added ${vectors.length} vectors to PG store.`);
+
+    await this.writeStore({ vectors: Array.from(byId.values()) });
+    console.log(`Added ${vectors.length} vectors to JSON vector store.`);
   }
 
   async search(queryVector: number[], topK: number, filters?: { workspaceId?: string }): Promise<Vector[]> {
+    const store = await this.readStore();
+    const vectors = Array.isArray(store.vectors) ? store.vectors : [];
     const workspaceId = filters?.workspaceId;
 
-    try {
-      // 1. Try pgvector first
-      const vectorString = `[${queryVector.join(',')}]`;
-      if (workspaceId) {
-        const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
-          `SELECT "id", "content", "filePath", "metadata",
-                  1 - ("vector" <=> $1::vector) as similarity
-           FROM "VectorEmbedding"
-           WHERE "workspaceId" = $3
-           ORDER BY "vector" <=> $1::vector
-           LIMIT $2`,
-          vectorString,
-          topK,
-          workspaceId
-        );
-        return this.mapResults(results);
-      } else {
-        const results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
-          `SELECT "id", "content", "filePath", "metadata",
-                  1 - ("vector" <=> $1::vector) as similarity
-           FROM "VectorEmbedding"
-           ORDER BY "vector" <=> $1::vector
-           LIMIT $2`,
-          vectorString,
-          topK
-        );
-        return this.mapResults(results);
-      }
-    } catch (err: any) {
-      // 2. Fallback to standard SQL if pgvector extension is missing
-      if (err.message?.includes('vector') || err.message?.includes('<=>')) {
-        console.warn('[PgVectorStore] pgvector extension not found. Using fallback similarity search.');
+    const filtered = workspaceId
+      ? vectors.filter((item: any) => item.workspaceId === workspaceId)
+      : vectors;
 
-        // This is a crude dot product fallback for standard arrays. 
-        // For production without pgvector, fetching and calculating in JS or using a specialized function is better.
-        let results;
-        if (workspaceId) {
-           results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
-            `SELECT "id", "content", "filePath", "metadata", 0 as similarity
-             FROM "VectorEmbedding"
-             WHERE "workspaceId" = $1
-             LIMIT 1000`, // Limit scan for performance
-             workspaceId
-          );
-        } else {
-           results = await prisma.$queryRawUnsafe<DbVectorResult[]>(
-            `SELECT "id", "content", "filePath", "metadata", 0 as similarity
-             FROM "VectorEmbedding"
-             LIMIT 1000` // Limit scan for performance
-          );
-        }
+    const scored = filtered
+      .map((item: any) => ({
+        ...item,
+        similarity: this.cosineSimilarity(queryVector, item.vector || []),
+      }))
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, topK);
 
-        // Sort in memory for the fallback
-        return this.mapResults(results.slice(0, topK));
-      }
-      throw err;
-    }
+    return this.mapResults(scored as DbVectorResult[]);
+  }
+
+  private cosineSimilarity(a: number[], b: number[]): number {
+    if (!a.length || !b.length) return 0;
+    const dot = a.reduce((sum, value, index) => sum + value * (b[index] || 0), 0);
+    const normA = Math.sqrt(a.reduce((sum, value) => sum + value * value, 0));
+    const normB = Math.sqrt(b.reduce((sum, value) => sum + value * value, 0));
+    if (!normA || !normB) return 0;
+    return dot / (normA * normB);
   }
 
   private mapResults(results: DbVectorResult[]): Vector[] {
     return results.map((r) => ({
       id: r.id,
-      vector: [], // Optimization: don't return the full vector
+      vector: [],
       metadata: { ...r.metadata, chunk: r.content, filePath: r.filePath },
-      similarity: r.similarity
+      similarity: r.similarity,
     }));
   }
 }
@@ -151,6 +114,7 @@ export const chunkText = (text: string, chunkSize: number = 1000, overlap: numbe
 
 import { ProviderManager } from './ProviderManager.js';
 import { OllamaProvider } from '../utils/OllamaProvider.js';
+import { OpenAIProvider } from '../utils/OpenAIProvider.js';
 import type { FeatureExtractionPipeline } from '@xenova/transformers';
 import { createRequire } from 'module';
 
@@ -188,6 +152,12 @@ export const createEmbedding = async (text: string, retryCount = 5): Promise<num
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
     try {
+      const litellmProvider = ProviderManager.getProvider('litellm-router') || ProviderManager.getProvider('openai');
+      if (litellmProvider && litellmProvider instanceof OpenAIProvider) {
+        const configuredModel = process.env.LITELLM_EMBEDDING_MODEL || process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
+        return await litellmProvider.generateEmbedding(truncatedText, configuredModel);
+      }
+
       // Try to get the 'local' provider first
       const provider = ProviderManager.getProvider('local');
       if (provider && provider instanceof OllamaProvider) {
