@@ -1,0 +1,139 @@
+{
+  "intents": [
+    {
+      "id": "system.wifi.on",
+      "description": "Turn on Wi-Fi connection",
+      "triggers": ["turn on wifi", "enable wifi", "start wifi"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/wifi.sh on"
+      }
+    },
+    {
+      "id": "system.wifi.off",
+      "description": "Turn off Wi-Fi connection",
+      "triggers": ["turn off wifi", "disable wifi", "stop wifi"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/wifi.sh off"
+      }
+    },
+    {
+      "id": "system.wifi.toggle",
+      "description": "Toggle Wi-Fi connection",
+      "triggers": ["toggle wifi", "switch wifi"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/wifi.sh toggle"
+      }
+    },
+    {
+      "id": "system.bluetooth.on",
+      "description": "Turn on Bluetooth",
+      "triggers": ["turn on bluetooth", "enable bluetooth", "start bluetooth"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/bluetooth.sh on"
+      }
+    },
+    {
+      "id": "system.bluetooth.off",
+      "description": "Turn off Bluetooth",
+      "triggers": ["turn off bluetooth", "disable bluetooth", "stop bluetooth"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/bluetooth.sh off"
+      }
+    },
+    {
+      "id": "system.bluetooth.toggle",
+      "description": "Toggle Bluetooth",
+      "triggers": ["toggle bluetooth", "switch bluetooth"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/bluetooth.sh toggle"
+      }
+    },
+    {
+      "id": "system.notifications.on",
+      "description": "Enable notifications",
+      "triggers": ["enable notifications", "turn on notifications", "unpause notifications", "show notifications"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/notifications.sh on"
+      }
+    },
+    {
+      "id": "system.notifications.off",
+      "description": "Disable or pause notifications",
+      "triggers": ["disable notifications", "turn off notifications", "pause notifications", "hide notifications", "do not disturb"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/notifications.sh off"
+      }
+    },
+    {
+      "id": "system.notifications.toggle",
+      "description": "Toggle notifications",
+      "triggers": ["toggle notifications", "switch notifications"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/notifications.sh toggle"
+      }
+    },
+    {
+      "id": "system.sound.on",
+      "description": "Turn on sound (unmute)",
+      "triggers": ["unmute sound", "turn on sound", "enable sound", "unmute speakers", "enable speakers"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/sound.sh on"
+      }
+    },
+    {
+      "id": "system.sound.off",
+      "description": "Turn off sound (mute)",
+      "triggers": ["mute sound", "turn off sound", "disable sound", "mute speakers", "disable speakers"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/sound.sh off"
+      }
+    },
+    {
+      "id": "system.sound.toggle",
+      "description": "Toggle sound mute state",
+      "triggers": ["toggle sound", "toggle mute", "toggle speakers"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/sound.sh toggle"
+      }
+    },
+    {
+      "id": "system.mic.on",
+      "description": "Turn on microphone (unmute)",
+      "triggers": ["unmute mic", "unmute microphone", "turn on mic", "turn on microphone", "enable mic", "enable microphone"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/mic.sh on"
+      }
+    },
+    {
+      "id": "system.mic.off",
+      "description": "Turn off microphone (mute)",
+      "triggers": ["mute mic", "mute microphone", "turn off mic", "turn off microphone", "disable mic", "disable microphone"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/mic.sh off"
+      }
+    },
+    {
+      "id": "system.mic.toggle",
+      "description": "Toggle microphone mute state",
+      "triggers": ["toggle mic", "toggle microphone"],
+      "action": {
+        "type": "shell",
+        "command": ".evaix/voice/scripts/system/mic.sh toggle"
+      }
+    }
+  ]
+}
