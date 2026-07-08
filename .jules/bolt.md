@@ -1,3 +1,3 @@
-## 2024-05-18 - Memoizing Zustand Derived State in UI Grid
-**Learning:** In the `TheGrid.tsx` component, recalculating the `activeCards` filter and `columnsMap` array groupings inline caused unnecessary React recalculations on every render (e.g. when local ephemeral state like `pickerColIndex` changed).
-**Action:** Always wrap heavy derived state computations based on global store values in `React.useMemo` to prevent redundant processing, especially in spatial layout/grid components. Also, hoisted static data like `Object.keys(AppRegistry)` to module scope to avoid array allocations per render.
+## 2024-07-08 - [Zustand `useShallow` Fallback Arrays]
+**Learning:** Returning a new array literal inline inside a Zustand `useShallow` selector (e.g., `s.cards || []`) causes the strict equality check to fail on *every* store update, triggering re-renders even when the target properties haven't changed.
+**Action:** Always extract static fallback objects/arrays to a stable reference (e.g., `const EMPTY_ARRAY = []` outside the selector) before using them as default values in `useShallow` or `useMemo` hooks.

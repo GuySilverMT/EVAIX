@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useWorkspaceStore, type CardData } from '../../../stores/workspace.store.js';
+import { useShallow } from 'zustand/react/shallow';
 import { AppCard } from '../../work-order/AppCard.js';
 import { AppRegistry } from '../../../registry/ComponentRegistry.js';
 
@@ -14,31 +15,44 @@ const APP_IDS = Object.keys(AppRegistry);
  * 3. Bottom Spawner (+ New App)
  */
 
+const EMPTY_ARRAY: CardData[] = [];
+
 export interface TheGridProps {
   displayId?: number;
 }
 
 export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
-  const activeCardsStore = useWorkspaceStore(s => s.activeCards || s.cards || []);
-  const totalColumns = useWorkspaceStore(s => s.columns) || 2;
-  const focusedCardIds = useWorkspaceStore(s => s.focusedCardIds);
-  const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
-  const spawnApp = useWorkspaceStore(s => s.spawnApp);
+  // ⚡ Bolt Optimization: Group multiple Zustand selectors with useShallow to prevent unnecessary re-renders
+  const { activeCardsStore, totalColumns, focusedCardIds, setFocusedCardId, spawnApp } = useWorkspaceStore(useShallow(s => ({
+    // ⚡ Bolt Optimization: Use a stable fallback array to prevent breaking memoization when arrays are falsy.
+    activeCardsStore: s.activeCards || s.cards || EMPTY_ARRAY,
+    totalColumns: s.columns || 2,
+    focusedCardIds: s.focusedCardIds,
+    setFocusedCardId: s.setFocusedCardId,
+    spawnApp: s.spawnApp
+  })));
   const [pickerColIndex, setPickerColIndex] = useState<number | null>(null);
-  const appIds = Object.keys(AppRegistry);
 
   // Filter cards by displayId / screenspaceId
-  const activeCards = activeCardsStore.filter(
+  // ⚡ Bolt Optimization: Wrap heavy array filtering in useMemo to prevent recalculation on every render
+  const activeCards = useMemo(() => activeCardsStore.filter(
     c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-  ), [cards, displayId]);
+  ), [activeCardsStore, displayId]);
 
-  const columnsMap = React.useMemo(() => {
+  // ⚡ Bolt Optimization: Wrap map construction in useMemo to avoid recreating objects on every render
+  const columnsMap = useMemo(() => {
     const map: Record<number, CardData[]> = {};
-
-
     for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
       map[colIdx] = [];
     }
+    activeCards.forEach(card => {
+      const col = card.columnId ?? card.column ?? 0;
+      if (map[col]) {
+        map[col].push(card);
+      }
+    });
+    return map;
+  }, [activeCards, totalColumns]);
 
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
