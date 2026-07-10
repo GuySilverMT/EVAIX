@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
+import { useShallow } from 'zustand/react/shallow';
 import { AppRegistry } from '../../registry/ComponentRegistry.js';
 import { Select, MenuItem } from '@mui/material';
 
@@ -18,9 +19,11 @@ export const FocusStrip: React.FC<FocusStripProps> = ({
   cardId,
   icon
 }) => {
-  const moveCard = useWorkspaceStore(s => s.moveCard);
-  const setCardContent = useWorkspaceStore(s => s.setCardContent);
-  const card = useWorkspaceStore(s => s.cards.find(c => c.id === cardId));
+  const { moveCard, setCardContent, card } = useWorkspaceStore(useShallow(s => ({
+    moveCard: s.moveCard,
+    setCardContent: s.setCardContent,
+    card: s.cards.find(c => c.id === cardId)
+  })));
   const currentAppId = card?.appId || card?.activeTool || 'file-explorer';
 
   const handleAppChange = (newAppId: string) => {
