@@ -1,7 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { useWorkspaceStore, type CardData } from '../../../stores/workspace.store.js';
-import { AppCard } from '../../work-order/AppCard.js';
-import { AppRegistry } from '../../../registry/ComponentRegistry.js';
+import React, { useState, useMemo } from "react";
+import {
+  useWorkspaceStore,
+  type CardData,
+} from "../../../stores/workspace.store.js";
+import { AppCard } from "../../work-order/AppCard.js";
+import { AppRegistry } from "../../../registry/ComponentRegistry.js";
 
 const APP_IDS = Object.keys(AppRegistry);
 
@@ -19,36 +22,54 @@ export interface TheGridProps {
 }
 
 export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
-  const activeCardsStore = useWorkspaceStore(s => s.activeCards || s.cards || []);
-  const totalColumns = useWorkspaceStore(s => s.columns) || 2;
-  const focusedCardIds = useWorkspaceStore(s => s.focusedCardIds);
-  const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
-  const spawnApp = useWorkspaceStore(s => s.spawnApp);
+  const activeCardsStore = useWorkspaceStore(
+    (s) => s.activeCards || s.cards || [],
+  );
+  const totalColumns = useWorkspaceStore((s) => s.columns) || 2;
+  const focusedCardIds = useWorkspaceStore((s) => s.focusedCardIds);
+  const setFocusedCardId = useWorkspaceStore((s) => s.setFocusedCardId);
+  const spawnApp = useWorkspaceStore((s) => s.spawnApp);
   const [pickerColIndex, setPickerColIndex] = useState<number | null>(null);
-  const appIds = Object.keys(AppRegistry);
+  // ⚡ Bolt Performance Optimization:
+  // Memoizing `activeCards` prevents re-filtering on every render (e.g., when `pickerColIndex` changes).
+  // This reduces unnecessary array allocations and CPU cycles.
+  const activeCards = useMemo(() => {
+    return activeCardsStore.filter(
+      (c) => (c.displayId ?? c.screenspaceId ?? 0) === displayId,
+    );
+  }, [activeCardsStore, displayId]);
 
-  // Filter cards by displayId / screenspaceId
-  const activeCards = activeCardsStore.filter(
-    c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-  ), [cards, displayId]);
-
-  const columnsMap = React.useMemo(() => {
+  // ⚡ Bolt Performance Optimization:
+  // Memoizing `columnsMap` prevents recalculating the column groupings on every render.
+  // This significantly reduces re-renders in the grid, saving compute time.
+  const columnsMap = useMemo(() => {
     const map: Record<number, CardData[]> = {};
-
 
     for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
       map[colIdx] = [];
     }
 
+    // Group cards into columns
+    activeCards.forEach((card) => {
+      const colIdx = Math.max(0, Math.min(card.column || 0, totalColumns - 1));
+      if (map[colIdx]) {
+        map[colIdx].push(card);
+      }
+    });
+
+    return map;
+  }, [totalColumns, activeCards]);
+
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
       {Array.from({ length: totalColumns }).map((_, colIndex) => {
         const colCards = columnsMap[colIndex] || [];
-        
+
         // Determine the focused card for this column
         const storedFocusedId = focusedCardIds[colIndex];
-        const focusedCard = colCards.find(c => c.id === storedFocusedId) || colCards[0];
-        const inactiveCards = colCards.filter(c => c.id !== focusedCard?.id);
+        const focusedCard =
+          colCards.find((c) => c.id === storedFocusedId) || colCards[0];
+        const inactiveCards = colCards.filter((c) => c.id !== focusedCard?.id);
 
         return (
           <div
@@ -58,14 +79,14 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
             {/* TIER 1: TOP TAB STRIP */}
             {inactiveCards.length > 0 && (
               <div className="flex w-full h-7 shrink-0 bg-[#18181b] border-b border-[#3f3f46] overflow-x-auto hide-scrollbar">
-                {inactiveCards.map(card => (
+                {inactiveCards.map((card) => (
                   <button
                     key={card.id}
                     onClick={() => setFocusedCardId(colIndex, card.id)}
                     className="flex-1 min-w-[100px] border-r border-[#3f3f46] px-3 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-500 hover:bg-[#27272a] hover:text-zinc-200 truncate flex items-center transition-colors cursor-pointer"
-                    title={card.appId?.toUpperCase() || 'APP'}
+                    title={card.appId?.toUpperCase() || "APP"}
                   >
-                    {card.appId?.toUpperCase() || 'APP'}
+                    {card.appId?.toUpperCase() || "APP"}
                   </button>
                 ))}
               </div>
@@ -90,7 +111,7 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
             <div className="relative shrink-0">
               {pickerColIndex === colIndex && (
                 <div className="absolute bottom-6 left-0 right-0 z-40 bg-zinc-950 border border-[#3f3f46] flex flex-col max-h-40 overflow-y-auto">
-                  {APP_IDS.map(appId => (
+                  {APP_IDS.map((appId) => (
                     <button
                       key={appId}
                       onClick={() => {
@@ -105,7 +126,11 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
                 </div>
               )}
               <button
-                onClick={() => setPickerColIndex(pickerColIndex === colIndex ? null : colIndex)}
+                onClick={() =>
+                  setPickerColIndex(
+                    pickerColIndex === colIndex ? null : colIndex,
+                  )
+                }
                 className="h-6 w-full bg-zinc-950 border-t border-[#3f3f46] hover:bg-zinc-800 text-zinc-600 hover:text-zinc-300 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
               >
                 <span className="material-icons text-[12px]">add</span>

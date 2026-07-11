@@ -1,3 +1,7 @@
 ## 2024-05-18 - Memoizing Zustand Derived State in UI Grid
 **Learning:** In the `TheGrid.tsx` component, recalculating the `activeCards` filter and `columnsMap` array groupings inline caused unnecessary React recalculations on every render (e.g. when local ephemeral state like `pickerColIndex` changed).
 **Action:** Always wrap heavy derived state computations based on global store values in `React.useMemo` to prevent redundant processing, especially in spatial layout/grid components. Also, hoisted static data like `Object.keys(AppRegistry)` to module scope to avoid array allocations per render.
+
+## 2024-05-18 - Memoizing Zustand Derived State in UI Grid
+**Learning:** In the `TheGrid.tsx` component, recalculating the `activeCards` filter and `columnsMap` array groupings inline caused unnecessary React recalculations on every render (e.g. when local ephemeral state like `pickerColIndex` changed).
+**Action:** Always wrap heavy derived state computations based on global store values in `React.useMemo` to prevent redundant processing, especially in spatial layout/grid components. Also, hoisted static data like `Object.keys(AppRegistry)` to module scope to avoid array allocations per render.
