@@ -65,6 +65,8 @@ services:
   openwebui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: evaix_openwebui
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Redirect traffic to the host gateway where EVAIX API is listening on port 4000
       - OPENAI_API_BASE_URL=http://host.docker.internal:4000/api/v1

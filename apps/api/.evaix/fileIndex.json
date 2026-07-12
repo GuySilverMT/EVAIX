@@ -72,8 +72,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/README.md",
-      "contentHash": "f58b5b17f83db63c09a9f2c059ec435ac8a3feb66f9337391ed5f3f62cff4e63",
-      "updatedAt": "2026-07-12T06:06:21.163Z"
+      "contentHash": "358f11e32d178e62833f55de9e212606413746933da4c00d5e8e3cb359801336",
+      "updatedAt": "2026-07-12T18:46:16.560Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/index.html",
@@ -327,8 +327,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/packages/arbitrage/src/modelManager.service.ts",
-      "contentHash": "b96299a760ae7f7fdef6382379444fd51166326a00e7389c5c76dd90b81c39e2",
-      "updatedAt": "2026-07-12T06:07:04.348Z"
+      "contentHash": "d8bac9b03464e870eff85b02ff3346fe5061d9c065dd8a8ed4f7f48cc5fb1998",
+      "updatedAt": "2026-07-12T18:46:17.714Z"
     },
     {
       "filePath": "/home/guy/EVAIX/packages/common/src/index.ts",
@@ -482,13 +482,13 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/db.ts",
-      "contentHash": "2bf0e86f7306dab72f8cf70132775c99464717004604855df409d37ba0a01307",
-      "updatedAt": "2026-07-12T06:07:27.874Z"
+      "contentHash": "b0aa1db0a16260a73405692381ae7fa47777db36a07bd35994570f6b51ade2e8",
+      "updatedAt": "2026-07-12T18:46:21.049Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/index.ts",
-      "contentHash": "c5fddd06919660f5fbd8d85a14361d4644ed0ab046ca072edbc8757433b37717",
-      "updatedAt": "2026-07-12T09:47:10.912Z"
+      "contentHash": "7eb05d1e51d1bd9ea174013a25d9f53094421e8ed380ee4f3f9e71abe9e6fe34",
+      "updatedAt": "2026-07-12T18:46:22.585Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/instrumentation.ts",
@@ -1227,8 +1227,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/routers/systemHealth.router.ts",
-      "contentHash": "c393df081e02d1380bbb4f0bbffda7d4252df889e01a7fa5bf883315a5405241",
-      "updatedAt": "2026-07-12T06:09:36.568Z"
+      "contentHash": "418431ea9e493fa4d6d8e1a20ebc4d3e0ac3a4eae49ee08fec3b901b280f5207",
+      "updatedAt": "2026-07-12T18:46:24.354Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/routers/tool.router.ts",
@@ -1522,8 +1522,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/services/MastraRoleArchitect.ts",
-      "contentHash": "7e94eb67662b8746d1d504660ebc66be29ee1bf322999276db954f1dfe61ae14",
-      "updatedAt": "2026-07-12T06:10:36.545Z"
+      "contentHash": "ac484f73a2a6eca27c0ae2a942499bcc94f3a17d4e5b0f86deef82b5980f9102",
+      "updatedAt": "2026-07-12T18:46:24.744Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/services/McpToolSyncService.ts",
@@ -2057,13 +2057,43 @@
     },
     {
       "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/src/mcp-server.ts",
-      "contentHash": "d0d92b21a69322b787a820ae553abf4b29a55b856b774fcc4e0be8917591fc2f",
-      "updatedAt": "2026-07-12T16:47:05.529Z"
+      "contentHash": "f67949ce7d0598494338d11d55d5c3df4f021f231675d42def0bb010c50d4943",
+      "updatedAt": "2026-07-12T18:46:20.337Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/MastraNode.tsx",
       "contentHash": "422449632b8b6dbbf8ec71dd270f2020ca1a12d015569d7f8f72e24d653deaee",
       "updatedAt": "2026-07-12T16:08:49.341Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/README.md",
+      "contentHash": "361dff8f56fcdd39822ab924b99df99f6f7563d46782518016f19be7d2ea6987",
+      "updatedAt": "2026-07-12T18:46:16.177Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/badbuilder/README.md",
+      "contentHash": "8f3d0480c12fc8bcde10e73afd8393887f7bbcfd4d6fafb8db9721e1f84c66c5",
+      "updatedAt": "2026-07-12T18:46:16.322Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/src/JulesOrchestrator.ts",
+      "contentHash": "10d83b58210c5bc93b2d20b22f85187b02df26cacc468d17c9c6085c0dc6c44d",
+      "updatedAt": "2026-07-12T18:46:18.036Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/mcp-mastra-docs.ts",
+      "contentHash": "ee2ee455f3abef54df9365edf9b87c78861c020861481baf78bae9f987248994",
+      "updatedAt": "2026-07-12T18:46:23.087Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/mcp-server.ts",
+      "contentHash": "58f881a885017a65706463ab9ecd7d0e2f158f7e582b59b3a38bab9486a5d797",
+      "updatedAt": "2026-07-12T20:19:46.062Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/src/tools/jules_tools.ts",
+      "contentHash": "8ab4be07a453829ab55ce110a30079811422b3a04ddb484f33137c46f5226bc6",
+      "updatedAt": "2026-07-12T18:46:23.893Z"
     }
   ]
 }

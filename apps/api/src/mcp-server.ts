@@ -1,13 +1,17 @@
 import express from 'express';
+import cors from 'cors';
 import { roleArchitectAgent } from './services/MastraRoleArchitect.js';
 import { searchMastraDocsTool } from './mcp-mastra-docs.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 
 // Initialize the Express server
 const app = express();
 const port = 9099;
+
+app.use(cors());
+app.use(express.json());
 
 const mcpServer = new McpServer({
   name: 'evaix-mcp-server',
@@ -52,33 +56,15 @@ mcpServer.tool('ask_evaix_role_architect',
   }
 );
 
-
-const transports = new Map<string, SSEServerTransport>();
-
-// Set up the SSE endpoint
-app.get('/sse', async (req, res) => {
-  console.log(`[MCP Server] New SSE connection established.`);
-  const sessionId = Math.random().toString(36).substring(7);
-  const transport = new SSEServerTransport(`/messages?sessionId=${sessionId}`, res);
-  transports.set(sessionId, transport);
-
-  res.on('close', () => {
-    transports.delete(sessionId);
-  });
-
-  await mcpServer.server.connect(transport);
+const transport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: undefined,
 });
 
-app.post('/messages', async (req, res) => {
-  const sessionId = req.query.sessionId as string;
-  const transport = transports.get(sessionId);
-  if (transport) {
-    await transport.handlePostMessage(req, res);
-  } else {
-    res.status(404).send('SSE session not found');
-  }
+// The single endpoint handles both GET (SSE stream) and POST (messages)
+app.use('/sse', async (req, res) => {
+  await transport.handleRequest(req, res, req.body);
 });
 
-app.listen(port, () => {
-  console.log(`[MCP Server] Listening on http://localhost:${port}/sse`);
-});
+await mcpServer.server.connect(transport);
+
+app.listen(9099, '0.0.0.0', () => console.log('MCP Server ready at http://0.0.0.0:9099/sse'));
