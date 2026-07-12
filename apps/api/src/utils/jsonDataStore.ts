@@ -10,7 +10,11 @@ const DATA_CACHE = new Map<string, any>();
 
 // Determine project root based on process.cwd()
 function getProjectRoot(): string {
-  return process.cwd();
+  const cwd = process.cwd();
+  if (cwd.endsWith('/apps/api') || cwd.endsWith('\\apps\\api')) {
+    return join(cwd, '../..');
+  }
+  return cwd;
 }
 
 function getCachePath(key: string): string {
@@ -26,6 +30,9 @@ async function loadJsonFile(filePath: string): Promise<any> {
 
   try {
     const content = await fs.readFile(filePath, 'utf-8');
+    if (!content.trim()) {
+      return null;
+    }
     const data = JSON.parse(content);
     DATA_CACHE.set(cacheKey, data);
     return data;
@@ -42,7 +49,7 @@ export const jsonDataStore = {
   async getModelRegistry() {
     const root = getProjectRoot();
     const path = join(root, 'latest_models', 'model_registry.json');
-    return loadJsonFile(path) || [];
+    return await loadJsonFile(path) || [];
   },
 
   /**
@@ -51,7 +58,7 @@ export const jsonDataStore = {
   async getIntentRegistry() {
     const root = getProjectRoot();
     const path = join(root, 'apps/api/.evaix/voice/intent_registry.json');
-    return loadJsonFile(path) || [];
+    return await loadJsonFile(path) || [];
   },
 
   /**
@@ -86,7 +93,7 @@ export const jsonDataStore = {
     const root = getProjectRoot();
     const path = join(root, 'apps/api/.evaix/fileIndex.json');
     try {
-      return await loadJsonFile(path);
+      return await loadJsonFile(path) || { files: [] };
     } catch {
       return { files: [] };
     }
@@ -118,7 +125,7 @@ export const jsonDataStore = {
     const root = getProjectRoot();
     const path = join(root, 'apps/api/.evaix/providers.json');
     try {
-      return await loadJsonFile(path);
+      return await loadJsonFile(path) || { providers: [] };
     } catch {
       return { providers: [] };
     }

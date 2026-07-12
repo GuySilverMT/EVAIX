@@ -28,17 +28,34 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   const appIds = Object.keys(AppRegistry);
 
   // Filter cards by displayId / screenspaceId
-  const activeCards = activeCardsStore.filter(
-    c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-  ), [cards, displayId]);
+  const activeCards = React.useMemo(() => {
+    return activeCardsStore.filter(
+      c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
+    );
+  }, [activeCardsStore, displayId]);
 
   const columnsMap = React.useMemo(() => {
     const map: Record<number, CardData[]> = {};
 
-
     for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
       map[colIdx] = [];
     }
+
+    activeCards.forEach(card => {
+      const colIdx = card.columnId ?? card.column ?? 0;
+      if (colIdx >= 0 && colIdx < totalColumns) {
+        map[colIdx].push(card);
+      } else {
+        map[0]?.push(card);
+      }
+    });
+
+    for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
+      map[colIdx].sort((a, b) => (a.rowIndex ?? 0) - (b.rowIndex ?? 0));
+    }
+
+    return map;
+  }, [activeCards, totalColumns]);
 
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">

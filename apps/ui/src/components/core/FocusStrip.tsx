@@ -48,8 +48,8 @@ export const FocusStrip: React.FC<FocusStripProps> = ({
             '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6366f1' }, // indigo-500
             '.MuiSvgIcon-root': { color: 'var(--colors-primary)' }
           }}
-          MenuProps={{
-            PaperProps: {
+          slotProps={{
+            paper: {
               sx: {
                 bgcolor: '#18181b',
                 color: 'var(--colors-primary)',

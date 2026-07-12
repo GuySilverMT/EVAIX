@@ -65,7 +65,7 @@ if true; then
 
   echo "⏳ Waiting for File Browser..."
   for i in {1..30}; do
-    if curl -s http://localhost:8081 > /dev/null 2>&1; then
+    if curl -s http://localhost:8082 > /dev/null 2>&1; then
       echo "✅ File Browser is online!"
       break
     fi
