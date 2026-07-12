@@ -1,6 +1,7 @@
 import React from 'react';
 import { WebNode } from '../components/WebNode.js';
 import { EvaixCalendar } from '../components/core/EvaixCalendar.js';
+import { MastraNode } from '../components/core/MastraNode.js';
 
 /**
  * @file ComponentRegistry.ts
@@ -21,6 +22,7 @@ export const AppRegistry: Record<string, AppDefinition> = {
   'terminal': { component: WebNode, props: { initialUrl: 'http://localhost:7681' }, showBrowserBar: false },
   'file-explorer': { component: WebNode, props: { initialUrl: 'http://localhost:8082' }, showBrowserBar: false },
   'scheduler':      { component: EvaixCalendar, props: {}, showBrowserBar: false },
+  'mastra-ui':      { component: MastraNode, props: {}, showBrowserBar: false },
 };
 
 export const getRegisteredApp = (appId: string | null | undefined): AppDefinition | null => {

@@ -202,8 +202,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/package.json",
-      "contentHash": "7a9278b8b84b38dc64a30139910410c9a50e10f6d232bcf40436749c7dd60cce",
-      "updatedAt": "2026-07-12T06:06:43.800Z"
+      "contentHash": "c029f72a752bd76cf41d1c12085c2c723930825068fa07a212082086335865c5",
+      "updatedAt": "2026-07-12T16:25:28.107Z"
     },
     {
       "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/tsconfig.json",
@@ -1082,8 +1082,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/src/registry/ComponentRegistry.ts",
-      "contentHash": "2d2e78908310722035dda0f0426c5aae1540bd3d5fd32b5cf1e0eedaabb3b286",
-      "updatedAt": "2026-07-12T06:09:02.987Z"
+      "contentHash": "6eb87732e84a1ceb17bcd1e1a884bc06eb9d23722c13f28e05314b230dab9584",
+      "updatedAt": "2026-07-12T16:09:01.025Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/src/registry/ToolRegistry.ts",
@@ -2044,6 +2044,26 @@
       "filePath": "/home/guy/EVAIX/apps/api/src/routers/openai-compatible.router.ts",
       "contentHash": "a00f5e67ead92a7d261df334e003af87c12a0bff5060bf0c41d6cb5a91210a65",
       "updatedAt": "2026-07-12T11:58:45.085Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/src/tools/filesystem.ts",
+      "contentHash": "86ebb124842a0a723d1935749e0dcf94cb2b934a90ff1529616868ddaa604626",
+      "updatedAt": "2026-07-12T16:12:42.957Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/src/tools/git.ts",
+      "contentHash": "6e46d02fb8508dae0778a0774f3d1d065c5befce633c1e44aa8be3cec020c3e5",
+      "updatedAt": "2026-07-12T16:12:58.584Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/src/mcp-server.ts",
+      "contentHash": "d0d92b21a69322b787a820ae553abf4b29a55b856b774fcc4e0be8917591fc2f",
+      "updatedAt": "2026-07-12T16:47:05.529Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/MastraNode.tsx",
+      "contentHash": "422449632b8b6dbbf8ec71dd270f2020ca1a12d015569d7f8f72e24d653deaee",
+      "updatedAt": "2026-07-12T16:08:49.341Z"
     }
   ]
 }

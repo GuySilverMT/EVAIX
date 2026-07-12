@@ -24,3 +24,7 @@ model_list:
 general_settings:
   master_key: sk-litellm-key
   drop_params: true
+  disable_spend_logs: true
+  disable_error_logs: true
+  store_model_in_db: false
+  set_verbose: false

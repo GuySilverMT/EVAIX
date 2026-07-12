@@ -56,6 +56,28 @@ services:
     networks:
       - app-network
 
+  # --- EVAIX Mastra Tool Server (OpenAPI HTTP — connects to OpenWebUI Tools) ---
+
+  evaix-tools:
+    image: node:22-alpine
+    container_name: evaix_mastra_tools
+    working_dir: /app
+    volumes:
+      - ./packages/mcp-server-vfs:/app
+      - /home/guy/EVAIX:/home/guy/EVAIX   # filesystem/git tools need repo access
+    ports:
+      - "9099:9099"
+    environment:
+      LITELLM_API_BASE: "http://litellm:4000/v1"
+      LITELLM_MASTER_KEY: "sk-litellm-key"
+      DEFAULT_AGENT_MODEL: "cerebras/gemma-4-31b"
+      EVAIX_TOOLS_PORT: "9099"
+    command: ["node", "dist/mcp-server.js"]
+    networks:
+      - app-network
+    depends_on:
+      - litellm
+
   # --- Backend Dependencies ---
 
   postgres:

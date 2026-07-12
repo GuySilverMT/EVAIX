@@ -92,6 +92,11 @@ services:
     networks:
       - app-network
 
+  # NOTE: The EVAIX Mastra Tool Server (port 9099) runs as a HOST process,
+  # not a container. Heavy Mastra/AI-SDK modules OOM inside Alpine.
+  # It is started automatically by run-desktop.sh before Podman comes up.
+  # OpenWebUI connects to it via: http://host.docker.internal:9099
+
 volumes:
   redis_data:
   litellm_data:
