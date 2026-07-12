@@ -28,10 +28,11 @@ services:
     networks:
       - app-network
 
-  # 2. LiteLLM Gateway (DB-only mode — no config file mount)
+  # 2. LiteLLM Gateway (Config + DB mode)
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: evaix_litellm_core
+    command: ["--config", "/app/config.yaml"]
     ports:
       - "8080:4000" # OpenWebUI and EVAIX will talk to port 8080
     environment:
@@ -66,7 +67,7 @@ services:
     container_name: evaix_openwebui
     environment:
       - OPENAI_API_BASE_URL=http://evaix_litellm_core:4000
-      - OPENAI_API_KEY=sk-litellm-master-key # Standard default to match litellm
+      - OPENAI_API_KEY=sk-litellm-key # Fixed key mismatch
       - WEBUI_AUTH=False
       - ENABLE_SIGNUP=False
     ports:

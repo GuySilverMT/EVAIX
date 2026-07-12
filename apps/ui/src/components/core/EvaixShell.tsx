@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { injectCssVariables } from '../../design-system/cssVariables.js';
-import { AvexBar } from './AvexBar.js';
+import { NavBar } from './NavBar.js';
 import { TheGrid } from './primitives/TheGrid.js';
 import { useWorkspaceStore } from '../../stores/workspace.store.js';
 
@@ -28,7 +28,7 @@ export const EvaixShell: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--colors-background)] text-[var(--colors-primary)] font-[var(--typography-fontFamily)]">
-      <AvexBar contextLocation="main-nav" />
+      <NavBar />
       <main className="flex-1 relative overflow-hidden flex flex-col p-1">
         <TheGrid displayId={activeScreenspaceId} />
       </main>

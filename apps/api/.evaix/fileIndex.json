@@ -1767,8 +1767,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/EvaixShell.tsx",
-      "contentHash": "240c6bca381d30cda493a4d780fb590774356ae691fb86ce265f9f2fb23fd285",
-      "updatedAt": "2026-07-12T06:13:27.309Z"
+      "contentHash": "a5dd6998f4c3fa35a435686978d8a94bdd3d1fb95473ec6eeb0135cc5fa84028",
+      "updatedAt": "2026-07-12T06:41:32.646Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/FocusStrip.tsx",
@@ -2009,6 +2009,21 @@
       "filePath": "/home/guy/EVAIX/apps/api/src/services/voice/__tests__/VoiceRouter.test.ts",
       "contentHash": "f575edad02d5da6440e5b79da9d20eb2eca7ad6ff7a1f3e2184b2799d4af7276",
       "updatedAt": "2026-07-12T06:14:16.541Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/CalendarSettings.tsx",
+      "contentHash": "f1c0a40bbeee082d6542733b918ae4b130076be156b807fd94205a557c7fd55a",
+      "updatedAt": "2026-07-12T06:40:49.853Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/AppStackMenu.tsx",
+      "contentHash": "1cfb27e887092982c25855d0959727d8cfd088b0259cc43b0cdf8d8bd3e6e18d",
+      "updatedAt": "2026-07-12T06:40:59.935Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/NavBar.tsx",
+      "contentHash": "55c0011075c14e7f7d97f58c30c845519bbda50d1de4358f2ad131a4f0ea0d5a",
+      "updatedAt": "2026-07-12T06:41:10.638Z"
     }
   ]
 }

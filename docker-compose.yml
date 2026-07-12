@@ -13,6 +13,7 @@ services:
       - app-network
     environment:
       LOOTBOX_URL: "http://lootbox:3000"
+      LITELLM_URL: "http://litellm:4000"
 
   ui:
     build:
@@ -22,7 +23,7 @@ services:
         - VITE_API_URL=http://localhost:4000/trpc
         - VITE_WS_URL=ws://localhost:4000
     ports:
-      - "3000:80" # Expose Nginx on port 3000 on the host
+      - "3000:80" 
     depends_on:
       - api
     networks:
@@ -39,6 +40,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # --- AI Gateway ---
+  
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: evaix_litellm_core
+    ports:
+      - "8080:4000"
+    env_file:
+      - .env
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml
+    command: [ "--config", "/app/config.yaml" ]
+    networks:
+      - app-network
 
   # --- Backend Dependencies ---
 
