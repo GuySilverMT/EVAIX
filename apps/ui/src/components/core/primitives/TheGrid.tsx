@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useWorkspaceStore, type CardData } from '../../../stores/workspace.store.js';
 import { AppCard } from '../../work-order/AppCard.js';
 import { AppRegistry } from '../../../registry/ComponentRegistry.js';
@@ -25,20 +25,26 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
   const spawnApp = useWorkspaceStore(s => s.spawnApp);
   const [pickerColIndex, setPickerColIndex] = useState<number | null>(null);
-  const appIds = Object.keys(AppRegistry);
 
   // Filter cards by displayId / screenspaceId
-  const activeCards = activeCardsStore.filter(
+  const activeCards = React.useMemo(() => activeCardsStore.filter(
     c => (c.displayId ?? c.screenspaceId ?? 0) === displayId
-  ), [cards, displayId]);
+  ), [activeCardsStore, displayId]);
 
   const columnsMap = React.useMemo(() => {
     const map: Record<number, CardData[]> = {};
 
-
     for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
       map[colIdx] = [];
     }
+
+    activeCards.forEach(card => {
+      const col = card.colIndex ?? 0;
+      if (map[col]) map[col].push(card);
+    });
+
+    return map;
+  }, [activeCards, totalColumns]);
 
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
