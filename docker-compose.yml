@@ -30,7 +30,7 @@ services:
       - app-network
 
   lootbox:
-    image: jx-codes/lootbox
+    image: docker.io/jx-codes/lootbox:latest
     networks:
       - app-network
     ports:
@@ -56,7 +56,17 @@ services:
     networks:
       - app-network
 
-  # --- EVAIX Mastra Tool Server (OpenAPI HTTP — connects to OpenWebUI Tools) ---
+  # --- OpenWebUI (Integrated) ---
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: evaix_openwebui
+    network_mode: "host" # <--- This makes the container use the host's network
+    environment:
+      - PORT=3000
+    # Remove the 'ports:' section, it is not needed in host mode
+
+  # --- EVAIX Mastra Tool Server ---
 
   evaix-tools:
     image: node:22-alpine
@@ -64,7 +74,7 @@ services:
     working_dir: /app
     volumes:
       - ./packages/mcp-server-vfs:/app
-      - /home/guy/EVAIX:/home/guy/EVAIX   # filesystem/git tools need repo access
+      - /home/guy/EVAIX:/home/guy/EVAIX
     ports:
       - "9099:9099"
     environment:
