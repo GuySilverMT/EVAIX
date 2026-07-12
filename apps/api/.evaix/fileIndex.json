@@ -2037,13 +2037,13 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/mastra/agents/role-architect.ts",
-      "contentHash": "1fda2901101611bef59318fb8677c5a351bd3bc9e2551087f9d0f327826e14fd",
-      "updatedAt": "2026-07-12T09:29:37.664Z"
+      "contentHash": "d468c6990e70bf3cdc41c21fd29cca0582aac25a2a6d2abf872c03743c576185",
+      "updatedAt": "2026-07-12T11:56:27.411Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/routers/openai-compatible.router.ts",
-      "contentHash": "f2fa59af545f852c8dc1e6e2fc4019d49480ff1a214cefbdc7ea6a9af81c75cf",
-      "updatedAt": "2026-07-12T09:46:31.472Z"
+      "contentHash": "a00f5e67ead92a7d261df334e003af87c12a0bff5060bf0c41d6cb5a91210a65",
+      "updatedAt": "2026-07-12T11:58:45.085Z"
     }
   ]
 }

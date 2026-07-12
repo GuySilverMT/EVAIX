@@ -23,7 +23,7 @@ export const roleArchitect = new Agent({
     You operate directly on the filesystem as part of EVAIX's Code-as-Infrastructure architecture.
     Prioritize autonomy and deterministic coding.
   `,
-  model: liteLlmProvider('gpt-4o'),
+  model: liteLlmProvider(process.env.DEFAULT_AGENT_MODEL || 'nvidia/meta/llama-3.3-70b-instruct'),
   tools: {
     writeAgentTool
   }

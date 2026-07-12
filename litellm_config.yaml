@@ -5,7 +5,7 @@ model_list:
       api_key: os.environ/XAI_API_KEY
   - model_name: nvidia/*
     litellm_params:
-      model: openai-compatible
+      model: openai/*
       api_base: https://integrate.api.nvidia.com/v1
       api_key: os.environ/NVIDIA_API_KEY
   - model_name: groq/*
@@ -16,6 +16,10 @@ model_list:
     litellm_params:
       model: openrouter/*
       api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: cerebras/*
+    litellm_params:
+      model: cerebras/*
+      api_key: os.environ/CEREBRAS_API_KEY
 
 general_settings:
   master_key: sk-litellm-key
