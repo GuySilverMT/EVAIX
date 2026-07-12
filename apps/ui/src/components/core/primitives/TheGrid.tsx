@@ -4,6 +4,7 @@ import { AppCard } from '../../work-order/AppCard.js';
 import { AppRegistry } from '../../../registry/ComponentRegistry.js';
 
 const APP_IDS = Object.keys(AppRegistry);
+const EMPTY_CARDS: CardData[] = [];
 
 /**
  * @file TheGrid.tsx
@@ -19,7 +20,7 @@ export interface TheGridProps {
 }
 
 export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
-  const activeCardsStore = useWorkspaceStore(s => s.activeCards || s.cards || []);
+  const activeCardsStore = useWorkspaceStore(s => s.activeCards || s.cards || EMPTY_CARDS);
   const totalColumns = useWorkspaceStore(s => s.columns) || 2;
   const focusedCardIds = useWorkspaceStore(s => s.focusedCardIds);
   const setFocusedCardId = useWorkspaceStore(s => s.setFocusedCardId);
@@ -60,7 +61,7 @@ export const TheGrid: React.FC<TheGridProps> = ({ displayId = 0 }) => {
   return (
     <div className="flex flex-row flex-1 w-full h-full gap-[1px] bg-[var(--colors-divider)] overflow-hidden">
       {Array.from({ length: totalColumns }).map((_, colIndex) => {
-        const colCards = columnsMap[colIndex] || [];
+        const colCards = columnsMap[colIndex] || EMPTY_CARDS;
         
         // Determine the focused card for this column
         const storedFocusedId = focusedCardIds[colIndex];
