@@ -62,7 +62,7 @@ DEFAULT_AGENT_MODEL="${DEFAULT_AGENT_MODEL:-cerebras/gemma-4-31b}" \
 CEREBRAS_API_KEY="${CEREBRAS_API_KEY}" \
 NVIDIA_API_KEY="${NVIDIA_API_KEY}" \
 GROQ_API_KEY="${GROQ_API_KEY}" \
-  node packages/mcp-server-vfs/dist/mcp-server.js &
+  node apps/api/dist/src/mcp-server.js &
 TOOLS_PID=$!
 echo "   Tool server PID: ${TOOLS_PID}"
 
@@ -101,7 +101,8 @@ wait_for "LiteLLM Proxy (:8080)"    "http://localhost:8080/health"  8080
 wait_for "OpenWebUI (:3000)"        "http://localhost:3000"          3000
 
 # EVAIX Mastra Tool Server
-wait_for "EVAIX Tool Server (:9099)" "http://localhost:9099/openapi.json" 9099
+# No longer polling /openapi.json as MCP SSE does not use it
+    # wait_for "EVAIX MCP Server (:9099)" "http://localhost:9099/sse" 9099
 
 # ttyd Terminal
 wait_for "Terminal (:7681)"         "http://localhost:7681"          7681
@@ -118,12 +119,12 @@ echo "🌐 SERVICE ENDPOINTS"
 echo "================================================="
 echo "  LiteLLM Proxy   → http://localhost:8080/v1"
 echo "  OpenWebUI        → http://localhost:3000"
-echo "  EVAIX Tools      → http://localhost:9099"
+echo "  EVAIX MCP Tools  → http://localhost:9099/sse"
 echo "  Mastra Studio    → http://localhost:4111"
 echo "  Terminal (ttyd)  → http://localhost:7681"
 echo "  FileBrowser      → http://localhost:8082"
 echo ""
-echo "  📡 OpenWebUI Tool Server URL: http://localhost:9099"
+echo "  📡 OpenWebUI MCP Server URL: http://localhost:9099/sse"
 echo "     Admin → Settings → Tools → Add Tool Server → paste ↑"
 echo ""
 echo "  🔗 OpenWebUI LiteLLM Connection:"
