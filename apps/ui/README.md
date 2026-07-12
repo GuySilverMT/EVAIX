@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# EVAIX UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The `apps/ui` workspace contains the frontend application for the EVAIX monorepo. It is built using React, Vite, and Tailwind CSS. It serves as the primary interface for visualizing agent actions, configuring workspaces, and managing tools.
 
-Currently, two official plugins are available:
+The UI connects to the backend API (`apps/api`) via TRPC and REST. It can be run as a standard web application in the browser or packaged as a desktop application using Electron.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Getting Started
 
-## React Compiler
+Ensure you have run the monorepo-wide setup commands first (`pnpm install` and `.env` setup in the root).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Running in Development
 
-## Expanding the ESLint configuration
+To start the UI development server (along with the API) from the root of the monorepo:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# In the root directory
+pnpm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Alternatively, to run *only* the UI application from the root:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm --filter ui run dev
 ```
+
+### Running the Desktop App (Electron)
+
+To run the UI packaged as a desktop Electron app:
+
+```bash
+# In the root directory
+pnpm run desktop
+```
+
+Or specific to the UI package:
+
+```bash
+pnpm --filter ui run desktop
+```
+
+## 🛠️ Scripts
+
+Within the `apps/ui` workspace, the following scripts are available (run with `pnpm run <script>`):
+
+- `dev`: Generates the theme and starts the Vite development server concurrently with a theme file watcher.
+- `desktop`: Starts the Vite server and the Electron application concurrently.
+- `build`: Generates the theme and builds the Vite application for production.
+- `preview`: Previews the built application locally.
+- `lint`: Runs ESLint for the UI package.
+- `type-check`: Runs TypeScript type checking without emitting files.
+
+## 🎨 Theming
+
+The UI features a robust theming system. When running `dev` or `build`, a script (`scripts/generate-theme.mjs`) automatically generates the theme based on configurations.
