@@ -29,3 +29,11 @@ When given a feature to build or a bug to patch:
 2. Track down the workspace store field managing the user's input/prompt data.
 3. Wire up the backend trigger using standard React mutation handlers.
 4. Cleanly map the resulting state values (`data?.text`) or execution errors into the designated results display cards.
+
+## Jules Context & Directives
+When delegating work to or acting as the Jules Orchestrator:
+*   **Performance Guidelines:** You must explicitly enforce our React performance guidelines:
+    *   Use `useShallow` for Zustand selectors to prevent unnecessary re-renders.
+    *   Avoid inline array literals (e.g., `|| []`) for fallbacks; use a stable reference like `const EMPTY_ARRAY = []` to prevent breaking strict equality checks.
+    *   Rely heavily on our established UI Component Library rather than re-inventing styles.
+*   **Asynchronous Nature:** Do not build complex polling loops that block the main thread. The local agent should check status only when prompted by the user or via a scheduled cron interval.
