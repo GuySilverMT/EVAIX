@@ -21,6 +21,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { Agent } from '@mastra/core/agent';
 import { createOpenAI } from '@ai-sdk/openai';
+import { julesOrchestrator } from './JulesOrchestrator.js';
 
 // ─── Tool imports (from .domoreai signatures) ─────────────────────────────────
 import {
@@ -158,6 +159,13 @@ const TOOLS: ToolDef[] = [
     description: 'Delegates to the DevOps agent. Handles git operations and multi-file filesystem mutations for the EVAIX monorepo. Describe the git or filesystem task.',
     paramDescription: 'Git or filesystem operation to automate (status, commit, read/write files, etc.).',
     agent: devopsAgent,
+  },
+  {
+    id: 'ask_jules_orchestrator',
+    summary: 'Ask the Jules Orchestrator Agent',
+    description: 'Delegates to the Jules Orchestrator agent to dispatch coding tasks.',
+    paramDescription: 'Describe the task for Jules to perform.',
+    agent: julesOrchestrator,
   },
 ];
 

@@ -62,6 +62,7 @@ DEFAULT_AGENT_MODEL="${DEFAULT_AGENT_MODEL:-cerebras/gemma-4-31b}" \
 CEREBRAS_API_KEY="${CEREBRAS_API_KEY}" \
 NVIDIA_API_KEY="${NVIDIA_API_KEY}" \
 GROQ_API_KEY="${GROQ_API_KEY}" \
+JULES_API_KEY="${JULES_API_KEY}" \
   node packages/mcp-server-vfs/dist/mcp-server.js &
 TOOLS_PID=$!
 echo "   Tool server PID: ${TOOLS_PID}"
