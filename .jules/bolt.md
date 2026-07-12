@@ -1,3 +1,6 @@
 ## 2024-05-18 - Memoizing Zustand Derived State in UI Grid
 **Learning:** In the `TheGrid.tsx` component, recalculating the `activeCards` filter and `columnsMap` array groupings inline caused unnecessary React recalculations on every render (e.g. when local ephemeral state like `pickerColIndex` changed).
 **Action:** Always wrap heavy derived state computations based on global store values in `React.useMemo` to prevent redundant processing, especially in spatial layout/grid components. Also, hoisted static data like `Object.keys(AppRegistry)` to module scope to avoid array allocations per render.
+## 2024-05-18 - Avoid Inline Arrays in Zustand Selectors
+**Learning:** Using inline empty arrays `|| []` as fallbacks in Zustand store selectors (e.g. `useWorkspaceStore(s => s.cards || [])`) causes the selector to return a new array reference on every store update. Because Zustand uses strict equality `===` by default, this bypasses bail-out mechanisms and causes entire component trees (like `EvaixShell` and `TheGrid`) to re-render unnecessarily on ANY unrelated state change in the global workspace store.
+**Action:** Always declare a stable reference like `const EMPTY_ARRAY = []` outside the component scope and use it as the fallback, or use `useShallow` if multiple derived states are calculated.

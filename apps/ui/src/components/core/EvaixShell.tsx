@@ -2,7 +2,9 @@ import React, { useEffect } from 'react';
 import { injectCssVariables } from '../../design-system/cssVariables.js';
 import { AvexBar } from './AvexBar.js';
 import { TheGrid } from './primitives/TheGrid.js';
-import { useWorkspaceStore } from '../../stores/workspace.store.js';
+import { useWorkspaceStore, type CardData } from '../../stores/workspace.store.js';
+
+const EMPTY_CARDS: CardData[] = [];
 
 /**
  * @file EvaixShell.tsx
@@ -10,7 +12,7 @@ import { useWorkspaceStore } from '../../stores/workspace.store.js';
  * Includes the Navbar (AvexBar) and main working area (TheGrid).
  */
 export const EvaixShell: React.FC = () => {
-  const cards = useWorkspaceStore(s => s.cards || []);
+  const cards = useWorkspaceStore(s => s.cards || EMPTY_CARDS);
   const activeScreenspaceId = useWorkspaceStore(s => s.activeScreenspaceId);
   const spawnApp = useWorkspaceStore(s => s.spawnApp);
 

@@ -3,6 +3,8 @@ import type { FileSystemProviderType } from './FileSystemTypes.js';
 import { trpc } from '../utils/trpc.js';
 import { FileSystemContext } from './FileSystemContext.js';
 
+const EMPTY_FILES: any[] = [];
+
 interface SshConfig {
   host: string;
   port: number;
@@ -111,7 +113,7 @@ export const FileSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   return (
     <FileSystemContext.Provider value={{ 
-        files: listQuery.data || [], 
+        files: listQuery.data || EMPTY_FILES,
         currentProvider, 
         sshConnectionId, 
         currentPath,

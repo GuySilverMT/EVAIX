@@ -53,6 +53,8 @@ const DEFAULT_ROLES: RoleConfig[] = [
   { id: 'Code Reviewer', name: 'Code Reviewer', color: '#f59e0b' },
 ];
 
+const EMPTY_MODELS: ModelConfig[] = [];
+
 /**
  * provider.store.ts — Dynamic Provider & Model Registry for EVAIX AvexBar.
  * Starts with EXACTLY 0 providers configured (framework paradigm).
@@ -117,7 +119,7 @@ export const syncProvidersWithLiteLLM = async () => {
     }
     
     // TRPC wraps successful responses in result.data
-    const remoteModels = data.result?.data || [];
+    const remoteModels = data.result?.data || EMPTY_MODELS;
 
     const litellmProvider: ProviderConfig = {
       id: 'litellm',
