@@ -2,7 +2,8 @@ import { Agent } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
-import { prisma } from '../db.js';
+import { promises as fsPromises } from 'fs';
+import path from 'path';
 
 // 1. Configure Provider: Route AI SDK through the live LiteLLM Podman container
 const liteLlmProvider = createOpenAI({
@@ -10,98 +11,39 @@ const liteLlmProvider = createOpenAI({
   apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
 });
 
-// 2. Define Mastra Tools (Wrapping your EVAIX database logic)
-const listAvailableTools = createTool({
-  id: 'list_available_tools',
-  description: 'List all tools currently registered in the EVAIX system that can be assigned to new agent roles.',
-  inputSchema: z.object({}),
-  execute: async () => {
-    const tools = await prisma.tool.findMany({
-      select: { name: true, description: true },
-    });
-    return { tools };
-  },
-});
+// 2. Define Mastra Tools
 
-const upsertRoleTool = createTool({
-  id: 'upsert_role',
-  description: 'Create or update an AI Role Variant (Agent DNA) in the system.',
+// We must provide search_mastra_docs. For now, it will act as a client to our MCP server
+// or invoke the tool directly. Since it's a tool the agent must use, we'll define a proxy
+// tool here that uses the same logic, or we import it. I'll define it here to call the MCP.
+// Actually, I can just define the tool logic here or import it from the new mcp-mastra-docs.ts.
+// I'll import it from mcp-mastra-docs.ts.
+import { searchMastraDocsTool } from '../mcp-mastra-docs.js';
+
+const filesystemWriteFile = createTool({
+  id: 'filesystem_write_file',
+  description: 'Write content to a file on the filesystem. ONLY permitted to write to EVAIX agents directory (packages/evaix-mastra/src/agents/).',
   inputSchema: z.object({
-    id: z.string().optional().describe('Optional ID for updating an existing role.'),
-    name: z.string().describe('Name of the role (e.g. "Security Auditor")'),
-    description: z.string(),
-    basePrompt: z.string().describe('The detailed Identity system prompt for the role.'),
-    categoryName: z.string().default('Uncategorized'),
-    tools: z.array(z.string()).describe('List of exact tool names this role can use.'),
-    needsVision: z.boolean().default(false),
-    needsCoding: z.boolean().default(false),
-    needsReasoning: z.boolean().default(false),
+    path: z.string().describe('The path to the file to write, e.g. packages/evaix-mastra/src/agents/my-agent.ts'),
+    content: z.string().describe('The TypeScript content to write to the file.'),
   }),
-  execute: async ({ id, name, description, basePrompt, categoryName, tools, needsVision, needsCoding, needsReasoning }) => {
-    // Ensure category exists
-    let category = await prisma.roleCategory.findUnique({
-      where: { name: categoryName },
-    });
+  execute: async ({ path: filePath, content }) => {
+    // Restrict its write access specifically to the EVAIX agents directory
     
-    if (!category) {
-      category = await prisma.roleCategory.create({
-        data: { name: categoryName },
-      });
-    }
+    try {
+      const targetDir = path.resolve(process.cwd(), 'packages/evaix-mastra/src/agents');
+      const fullPath = path.resolve(process.cwd(), filePath);
 
-    const roleId = id || `role-${Date.now()}`;
-    
-    // Upsert the Agent DNA
-    const role = await prisma.role.upsert({
-      where: { id: roleId },
-      update: {
-        name,
-        description,
-        basePrompt,
-        categoryId: category.id,
-        metadata: {
-          needsVision,
-          needsCoding,
-          needsReasoning,
-        },
-      },
-      create: {
-        id: roleId,
-        name,
-        description,
-        basePrompt,
-        categoryId: category.id,
-        metadata: {
-          needsVision,
-          needsCoding,
-          needsReasoning,
-        },
-      },
-    });
-
-    // Sync the Tools Module array
-    if (tools && tools.length > 0) {
-      await prisma.roleTool.deleteMany({ where: { roleId: role.id } });
-      const foundTools = await prisma.tool.findMany({
-        where: { name: { in: tools } },
-        select: { id: true },
-      });
-
-      if (foundTools.length > 0) {
-        await prisma.roleTool.createMany({
-          data: foundTools.map((tool) => ({
-            roleId: role.id,
-            toolId: tool.id,
-          })),
-          skipDuplicates: true,
-        });
+      // Restrict its write access specifically to the EVAIX agents directory
+      if (!fullPath.startsWith(targetDir)) {
+        return { success: false, error: 'Access denied: Role Architect can only write to packages/evaix-mastra/src/agents/' };
       }
+      await fsPromises.mkdir(path.dirname(fullPath), { recursive: true });
+      await fsPromises.writeFile(fullPath, content, 'utf-8');
+      return { success: true, message: `Successfully wrote to ${filePath}` };
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
-
-    return { 
-      success: true, 
-      message: `Role Variant "${role.name}" evolved successfully with ID: ${role.id}` 
-    };
   },
 });
 
@@ -111,19 +53,20 @@ export const roleArchitectAgent = new Agent({
   name: 'EVAIX Role Architect',
   instructions: `
     You are the Role Architect, a core meta-agent within the EVAIX operating system.
-    Your primary directive is to design, analyze, evolve, and configure other AI agent personas (Roles) using the Agent DNA framework.
+    You are an expert in Mastra framework architecture.
+    Your sole purpose is to write other Mastra agents for the EVAIX core ecosystem. You do NOT review code.
+    Your job is to design isolated, single-purpose agents and ensure smooth prompt handoffs between roles.
     
-    When given a system requirement:
-    1. Determine the optimal Identity (Persona & Prompt).
-    2. Determine the required Tool Module. ALWAYS use 'list_available_tools' first to see what tools are actually registered. DO NOT hallucinate tools.
-    3. Use 'upsert_role' to commit the new Agent DNA to the database.
+    IMPORTANT RULES:
+    1. You MUST always use the search_mastra_docs tool to verify syntax, workflow configurations, and tool integrations before writing code. Do not guess or hallucinate Mastra syntax.
+    2. You will be provided a project_type (e.g., "Frontend WebNode", "Backend MCP"). You must apply the specific project rules to the generated code.
+    3. You ONLY have write access to the EVAIX agents directory (packages/evaix-mastra/src/agents/).
     
-    Prioritize autonomous capability, deterministic outputs, and strict adherence to the EVAIX architecture.
+    Prioritize clean, production-ready TypeScript code.
   `,
-  // Target a strong reasoning model handled by your LiteLLM router configuration
   model: liteLlmProvider('gpt-4o'), 
   tools: {
-    listAvailableTools,
-    upsertRoleTool
+    filesystemWriteFile,
+    searchMastraDocsTool // Imported from mcp-mastra-docs.js
   },
 });

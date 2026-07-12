@@ -10,7 +10,6 @@ import cors from 'cors';
 import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
-import { shutdownDb } from './db.js';
 import { openAiRouter } from './routers/openai-compatible.router.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,7 +18,6 @@ const __dirname = path.dirname(__filename);
 import { ProviderManager } from './services/ProviderManager.js';
 import { createVolcanoTelemetry } from 'volcano-sdk';
 // import { scheduler } from './services/JobScheduler.js';
-import { backupService } from './services/BackupService.js';
 // import { persistentModelDoctor } from './services/PersistentModelDoctor.js';
 import { API_PORT, API_HOST, DEFAULT_CORS_ORIGIN, VOLCANO_TELEMETRY_ENABLED } from './config/constants.js';
 import { initializeMockEngines } from './services/voice/mockEngines.js';
@@ -197,12 +195,6 @@ async function startServer() {
         console.warn('⚠️ Scheduler daemon failed to start:', schedErr);
       }
 
-      // Start automatic backup service
-      try {
-        await backupService.start();
-      } catch (err) {
-        console.warn('⚠️ Backup service failed to start:', err);
-      }
 
       // [NEW] Trigger Background MCP Tool Sync
       // This ensures the UI reflects any new MCP servers added to RegistryClient
@@ -251,14 +243,12 @@ async function startServer() {
     console.log(`\n${signal} received. Shutting down gracefully...`);
 
     // Stop background services first
-    backupService.stop();
     // persistentModelDoctor.stop();
 
     server.close(() => {
       void (async () => {
         console.log('HTTP server closed.');
         wsService.close(); // Assuming WebSocketService has a .close() method
-        await shutdownDb();
         console.log('Database connection closed.');
         process.exit(0);
       })();

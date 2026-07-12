@@ -72,7 +72,7 @@ services:
       LITELLM_MASTER_KEY: "sk-litellm-key"
       DEFAULT_AGENT_MODEL: "cerebras/gemma-4-31b"
       EVAIX_TOOLS_PORT: "9099"
-    command: ["node", "dist/mcp-server.js"]
+    command: ["node", "dist/src/mcp-server.js"]
     networks:
       - app-network
     depends_on:

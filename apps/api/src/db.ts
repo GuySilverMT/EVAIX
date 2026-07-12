@@ -4,9 +4,6 @@
  * This stub exports a `prisma` object typed as `any` so all existing
  * `import { prisma } from '../db.js'` call-sites compile and start up without
  * crashing during the progressive migration to JSON-file reads.
- *
- * Each method logs a warning and returns a sensible empty value. Replace
- * individual method bodies with real JSON-store reads as you migrate each service.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -27,11 +24,6 @@ const makeNoopModel = (name: string) => ({
   groupBy:     async (..._args: any[]) => { console.warn(`[db stub] ${name}.groupBy — returning []`); return []; },
 });
 
-/**
- * Drop-in stub for the removed PrismaClient instance — typed as `any` so
- * all existing call-sites compile during the JSON migration phase.
- * Progressively replace prisma.<model> calls with JSON reads in each service.
- */
 export const prisma: any = {
   $connect:          async () => {},
   $disconnect:       async () => {},
@@ -40,8 +32,6 @@ export const prisma: any = {
   $executeRawUnsafe: async (..._args: any[]) => { console.warn('[db stub] $executeRawUnsafe called — no-op'); return 0; },
   $queryRaw:         async (..._args: any[]) => { console.warn('[db stub] $queryRaw called — returning []'); return []; },
   $queryRawUnsafe:   async (..._args: any[]) => { console.warn('[db stub] $queryRawUnsafe called — returning []'); return []; },
-
-  // --- Model stubs ---
   model:              makeNoopModel('model'),
   provider:           makeNoopModel('provider'),
   providerConfig:     makeNoopModel('providerConfig'),
@@ -70,9 +60,6 @@ export const prisma: any = {
   orchestration:      makeNoopModel('orchestration'),
 };
 
-/** Legacy default export kept for compatibility */
 export const db = prisma;
 export default prisma;
-
-/** No-op shutdown for compatibility with import { shutdownDb } from './db.js' */
 export async function shutdownDb(): Promise<void> { await prisma.$disconnect(); }
