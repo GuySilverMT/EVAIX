@@ -237,8 +237,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/package.json",
-      "contentHash": "53d235f10646f5f57beb535d0c6d4eda8d99949176382a2b27e16883507a68f3",
-      "updatedAt": "2026-07-12T06:06:48.257Z"
+      "contentHash": "7afbce110837cf6d26ac398ebca85dcd7b7455f90c3008c932c78230d07f2791",
+      "updatedAt": "2026-07-12T09:33:00.597Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/tsconfig.json",
@@ -487,8 +487,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/index.ts",
-      "contentHash": "43da36994d904613a54a06cdc3af0335f844e7590ec2022d883348392ee77504",
-      "updatedAt": "2026-07-12T06:07:29.681Z"
+      "contentHash": "c5fddd06919660f5fbd8d85a14361d4644ed0ab046ca072edbc8757433b37717",
+      "updatedAt": "2026-07-12T09:47:10.912Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/instrumentation.ts",
@@ -2017,13 +2017,33 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/AppStackMenu.tsx",
-      "contentHash": "1cfb27e887092982c25855d0959727d8cfd088b0259cc43b0cdf8d8bd3e6e18d",
-      "updatedAt": "2026-07-12T06:40:59.935Z"
+      "contentHash": "653c87426be93dd8d2281efd204486bbe2e066ab0ea05e815a897844d00f1766",
+      "updatedAt": "2026-07-12T09:29:49.907Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/ui/src/components/core/NavBar.tsx",
-      "contentHash": "55c0011075c14e7f7d97f58c30c845519bbda50d1de4358f2ad131a4f0ea0d5a",
-      "updatedAt": "2026-07-12T06:41:10.638Z"
+      "contentHash": "b27bdda11148bacf4961afc34c1adc4602c942cf421ef8e66687d386172a0e2c",
+      "updatedAt": "2026-07-12T09:30:33.406Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/mastra/index.ts",
+      "contentHash": "93b9a6de48cae6e0ac64a8d28bac3f4068af97010c39c183fe0545719ece27b1",
+      "updatedAt": "2026-07-12T09:29:15.613Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/mastra/tools/write-agent.ts",
+      "contentHash": "898346a6ea3363de518ec91d53d83a9cac7451c800310ba5cc091228f8388987",
+      "updatedAt": "2026-07-12T09:29:28.074Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/mastra/agents/role-architect.ts",
+      "contentHash": "1fda2901101611bef59318fb8677c5a351bd3bc9e2551087f9d0f327826e14fd",
+      "updatedAt": "2026-07-12T09:29:37.664Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/routers/openai-compatible.router.ts",
+      "contentHash": "f2fa59af545f852c8dc1e6e2fc4019d49480ff1a214cefbdc7ea6a9af81c75cf",
+      "updatedAt": "2026-07-12T09:46:31.472Z"
     }
   ]
 }

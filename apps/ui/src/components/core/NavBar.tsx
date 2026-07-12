@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Box, InputBase } from '@mui/material';
+import { Box, InputBase, IconButton } from '@mui/material';
 import { CalendarSettings } from './CalendarSettings.js';
 import { AppStackMenu } from './AppStackMenu.js';
 import { ModelBar } from '../ui/ModelBar.js';
 import { useProviderStore } from '../../stores/provider.store.js';
+import { useWorkspaceStore } from '../../stores/workspace.store.js';
 import { trpc } from '../../utils/trpc.js';
 import { toast } from 'sonner';
 
@@ -106,6 +107,26 @@ export const NavBar: React.FC = () => {
             autoFocus
           />
         )}
+
+        <IconButton 
+          onClick={() => useWorkspaceStore.getState().spawnApp('openwebui')}
+          sx={{ 
+            color: 'primary.main', 
+            bgcolor: 'rgba(0,0,0,0.2)',
+            border: '1px solid',
+            borderColor: 'primary.dark',
+            borderRadius: 1,
+            '&:hover': { bgcolor: 'primary.dark' },
+            width: 32,
+            height: 32,
+            mr: 1
+          }}
+          title="AI Chat Overlay (OpenWebUI)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </IconButton>
 
         <ModelBar 
           contextLocation="main-nav" 

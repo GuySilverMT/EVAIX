@@ -77,5 +77,8 @@ fi
 echo "📦 Building packages..."
 pnpm build
 
+echo "🌌 Starting Mastra Studio..."
+(cd apps/api && pnpm exec mastra dev --port 4111) &
+
 echo "🖥️ Starting EVAIX Desktop..."
 pnpm run desktop

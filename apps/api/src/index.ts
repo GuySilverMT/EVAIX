@@ -11,6 +11,7 @@ import morgan from 'morgan';
 import http from 'http';
 import { createTRPCContext as createContext } from './trpc.js';
 import { shutdownDb } from './db.js';
+import { openAiRouter } from './routers/openai-compatible.router.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -166,7 +167,7 @@ async function startServer() {
   console.log('✅ LiteLLM Proxy is handling all model routing. Bypassing legacy API Ingestion.');
 
   // Mount RESTful API routers
-  // app.use('/llm', llmRouter);
+  app.use('/api', openAiRouter);
 
   // Global error handler for REST routes
   // This should be the last middleware added

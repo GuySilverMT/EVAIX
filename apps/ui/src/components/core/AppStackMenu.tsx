@@ -32,35 +32,17 @@ export const AppStackMenu: React.FC = () => {
         </IconButton>
       </Tooltip>
       
-      <Tooltip title="Launch File Explorer">
+      <Tooltip title="Launch Web Browser">
         <IconButton 
           sx={{ flex: '0 0 6.3%', color: 'text.primary', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
-          onClick={() => spawnApp('file-explorer')}
+          onClick={() => spawnApp('browser')}
         >
           <ViewAgendaIcon sx={{ fontSize: '0.9rem' }} />
         </IconButton>
       </Tooltip>
       
-      <Tooltip title="Launch Open WebUI">
-        <IconButton 
-          sx={{ flex: '0 0 6.4%', color: 'text.primary', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
-          onClick={() => spawnApp('openwebui')}
-        >
-          <Diversity1Icon sx={{ fontSize: '0.9rem' }} />
-        </IconButton>
-      </Tooltip>
-      
-      <Tooltip title="Launch Scheduler">
-        <IconButton 
-          sx={{ flex: '0 0 6.1%', color: 'text.primary', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
-          onClick={() => spawnApp('scheduler')}
-        >
-          <EditNoteIcon sx={{ fontSize: '0.9rem' }} />
-        </IconButton>
-      </Tooltip>
-
       {/* Quick Settings sub-table space reserved here */}
-      <Box sx={{ flex: '0 0 75.1%' }} />
+      <Box sx={{ flex: '1' }} />
     </Box>
   );
 };
