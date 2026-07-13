@@ -48,7 +48,7 @@ async function createMcpServer(): Promise<McpServer> {
 mcpServer.tool(
   "search_mastra_docs",
   "Query Mastra documentation for syntax, workflow configurations, and tool integrations.",
-  { query: z.string().describe("The search query for Mastra documentation.") },
+  z.object({ query: z.string().describe("The search query for Mastra documentation.") }).passthrough(),
   async ({ query }) => {
     const result = await searchMastraDocsTool.execute({ query }, {} as any);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
@@ -58,14 +58,14 @@ mcpServer.tool(
 mcpServer.tool(
   "ask_evaix_role_architect",
   "Ask the EVAIX Role Architect Mastra agent to design or generate a new Mastra agent, workflow, or tool.",
-  {
+  z.object({
     prompt: z.string().describe("The task description for the architect."),
     project_type: z
       .string()
       .describe(
         'The project type (e.g., "Frontend WebNode", "Backend MCP Server", "Mastra Agent").',
       ),
-  },
+  }).passthrough(),
   async ({ prompt, project_type }) => {
     try {
       const response = await roleArchitectAgent.generate(
@@ -85,11 +85,11 @@ mcpServer.tool(
 mcpServer.tool(
   "fs_read_file",
   "Read the full contents of a file. Path is relative to the EVAIX repo root. Use fs_list_files first to confirm the path exists.",
-  {
+  z.object({
     path: z
       .string()
       .describe('Relative file path, e.g. "apps/api/src/mcp-server.ts"'),
-  },
+  }).passthrough(),
   async ({ path }) => {
     try {
       const content = await fsTools.readFile({ path });
@@ -103,11 +103,11 @@ mcpServer.tool(
 mcpServer.tool(
   "fs_list_files",
   "List files and directories in a directory. Path is relative to the EVAIX repo root.",
-  {
+  z.object({
     path: z
       .string()
       .describe('Relative directory path, e.g. "apps/api/src/tools"'),
-  },
+  }).passthrough(),
   async ({ path }) => {
     try {
       const entries = await fsTools.listFiles({ path });
@@ -124,10 +124,10 @@ mcpServer.tool(
 mcpServer.tool(
   "fs_write_file",
   "Create a NEW file. FAILS if the file already exists — use fs_patch_file to modify existing files. Creates parent directories automatically.",
-  {
+  z.object({
     path: z.string().describe("Relative path for the new file."),
     content: z.string().describe("The full content to write."),
-  },
+  }).passthrough(),
   async ({ path, content }) => {
     try {
       await fsTools.writeFile({ path, content });
@@ -141,7 +141,7 @@ mcpServer.tool(
 mcpServer.tool(
   "fs_patch_file",
   "Surgically replace a specific block of text in an EXISTING file. Find the exact text to replace using fs_read_file first. The search_string must be unique within the file.",
-  {
+  z.object({
     path: z.string().describe("Relative path to the file to patch."),
     search_string: z
       .string()
@@ -149,7 +149,7 @@ mcpServer.tool(
         "The exact text block to find and replace. Must be unique in the file.",
       ),
     replace_string: z.string().describe("The replacement text."),
-  },
+  }).passthrough(),
   async ({ path, search_string, replace_string }) => {
     try {
       await fsTools.patchFile({ path, search_string, replace_string });
@@ -165,13 +165,13 @@ mcpServer.tool(
 mcpServer.tool(
   "fs_context_fetch",
   "Tail the last N lines of a file or card log. Useful for reading long logs without loading the entire file.",
-  {
+  z.object({
     file_path: z.string().describe("Relative path to the file to tail."),
     lines: z
       .number()
       .optional()
       .describe("Number of lines to return from the end (default: 100)."),
-  },
+  }).passthrough(),
   async ({ file_path, lines = 100 }) => {
     try {
       const content = await fsTools.readFile({ path: file_path });
@@ -192,7 +192,7 @@ mcpServer.tool(
 mcpServer.tool(
   "terminal_execute",
   terminalTools.execute.description,
-  {
+  z.object({
     command: z
       .string()
       .describe("The bash command to execute. Runs in the EVAIX repo root."),
@@ -200,7 +200,7 @@ mcpServer.tool(
       .string()
       .optional()
       .describe("Optional working directory relative to the repo root."),
-  },
+  }).passthrough(),
   async ({ command, cwd }) => {
     const result = await terminalTools.execute.handler({ command, cwd });
     const parts: string[] = [`Status: ${result.status}`];
@@ -213,13 +213,13 @@ mcpServer.tool(
 mcpServer.tool(
   "git_execute",
   "Run git commands in the EVAIX repository. Use this for git status, log, diff, commit, branch, stash, etc. The CWD is automatically set to the repo root.",
-  {
+  z.object({
     subcommand: z
       .string()
       .describe(
         'The git subcommand and args, e.g. "status", "log --oneline -10", "diff HEAD~1", "add -A && git commit -m \'message\'"',
       ),
-  },
+  }).passthrough(),
   async ({ subcommand }) => {
     const result = await terminalTools.execute.handler({
       command: `git ${subcommand}`,
@@ -244,7 +244,7 @@ RULES:
 2. Globals available: nebula (UI tree), ast (JSX parsing), tree (read-only state), patch (file patcher).
 3. All installed packages from the monorepo are importable.
 4. Default timeout is 30s. Max is 60s.`,
-  {
+  z.object({
     code: z
       .string()
       .describe(
@@ -254,7 +254,7 @@ RULES:
       .number()
       .optional()
       .describe("Timeout in ms (default: 30000, max: 60000)."),
-  },
+  }).passthrough(),
   async ({ code, timeout }) => {
     const result = await typescriptInterpreterTool.handler({ code, timeout });
     const arr = Array.isArray(result) ? result : [result];
@@ -270,14 +270,14 @@ RULES:
 mcpServer.tool(
   "search_codebase",
   "Semantic vector search over the EVAIX codebase. Use this to find relevant code without knowing the exact file path.",
-  {
+  z.object({
     query: z
       .string()
       .describe(
         'Natural language query, e.g. "how does the scheduler store cron jobs"',
       ),
     limit: z.number().optional().describe("Max results (default: 5)"),
-  },
+  }).passthrough(),
   async ({ query, limit }) => {
     try {
       const result = await searchCodebaseTool.handler({ query, limit });
@@ -292,7 +292,7 @@ mcpServer.tool(
 mcpServer.tool(
   "grep_codebase",
   "Search for an exact string or pattern across the entire EVAIX codebase using grep. Faster than semantic search for known terms.",
-  {
+  z.object({
     pattern: z
       .string()
       .describe("The exact string or regex pattern to search for."),
@@ -306,7 +306,7 @@ mcpServer.tool(
       .boolean()
       .optional()
       .describe("Case-insensitive search (default: false)."),
-  },
+  }).passthrough(),
   async ({ pattern, path, case_insensitive }) => {
     const flags = case_insensitive ? "-ri" : "-r";
     const target = path || ".";
@@ -326,13 +326,13 @@ mcpServer.tool(
 mcpServer.tool(
   "web_scrape",
   "Fetch a public URL using a full Chromium browser and return the content as clean Markdown. Best for JS-rendered pages, documentation, and articles. Strips ads, nav, and boilerplate.",
-  {
+  z.object({
     url: z.string().url().describe("The fully qualified URL to fetch."),
     timeoutMs: z
       .number()
       .optional()
       .describe("Request timeout in ms (default: 30000)."),
-  },
+  }).passthrough(),
   async ({ url, timeoutMs }) => {
     try {
       const result = await fetchPageAsMarkdown({ url, timeoutMs });
@@ -362,9 +362,9 @@ mcpServer.tool(
 mcpServer.tool(
   "web_fetch",
   "Fetch a URL using simple HTTP (no JavaScript rendering). Faster than web_scrape but may miss dynamically rendered content. Returns plain text.",
-  {
+  z.object({
     url: z.string().url().describe("The URL to fetch."),
-  },
+  }).passthrough(),
   async ({ url }) => {
     try {
       const result = await browserTools.fetchPage({ url });
@@ -386,7 +386,7 @@ mcpServer.tool(
 mcpServer.tool(
   "ui_update_theme",
   "Update a single CSS-level design token in the EVAIX UI theme.json file. Changes take effect immediately in the live UI (hot-reload). Use this to change colors, fonts, spacing, etc.",
-  {
+  z.object({
     key: z
       .string()
       .describe(
@@ -395,7 +395,7 @@ mcpServer.tool(
     value: z
       .string()
       .describe('The new value to set, e.g. "#FF0000" or "Inter, sans-serif".'),
-  },
+  }).passthrough(),
   async ({ key, value }) => {
     try {
       const result = await themeEditorTool.handler({ key, value });
@@ -413,7 +413,7 @@ mcpServer.tool(
 mcpServer.tool(
   "scheduler_list_jobs",
   "Return all scheduled calendar events and automation jobs from the EVAIX scheduler.json file.",
-  {},
+  z.object({}).passthrough(),
   async () => {
     try {
       const result = await listScheduledJobs.execute();
@@ -429,7 +429,7 @@ mcpServer.tool(
 mcpServer.tool(
   "scheduler_add_job",
   "Add a new calendar event or cron automation job to the EVAIX scheduler. Supports both plain calendar blocks and agent automation via cron expressions.",
-  {
+  z.object({
     id: z.string().describe("Unique job ID (use a UUID or slug)."),
     title: z.string().describe("Display title shown on the calendar."),
     start: z
@@ -450,7 +450,7 @@ mcpServer.tool(
       ),
     action: z.string().optional().describe("Action the agent should take."),
     prompt: z.string().optional().describe("Prompt to send to the agent."),
-  },
+  }).passthrough(),
   async ({ id, title, start, end, cron, agent, action, prompt }) => {
     try {
       const job: any = { id, title, start, end };
@@ -472,7 +472,7 @@ mcpServer.tool(
 mcpServer.tool(
   "scheduler_delete_job",
   "Remove a scheduled event or automation from the EVAIX calendar by its job ID.",
-  { id: z.string().describe("The job ID to delete.") },
+  z.object({ id: z.string().describe("The job ID to delete.") }).passthrough(),
   async ({ id }) => {
     try {
       const result = await deleteScheduledJob.execute({ id });
@@ -486,7 +486,7 @@ mcpServer.tool(
 mcpServer.tool(
   "scheduler_reload",
   "Force the EVAIX cron daemon to reload from scheduler.json. Use this after manually editing the scheduler file.",
-  {},
+  z.object({}).passthrough(),
   async () => {
     try {
       const result = await reloadSchedulerDaemon.execute();
@@ -534,7 +534,7 @@ if (process.env.JULES_API_KEY || process.env.GOOGLE_JULES_API_KEY) {
     mcpServer.tool(
       tool.name,
       julesMap[tool.name] || tool.description,
-      zodShape,
+      z.object(zodShape).passthrough(),
       async (args) => {
         try {
           const result = await tool.handler(args as any);
@@ -639,7 +639,7 @@ export async function startMcpServer(
             McpToolSyncService.syncAllTools(),
             generateAgentRegistry()
           ]);
-          await server.server.sendNotification({ method: 'notifications/tools/list_changed' });
+          await server.server.notification({ method: 'notifications/tools/list_changed' });
         } catch (err) {
           console.error(`[EventBus] Error syncing tools for new role ${agent_id}:`, err);
         }
