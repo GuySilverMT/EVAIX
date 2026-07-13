@@ -1652,9 +1652,9 @@ export class Surveyor {
 
         if (bestModel) {
           const { AgentRuntime } = await import('./AgentRuntime.js');
-          const { createVolcanoAgent } = await import('./VolcanoAgent.js');
+          const { generateWithProvider } = await import('./LegacyFallback.js');
           const runtime = await AgentRuntime.create(undefined, []);
-          const agent = await createVolcanoAgent({
+          const config = {
             roleId: 'researcher',
             modelId: bestModel.name,
             providerId: bestModel.providerId,
@@ -1662,7 +1662,8 @@ export class Surveyor {
             isLocked: false,
             temperature: 0,
             maxTokens: 2048
-          });
+          };
+          const agent = { generate: (p: string) => generateWithProvider(config, p), getConfig: () => config };
 
           // Truncate to first 5 models to save context
           const sampleJson = Array.isArray(rawJsonResponse?.data) ? rawJsonResponse.data.slice(0, 5) :
@@ -1734,9 +1735,9 @@ Requirements:
       if (!bestModel) throw new Error("No model available for research");
 
       const { AgentRuntime } = await import('./AgentRuntime.js');
-      const { createVolcanoAgent } = await import('./VolcanoAgent.js');
+      const { generateWithProvider } = await import('./LegacyFallback.js');
       const runtime = await AgentRuntime.create(undefined, ['browse', 'research.web_scrape']);
-      const agent = await createVolcanoAgent({
+      const config = {
         roleId: 'researcher',
         modelId: bestModel.name,
         providerId: bestModel.providerId,
@@ -1744,7 +1745,8 @@ Requirements:
         isLocked: false,
         temperature: 0.1,
         maxTokens: 2048
-      });
+      };
+      const agent = { generate: (p: string) => generateWithProvider(config, p), getConfig: () => config };
 
       const prompt = `
 The API does not contain pricing data for ${providerId}. 

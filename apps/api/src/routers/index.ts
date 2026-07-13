@@ -15,7 +15,6 @@ import { projectRouter } from './project.router.js';
 import { contextRouter } from './context.router.js';
 import { workspaceRouter } from './workspace.router.js';
 import { codeGraphRouter } from './codeGraph.router.js';
-import { volcanoRouter } from './volcano.router.js';
 import { ingestionRouter } from './ingestion.router.js';
 import { agentRouter } from './agent.router.js';
 import { systemHealthRouter } from './systemHealth.router.js';
@@ -49,7 +48,6 @@ export const appRouter = createTRPCRouter({
   usage: usageRouter,
   browser: browserRouter,
   workspace: workspaceRouter,
-  volcano: volcanoRouter,
   systemHealth: systemHealthRouter,
   tool: toolRouter,
   schema: schemaRouter,

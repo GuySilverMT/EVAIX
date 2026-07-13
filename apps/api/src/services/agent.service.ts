@@ -4,7 +4,8 @@ import { z } from "zod";
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { AgentRuntime } from "./AgentRuntime.js";
-import { createVolcanoAgent, VolcanoAgent, type AgentConfig } from "./VolcanoAgent.js";
+import { type AgentConfig } from "./LegacyFallback.js";
+import { generateWithProvider } from "./LegacyFallback.js";
 
 import { ProviderManager } from "./ProviderManager.js";
 import { blacklistModel, isModelBlacklisted } from "../rateLimiter.js";
@@ -225,7 +226,8 @@ export class AgentService {
         return ctx;
       })
       .addStep("execute_loop", async (ctx) => {
-        const agent = await createVolcanoAgent(ctx.agentConfig);
+        const config = ctx.agentConfig;
+        const agent = { generate: (p: string) => generateWithProvider(config, p), getConfig: () => config };
         const initialResponse = await ctx.runtime!.generateWithContext(
           agent,
           ctx.role?.basePrompt || "",

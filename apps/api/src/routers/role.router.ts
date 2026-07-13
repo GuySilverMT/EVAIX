@@ -587,21 +587,21 @@ Please create a clear, structured system prompt that:
 Return ONLY the system prompt, no additional commentary.`;
 
       try {
-        const { createVolcanoAgent } = await import('../services/VolcanoAgent.js');
+        const { generateWithProvider } = await import('../services/LegacyFallback.js');
 
-        const agent = await createVolcanoAgent({
+        const config = {
           roleId: promptImproverRole.id,
           modelId: null, // CRITICAL: Setting modelId to null forces getBestModel to run.
           isLocked: false, // Let the system dynamically choose the best model
           temperature: 0.7,
           maxTokens: 1500,
-        });
+        };
 
         // 6. Generate with the Prompt Engineer's instructions
         const fullRequest = `${promptImproverRole.basePrompt}\n\n---\n\n${request}`;
 
         console.log('[PromptGen] 🤖 Calling LLM...');
-        const response = await agent.generate(fullRequest);
+        const response = await generateWithProvider(config, fullRequest);
         const generatedPrompt = typeof response === 'string' ? response : response.text;
         console.log('[PromptGen] ✅ AI-generated prompt created successfully');
 

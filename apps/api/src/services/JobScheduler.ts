@@ -1,6 +1,6 @@
 import type { Role, RoleTool, Tool, Model, ModelCapabilities, ProviderConfig, AgentConfig, RoleVariant, Job } from '../prisma-types.js';
 import { prisma } from '../db.js';
-import { createVolcanoAgent } from './VolcanoAgent.js';
+import { generateWithProvider } from './LegacyFallback.js';
 
 export class JobScheduler {
   private isRunning = false;
@@ -51,18 +51,16 @@ export class JobScheduler {
     });
 
     try {
-      const agent = await createVolcanoAgent({
+      const config = {
         roleId: job.roleId || 'general_worker',
         modelId: null,
         isLocked: false,
         temperature: 0.7,
         maxTokens: 4096,
         userGoal: job.description || ''
-      });
+      };
 
-      // generate() returns result string? Agent methods vary.
-      // createVolcanoAgent returns an Agent interface.
-      const result = await agent.generate(job.description || '');
+      const result = await generateWithProvider(config, job.description || '');
 
       await prisma.job.update({
         where: { id: job.id },

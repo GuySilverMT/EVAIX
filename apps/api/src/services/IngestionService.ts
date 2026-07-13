@@ -7,7 +7,7 @@ import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import crypto from 'crypto';
 import ignore from 'ignore';
 import { getWebSocketService } from './websocket.singleton.js';
-import { createVolcanoAgent } from './VolcanoAgent.js';
+import { generateWithProvider } from './LegacyFallback.js';
 import { fileParserService } from './FileParserService.js';
 
 interface IgnoreFilter {
@@ -237,13 +237,13 @@ class IngestionService {
           console.log(`[IngestionService] Attempting to parse PNG image`);
           const base64Image = content.toString('base64');
 
-          const agent = await createVolcanoAgent({
+          const config = {
             roleId: 'system-ingestion', // Needed by AgentConfig interface
             isLocked: true,
             modelId: 'gpt-4o',
             temperature: 0.1,
             maxTokens: 2000
-          });
+          };
 
           // Standard OpenAI format for multimodal prompts
           const prompt = [
@@ -251,7 +251,7 @@ class IngestionService {
             { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } }
           ];
 
-          const response = await agent.generate(prompt);
+          const response = await generateWithProvider(config, prompt);
           return response.text;
         } catch (error) {
           console.error('[IngestionService] Error parsing PNG image:', error);

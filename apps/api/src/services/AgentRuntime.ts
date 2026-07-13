@@ -655,14 +655,15 @@ Execution Mode: Favor JSON_STRICT for tool calls to ensure reliability.
              throw error;
           }
 
-          // Instantiate a new VolcanoAgent for the fallback model
-          const { createVolcanoAgent } = await import("./VolcanoAgent.js");
-          currentAgent = await createVolcanoAgent({
+          // Instantiate a new agent wrapper for the fallback model
+          const { generateWithProvider } = await import("./LegacyFallback.js");
+          const newConfig = {
             ...config,
             modelId: nextModel.name,
             providerId: nextModel.providerId,
             internalId: nextModel.id
-          });
+          };
+          currentAgent = { generate: (p: string) => generateWithProvider(newConfig, p), getConfig: () => newConfig };
 
           attempts++;
           console.log(`[Arbitrage] Retrying with ${nextModel.providerId}/${nextModel.name} (Attempt ${attempts}/${maxAttempts})`);
@@ -836,8 +837,8 @@ Format: { "fixedCommand": "string", "remediationCommands": ["string"] }`;
         throw new Error("No active model available for recovery worker.");
     }
 
-    const { createVolcanoAgent } = await import("./VolcanoAgent.js");
-    const activeModel = await createVolcanoAgent({
+    const { generateWithProvider, parseResponse } = await import("./LegacyFallback.js");
+    const config = {
         roleId: 'recovery-worker',
         modelId: selection.modelId,
         providerId: selection.providerId,
@@ -845,14 +846,13 @@ Format: { "fixedCommand": "string", "remediationCommands": ["string"] }`;
         temperature: selection.temperature,
         maxTokens: selection.maxTokens,
         isLocked: false
-    });
+    };
 
 
-    const response = await activeModel.generate(`${systemPrompt}\n\nFAILED_COMMAND: ${failedStep.command}`);
+    const response = await generateWithProvider(config, `${systemPrompt}\n\nFAILED_COMMAND: ${failedStep.command}`);
     
-    const { VolcanoAgent } = await import("./VolcanoAgent.js");
     try {
-        return VolcanoAgent.parseResponse(response.text);
+        return parseResponse(response.text);
     } catch (e) {
         console.error("[AgentRuntime] Error parsing recovery JSON:", e);
         return {};

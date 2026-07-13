@@ -57,8 +57,19 @@ export class ConfidenceAgent {
     let lastReasoning = '';
 
     // Create the base agent
-    // const agent = await this.agentFactory.createVolcanoAgent(cardConfig);
-    const agent: { generate: (p: string) => Promise<string> } = { generate: async () => "Mocked Confidence" };
+    const { generateWithProvider } = await import("./LegacyFallback.js");
+    const config = {
+      roleId: cardConfig.roleId,
+      modelId: cardConfig.modelId,
+      isLocked: cardConfig.isLocked,
+      temperature: cardConfig.temperature,
+      maxTokens: cardConfig.maxTokens,
+      userGoal: cardConfig.userGoal
+    };
+    const agent = { generate: async (p: string) => {
+        const res = await generateWithProvider(config, p);
+        return res.text;
+    }};
 
     // Augment the prompt to request confidence scoring
     const confidencePrompt = this.buildConfidencePrompt(userGoal, requireReasoning);

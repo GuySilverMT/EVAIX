@@ -222,8 +222,8 @@ export class JsonRpcStrategy implements IExecutionStrategy {
     let turnLogs: string[] = [];
 
     try {
-      const { VolcanoAgent } = await import("../VolcanoAgent.js");
-      const json = VolcanoAgent.parseResponse(response) as { tool?: string; args?: Record<string, unknown> };
+      const { parseResponse } = await import("../LegacyFallback.js");
+      const json = parseResponse(response) as { tool?: string; args?: Record<string, unknown> };
       const toolName = json.tool;
       const args = json.args || {};
 

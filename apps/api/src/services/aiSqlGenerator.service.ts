@@ -2,7 +2,8 @@ import { TRPCError } from '@trpc/server';
 
 /**
  * AI SQL Generator Service
- * Converts visual relationship mappings into SQL queries using LLM
+ * Converts visual relationship mappings into SQL queries using LLM.
+ * Note: Audited for Database Isolation. This service does not handle application state persistence.
  */
 
 interface TableRelationship {
