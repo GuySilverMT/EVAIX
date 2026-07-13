@@ -2087,8 +2087,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/mcp-server.ts",
-      "contentHash": "84c4cff59727f3dae9e6f38a155646530e110216013609e29ecc8b779e144645",
-      "updatedAt": "2026-07-12T22:20:18.935Z"
+      "contentHash": "963b693fd07efcaaee7ae5b69bfb6d3e2a07f859b3c3a0f5e798b8cede403450",
+      "updatedAt": "2026-07-13T00:03:12.704Z"
     },
     {
       "filePath": "/home/guy/EVAIX/packages/mcp-server-vfs/src/tools/jules_tools.ts",
@@ -2097,8 +2097,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/tests/integration/mcp-transport.test.ts",
-      "contentHash": "3a187092086fe268a5fdd47e5681e56bffca9e8d3a8fcb55948f6ab36b274be5",
-      "updatedAt": "2026-07-12T22:20:16.622Z"
+      "contentHash": "9d5adc5e9a2fc7b5cfc10fca5fff36e1ecad3499bb9b33568d0bdda85d3f96a5",
+      "updatedAt": "2026-07-13T00:05:33.248Z"
     }
   ]
 }

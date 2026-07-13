@@ -2,9 +2,6 @@ import express from "express";
 import cors from "cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 
@@ -30,120 +27,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ── MCP Server ────────────────────────────────────────────────────────────────
-const mcpServer = new McpServer({
-  name: "evaix-mcp-server",
-  version: "3.0.0",
-});
-
-const transports = new Map<
-  string,
-  StreamableHTTPServerTransport | SSEServerTransport
->();
-
-export async function startMcpServer(
-  options: { host?: string; port?: number } = {},
-) {
-  const host = options.host ?? "0.0.0.0";
-  const port = options.port ?? 9099;
-
-  app.all("/mcp", async (req, res) => {
-    try {
-      const sessionId = req.headers["mcp-session-id"];
-      const existingTransport =
-        typeof sessionId === "string" ? transports.get(sessionId) : undefined;
-
-      let transport: StreamableHTTPServerTransport | undefined;
-
-      if (existingTransport instanceof StreamableHTTPServerTransport) {
-        transport = existingTransport;
-      } else if (
-        !sessionId &&
-        req.method === "POST" &&
-        isInitializeRequest(req.body)
-      ) {
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          onsessioninitialized: (sid) => {
-            transports.set(sid, transport!);
-          },
-        });
-        await mcpServer.server.connect(transport);
-      } else {
-        res.status(400).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32000,
-            message: "Bad Request: Invalid MCP session or initialize request",
-          },
-          id: null,
-        });
-        return;
-      }
-
-      await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-      console.error("[MCP Server] Request handling error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: "2.0",
-          error: { code: -32603, message: "Internal server error" },
-          id: null,
-        });
-      }
-    }
+// ── MCP Server (factory — a fresh instance per request for stateless mode) ────
+async function createMcpServer(): Promise<McpServer> {
+  const mcpServer = new McpServer({
+    name: "evaix-mcp-server",
+    version: "3.0.0",
   });
 
-  app.get("/sse", async (req, res) => {
-    const acceptHeader = req.headers.accept ?? "";
-    if (!acceptHeader.includes("text/event-stream")) {
-      res.status(406).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Not Acceptable: Client must accept text/event-stream",
-        },
-        id: null,
-      });
-      return;
-    }
-
-    const transport = new SSEServerTransport("/messages", res);
-    transports.set(transport.sessionId, transport);
-    res.on("close", () => {
-      transports.delete(transport.sessionId);
-    });
-
-    await mcpServer.server.connect(transport);
-  });
-
-  app.post("/messages", async (req, res) => {
-    const sessionId =
-      typeof req.query.sessionId === "string" ? req.query.sessionId : undefined;
-    const transport = sessionId ? transports.get(sessionId) : undefined;
-
-    if (transport instanceof SSEServerTransport) {
-      await transport.handlePostMessage(req, res, req.body);
-      return;
-    }
-
-    res.status(400).json({
-      jsonrpc: "2.0",
-      error: {
-        code: -32000,
-        message: "Bad Request: No SSE transport found for session",
-      },
-      id: null,
-    });
-  });
-
-  return new Promise<ReturnType<typeof app.listen>>((resolve) => {
-    const server = app.listen(port, host, () => {
-      console.log(`[MCP Server] ready at http://${host}:${port}`);
-      resolve(server);
-    });
-  });
-}
+  // ── Tool registrations ──────────────────────────────────────────────────────
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AGENT TOOLS
@@ -666,6 +557,53 @@ if (process.env.JULES_API_KEY || process.env.GOOGLE_JULES_API_KEY) {
   console.log(
     "[MCP Server] ⏭️  Google Jules tools skipped (no JULES_API_KEY env var).",
   );
+}
+
+  return mcpServer;
+}
+
+export async function startMcpServer(
+  options: { host?: string; port?: number } = {},
+) {
+  const host = options.host ?? "0.0.0.0";
+  const port = options.port ?? 9099;
+
+  // Stateless Streamable HTTP endpoint.
+  // OpenWebUI requires a single, stateless endpoint where BOTH the stream
+  // initialization (GET) and tool-execution messages (POST) hit the SAME route.
+  // sessionIdGenerator: undefined forces the stateless mode OpenWebUI expects.
+  app.all("/sse", async (req, res) => {
+    try {
+      const server = await createMcpServer();
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+      });
+
+      res.on("close", () => {
+        transport.close();
+        void server.close();
+      });
+
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    } catch (error) {
+      console.error("[MCP Server] Request handling error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal server error" },
+          id: null,
+        });
+      }
+    }
+  });
+
+  return new Promise<ReturnType<typeof app.listen>>((resolve) => {
+    const listener = app.listen(port, host, () => {
+      console.log(`[MCP Server] ready at http://${host}:${port}/sse`);
+      resolve(listener);
+    });
+  });
 }
 
 // Start the server when this file is executed directly.

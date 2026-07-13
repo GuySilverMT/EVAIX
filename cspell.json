@@ -2,21 +2,24 @@
   "version": "0.2",
   "language": "en",
   "words": [
+    "berriai",
     "checkpointing",
     "chromeless",
     "contenteditable",
-    "EVAIX",
     "evaix",
+    "EVAIX",
     "Fira",
+    "healthcheck",
+    "listdir",
     "litellm",
     "LITELLM",
-    "listdir",
     "mastra",
     "mediatek",
     "modelcapabilities",
     "navigations",
     "numpy",
     "Omnibox",
+    "openwebui",
     "picovoice",
     "Refactorer",
     "Subcat",
@@ -24,6 +27,7 @@
     "uibuilder",
     "unvalidated",
     "vosk",
-    "webnode"
+    "webnode",
+    "webui"
   ]
 }
