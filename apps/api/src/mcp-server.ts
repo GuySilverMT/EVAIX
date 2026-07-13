@@ -4,6 +4,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
+import fs from "node:fs/promises";
+import path from "node:path";
+import yaml from "js-yaml";
 
 // ── Tool imports ──────────────────────────────────────────────────────────────
 import { roleArchitectAgent } from "./services/MastraRoleArchitect.js";
@@ -564,6 +567,54 @@ if (process.env.JULES_API_KEY || process.env.GOOGLE_JULES_API_KEY) {
   return mcpServer;
 }
 
+async function generateAgentRegistry() {
+  try {
+    let root = process.cwd();
+    while (root !== "/" && !(await fs.stat(path.join(root, "pnpm-workspace.yaml")).catch(() => false))) {
+      const parent = path.dirname(root);
+      if (parent === root) break;
+      root = parent;
+    }
+
+    const agentsDir = path.join(root, "apps/api/data/agents");
+    const files = await fs.readdir(agentsDir);
+
+    const rows = [
+      "# Agent Registry",
+      "",
+      "| ID | Version | Model | Tools | Last Updated |",
+      "|---|---|---|---|---|"
+    ];
+
+    for (const file of files) {
+      if (!file.endsWith(".md")) continue;
+      const filePath = path.join(agentsDir, file);
+      const content = await fs.readFile(filePath, "utf-8");
+      const stat = await fs.stat(filePath);
+
+      const match = content.match(/^---\n([\s\S]*?)\n---/);
+      let frontmatter: any = {};
+      if (match) {
+        frontmatter = yaml.load(match[1]);
+      }
+
+      const id = frontmatter.name || file.replace(".md", "");
+      const version = frontmatter.version || "-";
+      const model = frontmatter.model || "-";
+      const tools = frontmatter.tools || "-";
+      const lastUpdated = stat.mtime.toISOString().split("T")[0];
+
+      rows.push(`| ${id} | ${version} | ${model} | ${tools} | ${lastUpdated} |`);
+    }
+
+    const registryPath = path.join(root, "AGENT_REGISTRY.md");
+    await fs.writeFile(registryPath, rows.join("\n"), "utf-8");
+    console.log("[EventBus] Successfully updated AGENT_REGISTRY.md");
+  } catch (err) {
+    console.error("[EventBus] Failed to generate agent registry:", err);
+  }
+}
+
 export async function startMcpServer(
   options: { host?: string; port?: number } = {},
 ) {
@@ -584,7 +635,10 @@ export async function startMcpServer(
       const handleRoleCreated = async ({ agent_id }: { agent_id: string }) => {
         console.log(`[EventBus] New role detected: ${agent_id}. Syncing...`);
         try {
-          await McpToolSyncService.syncAllTools();
+          await Promise.all([
+            McpToolSyncService.syncAllTools(),
+            generateAgentRegistry()
+          ]);
           await server.server.sendNotification({ method: 'notifications/tools/list_changed' });
         } catch (err) {
           console.error(`[EventBus] Error syncing tools for new role ${agent_id}:`, err);
