@@ -2,6 +2,7 @@ import { prisma } from "../db.js";
 import { RoleFactoryService } from "../services/RoleFactoryService.js";
 import { CodePatchService } from "../services/CodePatchService.js";
 import type { SandboxTool } from "../types.js";
+import { eventBus } from "../utils/events.js";
 
 interface RoleVariantEventArgs {
   roleId?: string;
@@ -104,6 +105,8 @@ export const roleArchitectTools: SandboxTool[] = [
 
       const factory = new RoleFactoryService();
       const variant = await factory.createRoleVariant(roleId, typedArgs.intent);
+
+      eventBus.emit('ROLE_CREATED', { agent_id: variant.id });
 
       return [
         {
@@ -218,6 +221,8 @@ Status: Ready for deployment.`,
           }
         }
       }
+
+      eventBus.emit('ROLE_CREATED', { agent_id: role.id });
 
       return [
         {

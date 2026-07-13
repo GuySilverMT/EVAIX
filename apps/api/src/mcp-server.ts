@@ -15,6 +15,8 @@ import { searchCodebaseTool } from "./tools/search.js";
 import { fetchPageAsMarkdown } from "./tools/webScraper.js";
 import { browserTools } from "./tools/browser.js";
 import { themeEditorTool } from "./tools/themeEditor.js";
+import { eventBus } from "./utils/events.js";
+import { McpToolSyncService } from "./services/McpToolSyncService.js";
 import {
   scheduleAgentJob,
   listScheduledJobs,
@@ -579,7 +581,20 @@ export async function startMcpServer(
         sessionIdGenerator: undefined,
       });
 
+      const handleRoleCreated = async ({ agent_id }: { agent_id: string }) => {
+        console.log(`[EventBus] New role detected: ${agent_id}. Syncing...`);
+        try {
+          await McpToolSyncService.syncAllTools();
+          await server.server.sendNotification({ method: 'notifications/tools/list_changed' });
+        } catch (err) {
+          console.error(`[EventBus] Error syncing tools for new role ${agent_id}:`, err);
+        }
+      };
+
+      eventBus.on('ROLE_CREATED', handleRoleCreated);
+
       res.on("close", () => {
+        eventBus.off('ROLE_CREATED', handleRoleCreated);
         transport.close();
         void server.close();
       });
