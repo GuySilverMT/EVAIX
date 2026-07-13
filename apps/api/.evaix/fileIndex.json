@@ -2099,6 +2099,11 @@
       "filePath": "/home/guy/EVAIX/apps/api/tests/integration/mcp-transport.test.ts",
       "contentHash": "9d5adc5e9a2fc7b5cfc10fca5fff36e1ecad3499bb9b33568d0bdda85d3f96a5",
       "updatedAt": "2026-07-13T00:05:33.248Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/docs/charter.md",
+      "contentHash": "2a0b856083fd9905ed61b244ef72cbf3ef6d21ffd57d70a21a8c2362df525c7f",
+      "updatedAt": "2026-07-13T01:09:50.663Z"
     }
   ]
 }
