@@ -9,8 +9,6 @@
     "lint": "npx turbo run lint",
     "lint:fix": "npx turbo run lint:fix",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "db:push": "prisma db push --schema=apps/api/prisma/schema.prisma",
-    "db:studio": "prisma studio --schema=apps/api/prisma/schema.prisma",
     "prepare": "echo husky"
   },
   "devDependencies": {
