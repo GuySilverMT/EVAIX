@@ -38,6 +38,7 @@ fuser -k -n tcp 9099 &>/dev/null || true
 # Kill any old Mastra Studio on 4111
 fuser -k -n tcp 4111 &>/dev/null || true
 
+
 # ---------------------------------------------------------------------------
 # 2. Build the Mastra Tool Server (ensures dist/ is fresh before containers start)
 # ---------------------------------------------------------------------------
@@ -133,11 +134,12 @@ echo "     Key: sk-litellm-key"
 echo "================================================="
 
 # ---------------------------------------------------------------------------
-# 7. Build workspace packages
+# 7. Build workspace packages and start re-indexing
 # ---------------------------------------------------------------------------
 echo ""
 echo "📦 Building workspace packages..."
 pnpm build
+
 
 # ---------------------------------------------------------------------------
 # 8. Start Mastra Studio in background
@@ -162,5 +164,6 @@ echo ""
 echo "🛑 Desktop closed — stopping background services..."
 kill $MASTRA_PID 2>/dev/null || true
 kill $TOOLS_PID 2>/dev/null || true
+
 fuser -k 9099/tcp 2>/dev/null || true
 echo "✅ Done."

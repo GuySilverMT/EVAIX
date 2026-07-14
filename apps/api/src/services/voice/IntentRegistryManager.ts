@@ -9,11 +9,17 @@ import fs from 'fs/promises';
 import path from 'path';
 import { IntentDefinition, IntentRegistry } from './IntentRegistrySchema.js';
 
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DEFAULT_APPS_API_ROOT = path.join(__dirname, '../../../../');
+
 export class IntentRegistryManager {
   private baseDir: string;
 
   constructor(baseDir?: string) {
-    this.baseDir = path.resolve(baseDir || process.cwd());
+    this.baseDir = baseDir ? path.resolve(baseDir) : DEFAULT_APPS_API_ROOT;
   }
 
   /**

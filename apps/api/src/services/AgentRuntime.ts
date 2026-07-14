@@ -8,7 +8,6 @@ import { prisma } from '../db.js';
 import { CallTemplateSerializer, CommunicationProtocol } from "@utcp/sdk";
 import { createFsTools } from "../tools/filesystem.js";
 import { mcpOrchestrator } from "../orchestrator/McpOrchestrator.js";
-import { roleArchitectTools } from "../tools/roleArchitectTools.js";
 import { tokenService } from "./TokenService.js";
 import {
   LocalCommunicationProtocol,
@@ -131,12 +130,6 @@ export class AgentRuntime {
       const nativeTools = getNativeTools(this.rootPath, this.fsTools).filter(t => requestedTools.includes(t.name));
       const toolsToRegister: ToolDefinition[] = [...nativeTools, ...mcpTools];
       // ... meta tools logic ...
-      if (requestedTools.includes("role_architect") || requestedTools.includes("meta")) {
-          // Flatten role architect tools into the registry
-          const wrappedTools = (roleArchitectTools as unknown as ToolDefinition[]).map(t => ({...t, handler: t.handler }));
-          toolsToRegister.push(...wrappedTools);
-      }
-      
       // [NEW] INJECT GIT AWARE TOOLS FOR WORKERS
       if (this.tier === 'Worker') {
             // We need jobId and vfsToken. 

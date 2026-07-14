@@ -6,6 +6,22 @@ import { fileIndexRepository } from '../repositories/FileIndexRepository.js';
 import { vectorStore, chunkText, createEmbedding } from './vector.service.js';
 import { getWebSocketService } from './websocket.singleton.js';
 import ignore from 'ignore';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function findWorkspaceRoot(): string {
+  let current = __dirname;
+  while (current !== "/" && current !== path.parse(current).root) {
+    if (existsSync(path.join(current, "pnpm-workspace.yaml"))) {
+      return current;
+    }
+    current = path.dirname(current);
+  }
+  return path.join(__dirname, "../../../");
+}
 
 /**
  * FileWatcherService
@@ -19,7 +35,7 @@ class FileWatcherService {
   private readonly highValueExtensions = ['.ts', '.tsx', '.js', '.jsx', '.md', '.prisma'];
   private isIndexing = false;
   private indexQueue: Set<string> = new Set();
-  private projectRoot: string = process.cwd();
+  private projectRoot: string = findWorkspaceRoot();
   private ignoreFilter = ignore();
 
   private broadcastEvent(event: any) {
@@ -38,7 +54,8 @@ class FileWatcherService {
       filePath.endsWith('.log') ||
       filePath.endsWith('.sqlite') ||
       filePath.endsWith('.db') ||
-      filePath.includes('/tmp/')
+      filePath.includes('/tmp/') ||
+      filePath.includes('/.evaix/')  // never re-index our own vector store outputs
     ) {
       return true;
     }
@@ -121,25 +138,6 @@ class FileWatcherService {
   }
 
   async startAutomatedWatching() {
-    let root = process.cwd();
-    // Search upwards for workspace root
-    try {
-      let current = root;
-      while (current !== '/' && current !== '.') {
-        const hasWorkspace = await fs.stat(path.join(current, 'pnpm-workspace.yaml')).then(() => true).catch(() => false);
-        if (hasWorkspace) {
-          root = current;
-          break;
-        }
-        const parent = path.dirname(current);
-        if (parent === current) break;
-        current = parent;
-      }
-    } catch (e) {
-      console.warn('[FileWatcher] Error finding project root, falling back to cwd:', e);
-    }
-    this.projectRoot = root;
-    
     // Specifically watch high-value directories to avoid root-level noise
     const pathsToWatch = [
       path.join(this.projectRoot, 'apps'),

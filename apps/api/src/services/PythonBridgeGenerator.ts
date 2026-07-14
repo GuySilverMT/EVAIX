@@ -2,21 +2,18 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { AVAILABLE_MASTRA_TOOLS } from '../mcp-server.js';
-import yaml from 'js-yaml';
+import { AVAILABLE_MASTRA_TOOLS, MCP_TOOL_SCHEMAS } from '../mcp-server.js';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { fileURLToPath } from 'node:url';
 
 const execPromise = promisify(exec);
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const APPS_API_ROOT = path.join(__dirname, '../../../');
+
 export async function syncOpenWebUIBridge() {
   console.log('[PythonBridge] Starting generation of EVAIX bridge...');
-  
-  const agentsDir = path.join(process.cwd(), 'apps/api/data/agents');
-  let agentFiles: string[] = [];
-  try {
-    agentFiles = await fs.readdir(agentsDir);
-  } catch (e) {
-    // ignore
-  }
 
   const toolsToInject: any[] = [];
 
@@ -33,19 +30,30 @@ export async function syncOpenWebUIBridge() {
     const toolTitle = `EVAIX Tool: ${formatTitle(toolId)}`;
     const dbId = `evaix_tool_${toolId}`;
 
+    const zodSchema = MCP_TOOL_SCHEMAS[toolId];
+    let specParams = { type: 'object', properties: {}, required: [] };
+    let pythonParams = 'self';
+    let kwargsBuilder = '{}';
+
+    if (zodSchema) {
+      const jsonSchema: any = zodToJsonSchema(zodSchema);
+      specParams = {
+        type: 'object',
+        properties: jsonSchema.properties || {},
+        required: jsonSchema.required || []
+      };
+
+      const keys = Object.keys(jsonSchema.properties || {});
+      if (keys.length > 0) {
+        pythonParams = 'self, ' + keys.map(k => `${k}: str = ""`).join(', ');
+        kwargsBuilder = '{' + keys.map(k => `"${k}": ${k}`).join(', ') + '}';
+      }
+    }
+
     const spec = {
       name: safeName,
       description: tool.description || `Execute ${toolId} primitive tool.`,
-      parameters: {
-        type: "object",
-        properties: {
-          args: {
-            type: "string",
-            description: "JSON string containing all arguments required for the tool."
-          }
-        },
-        required: ["args"]
-      }
+      parameters: specParams
     };
 
     const pythonCode = `"""
@@ -60,13 +68,12 @@ class Tools:
     def __init__(self):
         self.base_url = "http://host.docker.internal:4000/api/v1/bridge/invoke"
 
-    def ${safeName}(self, args: str) -> str:
+    def ${safeName}(${pythonParams}) -> str:
         """
         ${tool.description || `Execute ${toolId} primitive tool.`}
-        :param args: JSON string of arguments.
         """
         try:
-            parsed_args = json.loads(args) if isinstance(args, str) else args
+            parsed_args = ${kwargsBuilder}
             res = requests.post(self.base_url, json={"action_type": "tool", "id": "${toolId}", "args": parsed_args})
             return res.json().get("result", str(res.text))
         except Exception as e:
@@ -82,42 +89,104 @@ class Tools:
     });
   }
 
-  // 2. Generate Agent Tools
+  // 2. Role Architect Agent — hardcoded MCP tool (TypeScript Mastra agent, not .md-based)
+  // Calls the ask_role_architect tool registered directly in mcp-server.ts via StreamableHTTP.
+  const roleArchitectSpec = {
+    name: 'ask_role_architect',
+    description: 'Ask the EVAIX Role Architect to design or scaffold a new AI agent role. Describe the agent you want and it will generate and register the .md configuration automatically.',
+    parameters: {
+      type: 'object',
+      properties: {
+        prompt: {
+          type: 'string',
+          description: 'A description of the agent role to create, e.g. "Create a SQL query assistant that can read and explain database schemas."'
+        }
+      },
+      required: ['prompt']
+    }
+  };
+
+  const roleArchitectPython = `"""
+title: EVAIX Agent: Role Architect
+author: EVAIX System
+version: 2.0.0
+"""
+import requests
+import json
+
+class Tools:
+    def __init__(self):
+        self.base_url = "http://host.docker.internal:4000/api/v1/bridge/invoke"
+
+    def ask_role_architect(self, prompt: str, __event__: dict = None) -> str:
+        """
+        Ask the EVAIX Role Architect to design and scaffold a new AI agent role.
+        The architect will research existing patterns, draft the role configuration,
+        and write the .md file which auto-registers in OpenWebUI within ~300ms.
+        :param prompt: A description of the agent role to create or modify.
+        """
+        try:
+            model_id = __event__.get("model", "") if __event__ else ""
+            res = requests.post(
+                self.base_url,
+                json={"action_type": "architect", "prompt": prompt, "model": model_id},
+                timeout=120
+            )
+            data = res.json()
+            return data.get("result", str(res.text))
+        except Exception as e:
+            return f"Error: {e}"
+`;
+
+  toolsToInject.push({
+    id: 'evaix_agent_role_architect',
+    name: 'EVAIX Agent: Role Architect',
+    content: roleArchitectPython,
+    specs: JSON.stringify([roleArchitectSpec]),
+    description: roleArchitectSpec.description
+  });
+
+  // 3. Dynamic Agent Tools — auto-registered from apps/api/data/agents/*.md
+  // Populated at runtime by the FileWatcher as agents are created by the Role Architect.
+  const agentsDir = path.join(APPS_API_ROOT, 'data/agents');
+  let agentFiles: string[] = [];
+  try {
+    agentFiles = await fs.readdir(agentsDir);
+  } catch (e) { /* ignore if dir doesn't exist yet */ }
+
   for (const file of agentFiles) {
     if (!file.endsWith('.md') && !file.endsWith('.json')) continue;
-    
+
     const id = file.replace('.md', '').replace('.json', '').toLowerCase().replace(/[^a-z0-9-_]/g, '_');
-    let name = formatTitle(id);
-    let description = `Invoke the ${id} agent.`;
+    let name = id.split(/[_-]/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    let description = `Invoke the ${name} agent.`;
 
-    const content = await fs.readFile(path.join(agentsDir, file), 'utf-8');
-    if (file.endsWith('.md')) {
-      const match = content.match(/^---\n([\s\S]*?)\n---/);
+    try {
+      const raw = await fs.readFile(path.join(agentsDir, file), 'utf-8');
+      const match = raw.match(/^---\n([\s\S]*?)\n---/);
       if (match) {
-        try {
-          const frontmatter = yaml.load(match[1]) as any;
-          name = frontmatter.name || name;
-          if (frontmatter.instructions) description = frontmatter.instructions.slice(0, 150).replace(/\n/g, ' ') + '...';
-        } catch(e){}
+        const fm = JSON.parse(JSON.stringify({ parsed: match[1] })); // avoid yaml dep
+        const nameMatch = match[1].match(/^name:\s*(.+)$/m);
+        if (nameMatch) name = nameMatch[1].trim();
+        const instrIdx = raw.indexOf('---', 3);
+        if (instrIdx !== -1) {
+          const body = raw.slice(instrIdx + 3).trim();
+          if (body) description = body.slice(0, 150).replace(/\n/g, ' ') + '...';
+        }
       }
-    }
+    } catch (e) { /* ignore read errors */ }
 
-    const safeName = `invoke_${id}`;
+    const safeName = `invoke_${id.replace(/-/g, '_')}`;
     const toolTitle = `EVAIX Agent: ${name}`;
     const dbId = `evaix_agent_${id}`;
 
     const spec = {
       name: safeName,
-      description: description,
+      description,
       parameters: {
-        type: "object",
-        properties: {
-          prompt: {
-            type: "string",
-            description: "The task or question for the agent."
-          }
-        },
-        required: ["prompt"]
+        type: 'object',
+        properties: { prompt: { type: 'string', description: 'The task or question for the agent.' } },
+        required: ['prompt']
       }
     };
 
@@ -133,13 +202,14 @@ class Tools:
     def __init__(self):
         self.base_url = "http://host.docker.internal:4000/api/v1/bridge/invoke"
 
-    def ${safeName}(self, prompt: str) -> str:
+    def ${safeName}(self, prompt: str, __event__: dict = None) -> str:
         """
         ${description}
         :param prompt: The task or question.
         """
         try:
-            res = requests.post(self.base_url, json={"action_type": "agent", "id": "${id}", "prompt": prompt})
+            model_id = __event__.get("model", "") if __event__ else ""
+            res = requests.post(self.base_url, json={"action_type": "agent", "id": "${id}", "prompt": prompt, "model": model_id})
             return res.json().get("result", str(res.text))
         except Exception as e:
             return f"Error: {e}"
@@ -150,14 +220,14 @@ class Tools:
       name: toolTitle,
       content: pythonCode,
       specs: JSON.stringify([spec]),
-      description: description
+      description
     });
   }
 
   // Inject into SQLite
   const dbPath = '/home/guy/.local/share/containers/storage/volumes/evaix_openwebui_data/_data/webui.db';
-  
-  const toolsJsonPath = path.join(process.cwd(), '.tmp_tools_to_inject.json');
+
+  const toolsJsonPath = path.join(APPS_API_ROOT, '.tmp_tools_to_inject.json');
   await fs.writeFile(toolsJsonPath, JSON.stringify(toolsToInject), 'utf-8');
 
   const injectScript = `
@@ -203,7 +273,7 @@ conn.close()
 print(f"Successfully synced {len(tools)} individual tools into OpenWebUI.")
 `;
 
-  const scriptPath = path.join(process.cwd(), '.tmp_inject.py');
+  const scriptPath = path.join(APPS_API_ROOT, '.tmp_inject.py');
   await fs.writeFile(scriptPath, injectScript, 'utf-8');
 
   try {
@@ -213,7 +283,7 @@ print(f"Successfully synced {len(tools)} individual tools into OpenWebUI.")
     console.error('[PythonBridge] ❌ Failed to inject tools into SQLite:', err.message);
   } finally {
     // Cleanup
-    await fs.unlink(scriptPath).catch(()=>{});
-    await fs.unlink(toolsJsonPath).catch(()=>{});
+    await fs.unlink(scriptPath).catch(() => { });
+    await fs.unlink(toolsJsonPath).catch(() => { });
   }
 }

@@ -2,9 +2,25 @@ import { Router } from 'express';
 import { Agent } from '@mastra/core/agent';
 import { createOpenAI } from '@ai-sdk/openai';
 import { AVAILABLE_MASTRA_TOOLS } from '../mcp-server.js';
+import { roleArchitectAgent } from '../services/MastraRoleArchitect.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import yaml from 'js-yaml';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function findWorkspaceRoot(): string {
+  let current = __dirname;
+  while (current !== '/' && current !== path.parse(current).root) {
+    if (existsSync(path.join(current, 'pnpm-workspace.yaml'))) return current;
+    current = path.dirname(current);
+  }
+  return path.join(__dirname, '../../../');
+}
+const AGENTS_DIR = path.join(findWorkspaceRoot(), 'apps/api/data/agents');
 
 export const bridgeRouter = Router();
 
@@ -13,8 +29,45 @@ bridgeRouter.post('/v1/bridge/invoke', async (req, res) => {
   try {
     const { action_type, id, prompt, args } = req.body;
 
-    if (!action_type || !id) {
-      res.status(400).json({ error: 'Missing action_type or id' });
+    if (!action_type) {
+      res.status(400).json({ error: 'Missing action_type' });
+      return;
+    }
+
+    if (action_type === 'architect') {
+      try {
+        const fallbackModel = process.env.DEFAULT_AGENT_MODEL || 'xai/grok-4.5-latest';
+        const requestedModel = req.body.model || fallbackModel;
+        
+        const liteLlmProvider = createOpenAI({
+          baseURL: process.env.LITELLM_API_BASE || 'http://localhost:8080/v1',
+          apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+        });
+        
+        const agentToRun = (roleArchitectAgent as any).__fork();
+        
+        try {
+          (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(requestedModel) });
+          const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
+          res.json({ result: response.text });
+        } catch (primaryErr: any) {
+          if (requestedModel !== fallbackModel) {
+            console.warn(`[Architect] Requested model ${requestedModel} failed: ${primaryErr.message}. Falling back to ${fallbackModel}`);
+            (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(fallbackModel) });
+            const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
+            res.json({ result: response.text });
+          } else {
+            throw primaryErr;
+          }
+        }
+      } catch (err: any) {
+        res.status(500).json({ error: `Architect failed: ${err.message}` });
+      }
+      return;
+    }
+
+    if (!id) {
+      res.status(400).json({ error: 'Missing id' });
       return;
     }
 
@@ -36,8 +89,7 @@ bridgeRouter.post('/v1/bridge/invoke', async (req, res) => {
 
     if (action_type === 'agent') {
       try {
-        const agentsDir = path.join(process.cwd(), 'apps/api/data/agents');
-        const files = await fs.readdir(agentsDir);
+        const files = await fs.readdir(AGENTS_DIR);
         
         // Find the matching agent file
         const file = files.find(f => f.replace('.md', '').replace('.json', '').toLowerCase().replace(/[^a-z0-9-_]/g, '_') === id);
@@ -47,7 +99,7 @@ bridgeRouter.post('/v1/bridge/invoke', async (req, res) => {
           return;
         }
 
-        const content = await fs.readFile(path.join(agentsDir, file), "utf-8");
+        const content = await fs.readFile(path.join(AGENTS_DIR, file), "utf-8");
         let instructions = '';
         let name = id;
         let toolsList: string[] = [];
@@ -95,6 +147,11 @@ bridgeRouter.post('/v1/bridge/invoke', async (req, res) => {
           // Ignore
         }
 
+        if (req.body.model) {
+          modelToUse = req.body.model;
+        }
+
+        const fallbackModel = 'openrouter/minimax/minimax-m2.5';
         const liteLlmProvider = createOpenAI({
           baseURL: 'http://localhost:8080/v1',
           apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
@@ -108,8 +165,25 @@ bridgeRouter.post('/v1/bridge/invoke', async (req, res) => {
           tools: toolsObject
         });
 
-        const response = await agent.generate(prompt || '');
-        res.json({ result: response.text });
+        try {
+          const response = await agent.generate(prompt || '', { maxSteps: 10 } as any);
+          res.json({ result: response.text || (response as any).toolCalls ? 'Tool execution halted or returned no final text output.' : 'No output generated.' });
+        } catch (primaryErr: any) {
+          if (modelToUse !== fallbackModel) {
+            console.warn(`[Bridge Router] Model ${modelToUse} failed: ${primaryErr.message}. Retrying with fallback: ${fallbackModel}`);
+            const fallbackAgent = new Agent({
+              id,
+              name,
+              instructions,
+              model: liteLlmProvider(fallbackModel),
+              tools: toolsObject
+            });
+            const fallbackResponse = await fallbackAgent.generate(prompt || '', { maxSteps: 10 } as any);
+            res.json({ result: fallbackResponse.text || (fallbackResponse as any).toolCalls ? 'Tool execution halted or returned no final text output (fallback).' : 'No output generated (fallback).' });
+          } else {
+            throw primaryErr;
+          }
+        }
 
       } catch (err: any) {
         res.status(500).json({ error: `Agent execution failed: ${err.message}` });

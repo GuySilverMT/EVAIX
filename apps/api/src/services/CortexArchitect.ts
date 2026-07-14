@@ -1,5 +1,5 @@
 import { RoleIntent, AgentExecutionMode } from './RoleFactoryService.js';
-import { executeJsonMode } from './architectHelpers.js';
+import { executeJsonMode } from './RoleFactoryService.js';
 import * as Constants from './roleFactoryConstants.js';
 
 export interface CortexConfig {

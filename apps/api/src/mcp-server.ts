@@ -2,7 +2,8 @@ import express from "express";
 import cors from "cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 import { z } from "zod";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -19,18 +20,22 @@ import {
   typescriptInterpreterTool,
 } from "./mastra/tools/system.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Track which tool names have already been registered so we never double-register
 const registeredDynamicTools = new Set<string>();
 
-// Resolve workspace root (searches upward for pnpm-workspace.yaml)
-async function findWorkspaceRoot(): Promise<string> {
-  let root = process.cwd();
-  while (root !== "/" && !(await fs.stat(path.join(root, "pnpm-workspace.yaml")).catch(() => false))) {
-    const parent = path.dirname(root);
-    if (parent === root) break;
-    root = parent;
+// Resolve workspace root (searches upward for pnpm-workspace.yaml relative to this file)
+function findWorkspaceRoot(): string {
+  let current = __dirname;
+  while (current !== "/" && current !== path.parse(current).root) {
+    if (existsSync(path.join(current, "pnpm-workspace.yaml"))) {
+      return current;
+    }
+    current = path.dirname(current);
   }
-  return root;
+  return path.join(__dirname, "../../../");
 }
 
 export const AVAILABLE_MASTRA_TOOLS: Record<string, any> = {
@@ -42,6 +47,17 @@ export const AVAILABLE_MASTRA_TOOLS: Record<string, any> = {
   list_files: listFilesTool,
   terminal_execute: terminalExecuteTool,
   typescript_interpreter: typescriptInterpreterTool,
+};
+
+export const MCP_TOOL_SCHEMAS: Record<string, any> = {
+  web_search: z.object({ query: z.string().describe('The search query, e.g. "latest news on TypeScript"') }),
+  web_scrape: z.object({ url: z.string().describe('The URL of the page to scrape, e.g. "https://mastra.ai/docs"') }),
+  read_file: z.object({ path: z.string().describe('The path of the file to read (relative to workspace root), e.g. "apps/api/src/index.ts"') }),
+  write_file: z.object({ path: z.string().describe('The path of the file to create (relative to workspace root), e.g. "apps/api/src/new-helper.ts"'), content: z.string().describe('The content to write to the file.') }),
+  patch_file: z.object({ path: z.string().describe('The path of the file to patch (relative to workspace root)'), search_string: z.string().describe('The exact block of code to search for.'), replace_string: z.string().describe('The new block of code to replace the search string with.') }),
+  list_files: z.object({ path: z.string().describe('The directory path to list (relative to workspace root), e.g. "apps/api"') }),
+  terminal_execute: z.object({ command: z.string().describe('The bash command to execute.'), cwd: z.string().optional().describe('Optional working directory relative to the workspace root.') }),
+  typescript_interpreter: z.object({ code: z.string().describe('The TypeScript code to execute. Must end with console.log() to return data.'), timeout: z.number().optional().default(30000).describe('Optional timeout in milliseconds (max 60000)') }),
 };
 
 const liteLlmProvider = createOpenAI({
@@ -136,6 +152,8 @@ async function registerAgentTool(mcpServer: McpServer, filePath: string): Promis
           }
 
           const resolvedModel = await getDynamicModel(capturedModel);
+          const fallbackModel = 'openrouter/minimax/minimax-m2.5';
+          
           const dynamicAgent = new Agent({
             id: agentId,
             name: capturedName,
@@ -143,8 +161,28 @@ async function registerAgentTool(mcpServer: McpServer, filePath: string): Promis
             model: liteLlmProvider.chat(resolvedModel),
             tools: toolsObject
           });
-          const response = await dynamicAgent.generate(prompt);
-          return { content: [{ type: "text" as const, text: response.text }] };
+          
+          try {
+            const response = await dynamicAgent.generate(prompt, { maxSteps: 10 } as any);
+            return { content: [{ type: "text" as const, text: response.text || "Execution finished, but no text was returned." }] };
+          } catch (primaryErr: any) {
+            if (resolvedModel !== fallbackModel) {
+              console.warn(`[MCP Server] Model ${resolvedModel} failed: ${primaryErr.message}. Retrying with fallback: ${fallbackModel}`);
+              
+              const fallbackAgent = new Agent({
+                id: agentId,
+                name: capturedName,
+                instructions: capturedInstructions,
+                model: liteLlmProvider.chat(fallbackModel),
+                tools: toolsObject
+              });
+              
+              const fallbackResponse = await fallbackAgent.generate(prompt, { maxSteps: 10 } as any);
+              return { content: [{ type: "text" as const, text: fallbackResponse.text || "Execution finished with fallback, but no text was returned." }] };
+            } else {
+              throw primaryErr;
+            }
+          }
         } catch (e: any) {
           return { content: [{ type: "text" as const, text: `Error executing ${capturedName}: ${e.message}` }] };
         }
@@ -211,10 +249,23 @@ mcp.tool(
     try {
       const resolvedModel = await getDynamicModel(process.env.DEFAULT_AGENT_MODEL || 'xai/grok-3');
       console.log(`[MCP Server] Dynamically routing ask_role_architect execution to LLM model: ${resolvedModel}`);
+      const fallbackModel = 'openrouter/minimax/minimax-m2.5';
       const agentToRun = (roleArchitectAgent as any).__fork();
-      (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(resolvedModel) });
-      const response = await agentToRun.generate(prompt);
-      return { content: [{ type: "text" as const, text: response.text }] };
+      
+      try {
+        (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(resolvedModel) });
+        const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
+        return { content: [{ type: "text" as const, text: response.text || "Execution finished, but no text was returned." }] };
+      } catch (primaryErr: any) {
+        if (resolvedModel !== fallbackModel) {
+          console.warn(`[MCP Server] ask_role_architect model ${resolvedModel} failed: ${primaryErr.message}. Retrying with fallback: ${fallbackModel}`);
+          (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(fallbackModel) });
+          const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
+          return { content: [{ type: "text" as const, text: response.text || "Execution finished with fallback, but no text was returned." }] };
+        } else {
+          throw primaryErr;
+        }
+      }
     } catch (e: any) {
       return { content: [{ type: "text" as const, text: `Error: ${e.message}` }] };
     }
@@ -228,7 +279,7 @@ Object.values(AVAILABLE_MASTRA_TOOLS).forEach((t: any) => {
   mcp.tool(
     t.id,
     t.description,
-    t.inputSchema,
+    MCP_TOOL_SCHEMAS[t.id] || z.object({}),
     async (args: any) => {
       try {
         const result = await t.execute(args);
@@ -247,12 +298,7 @@ Object.values(AVAILABLE_MASTRA_TOOLS).forEach((t: any) => {
 
 async function generateAgentRegistry() {
   try {
-    let root = process.cwd();
-    while (root !== "/" && !(await fs.stat(path.join(root, "pnpm-workspace.yaml")).catch(() => false))) {
-      const parent = path.dirname(root);
-      if (parent === root) break;
-      root = parent;
-    }
+    const root = findWorkspaceRoot();
 
     const agentsDir = path.join(root, "apps/api/data/agents");
     const files = await fs.readdir(agentsDir);
@@ -316,7 +362,7 @@ export async function startMcpServer(
   //   1. Call registerAgentTool() on the SAME sharedServer OpenWebUI is connected to
   //   2. Send notifications/tools/list_changed — OpenWebUI re-fetches tools instantly
   // No disconnect/reconnect needed. Zero downtime.
-  const agentsDir = path.join(await findWorkspaceRoot(), "apps/api/data/agents");
+  const agentsDir = path.join(findWorkspaceRoot(), "apps/api/data/agents");
   const watcher = await fs.watch(agentsDir, { persistent: false });
   (async () => {
     for await (const event of watcher) {

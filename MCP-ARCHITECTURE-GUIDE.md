@@ -226,3 +226,49 @@ We have fully implemented granular, individual tool mapping. Instead of grouping
    - Inserts or updates the individual rows (e.g., `evaix_tool_web_search`, `evaix_agent_planning_coordinator`).
 3. **OpenWebUI Display:** OpenWebUI parses each row separately. When you open the `+ Tools` menu inside OpenWebUI, you will see each tool (like `EVAIX Tool: Web Search`, `EVAIX Tool: Terminal Execute`) and agent (like `EVAIX Agent: Planning Coordinator`) listed as independent, toggleable options.
 
+---
+
+## 9. Path Resolution & Stateless HTTP Transport Updates (Recent Refactor)
+
+To ensure high reliability, eliminate path-nesting hallucinations, and avoid connection handshake errors in OpenWebUI, the following improvements have been made:
+
+### 1. Deterministic Path Resolution
+We replaced all usages of `process.cwd()` in paths that require directory indexing or VFS storage. Paths are now resolved relative to the active file's physical disk location:
+- **How it works:** We import `fileURLToPath` from `'url'` / `'node:url'` and retrieve `__dirname` using `path.dirname(fileURLToPath(import.meta.url))`.
+- **Workspace/Monorepo Root:** We dynamically walk up the directory tree starting from `__dirname` to find the directory containing `pnpm-workspace.yaml`.
+- **Services Updated:**
+  - `vector.service.ts`
+  - `PythonBridgeGenerator.ts`
+  - `FileWatcherService.ts`
+  - `IntentRegistryManager.ts`
+  - `MastraRoleArchitect.ts`
+  - `mcp-server.ts`
+
+### 2. Stateless Streamable HTTP Transport
+OpenWebUI executes MCP handshakes and tools/list requests across stateless, independent POST sessions.
+- **Implementation:** The legacy `SSEServerTransport` is completely replaced by `StreamableHTTPServerTransport` imported from `@modelcontextprotocol/sdk/server/streamableHttp.js`.
+- **Configuration:** It is initialized with `{ sessionIdGenerator: undefined }` to run in strict stateless mode.
+- **Routing:** Both the stream initialization and tool execution requests are bound to the exact same `/sse` endpoint:
+  ```typescript
+  app.all("/sse", async (req, res) => {
+    await sharedTransport.handleRequest(req, res, req.body);
+  });
+  ```
+- **Port Binding:** The Express server is bound to `0.0.0.0` so that the Podman container loopback connects flawlessly without connection-refused errors.
+
+---
+
+## 10. Agent Execution & Model Forwarding
+
+To ensure reliability during complex agentic workflows and to maintain model consistency across the stack, we enforce strict execution and routing rules:
+
+### 1. Mastra `maxSteps` Call Limits
+Mastra agents require an explicit `maxSteps` parameter during execution. If omitted or set too low (e.g., single-turn default), agents utilizing tools may silently fail or return empty strings when the workflow demands multi-step reasoning or tool callbacks.
+- **Implementation:** The agent execution loop is standardized with a minimum of `{ maxSteps: 10 }`. This guarantees the agent has sufficient internal loops to query a tool, evaluate the result, and formulate a final answer without abrupt termination.
+
+### 2. Model Context Forwarding (Python Bridge)
+To prevent the backend from defaulting to an incorrect fallback model (which can cause deserialization errors like the `xai/grok-4.5` enum crash), the Python Bridge dynamically forwards the active UI model to the backend.
+- **Implementation:** When OpenWebUI executes a tool or agent via the Python Bridge, the bridge extracts the active model string from OpenWebUI's internal payload.
+- **Execution:** This model string is passed in the JSON payload to the `/api/v1/bridge/invoke` endpoint. The Express router then explicitly overrides the execution context, ensuring the Mastra Agent executes its sub-prompts using the exact same LLM selected by the user in the ModelBar.
+
+

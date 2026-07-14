@@ -1,0 +1,214 @@
+diff --git a/apps/api/src/services/vector.service.ts b/apps/api/src/services/vector.service.ts
+index 228ab06..1d103ac 100644
+--- a/apps/api/src/services/vector.service.ts
++++ b/apps/api/src/services/vector.service.ts
+@@ -5,8 +5,26 @@ export interface Vector {
+   similarity?: number;
+ }
+ 
+-import { promises as fs } from 'fs';
+-import { join } from 'path';
++import { promises as fs, existsSync } from 'fs';
++import { join, dirname } from 'path';
++import { fileURLToPath } from 'url';
++import axios from 'axios';
++
++const __filename = fileURLToPath(import.meta.url);
++const __dirname = dirname(__filename);
++
++function findWorkspaceRoot(): string {
++  let current = __dirname;
++  while (current !== dirname(current)) {
++    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
++      return current;
++    }
++    current = dirname(current);
++  }
++  return join(__dirname, '../../../'); // fallback
++}
++
++const APPS_API_ROOT = join(findWorkspaceRoot(), 'apps/api');
+ 
+ interface DbVectorResult {
+   id: string;
+@@ -18,7 +36,7 @@ interface DbVectorResult {
+ 
+ export class PgVectorStore {
+   private getStoragePath(): string {
+-    return join(process.cwd(), 'apps/api/.evaix/vectorEmbeddings.json');
++    return join(APPS_API_ROOT, '.evaix/vectorEmbeddings.json');
+   }
+ 
+   private async readStore(): Promise<Record<string, any>> {
+@@ -31,7 +49,7 @@ export class PgVectorStore {
+   }
+ 
+   private async writeStore(data: Record<string, any>): Promise<void> {
+-    const dir = join(process.cwd(), 'apps/api/.evaix');
++    const dir = join(APPS_API_ROOT, '.evaix');
+     await fs.mkdir(dir, { recursive: true });
+     await fs.writeFile(this.getStoragePath(), JSON.stringify(data, null, 2), 'utf-8');
+   }
+@@ -80,9 +98,13 @@ export class PgVectorStore {
+ 
+   private cosineSimilarity(a: number[], b: number[]): number {
+     if (!a.length || !b.length) return 0;
+-    const dot = a.reduce((sum, value, index) => sum + value * (b[index] || 0), 0);
+-    const normA = Math.sqrt(a.reduce((sum, value) => sum + value * value, 0));
+-    const normB = Math.sqrt(b.reduce((sum, value) => sum + value * value, 0));
++    const maxLength = Math.max(a.length, b.length);
++    const vecA = a.length < maxLength ? [...a, ...new Array<number>(maxLength - a.length).fill(0)] : a;
++    const vecB = b.length < maxLength ? [...b, ...new Array<number>(maxLength - b.length).fill(0)] : b;
++
++    const dot = vecA.reduce((sum, value, index) => sum + value * (vecB[index] || 0), 0);
++    const normA = Math.sqrt(vecA.reduce((sum, value) => sum + value * value, 0));
++    const normB = Math.sqrt(vecB.reduce((sum, value) => sum + value * value, 0));
+     if (!normA || !normB) return 0;
+     return dot / (normA * normB);
+   }
+@@ -139,6 +161,7 @@ class EmbeddingPipeline {
+ }
+ 
+ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
++let lastOllamaRestart = 0;
+ 
+ export const createEmbedding = async (text: string, retryCount = 5): Promise<number[]> => {
+   if (!text || !text.trim()) {
+@@ -152,23 +175,69 @@ export const createEmbedding = async (text: string, retryCount = 5): Promise<num
+ 
+   for (let attempt = 0; attempt < retryCount; attempt++) {
+     try {
++      // 1. Try local Ollama directly via HTTP
++      const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
++      try {
++        const response = await axios.post<{ embedding: number[] }>(`${baseUrl}/api/embeddings`, {
++          model: process.env.OLLAMA_EMBEDDING_MODEL || 'all-minilm:latest',
++          prompt: truncatedText,
++          options: {
++            num_ctx: 2048,
++          },
++        }, { timeout: 10000 });
++        
++        if (response.data?.embedding) {
++          return response.data.embedding;
++        }
++      } catch (ollamaErr: any) {
++        console.warn(`[Embedding] Local Ollama call failed: ${ollamaErr.message}. Trying other providers...`);
++        
++        if (ollamaErr.response?.status === 500 || ollamaErr.code === 'ECONNREFUSED' || ollamaErr.message?.includes('timeout')) {
++          const now = Date.now();
++          const uptime = process.uptime(); // in seconds
++          if (uptime > 30 && now - lastOllamaRestart > 60000) { // Only restart once every 60s, and only if app has been running for 30s+
++            lastOllamaRestart = now;
++            // Ping Ollama tags endpoint to check if the server is alive
++            axios.get(`${baseUrl}/api/tags`, { timeout: 2000 })
++              .then(() => {
++                console.log(`[Embedding] Ollama server is responsive. No restart needed (likely missing model or bad request).`);
++              })
++              .catch((pingErr: any) => {
++                console.warn(`[Embedding] Ollama server is unresponsive (${pingErr.message}). Attempting background restart...`);
++                const { exec } = require('child_process');
++                exec('killall -9 ollama; nohup ollama serve > /dev/null 2>&1 &', (err: any) => {
++                   if (err) console.error(`[Embedding] Failed to restart Ollama:`, err);
++                   else console.log(`[Embedding] Ollama restarted successfully.`);
++                });
++              });
++          }
++        }
++      }
++
++      // 2. Try ProviderManager providers (LiteLLM, OpenAI, etc.)
+       const litellmProvider = ProviderManager.getProvider('litellm-router') || ProviderManager.getProvider('openai');
+       if (litellmProvider && litellmProvider instanceof OpenAIProvider) {
+         const configuredModel = process.env.LITELLM_EMBEDDING_MODEL || process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
+         return await litellmProvider.generateEmbedding(truncatedText, configuredModel);
+       }
+ 
+-      // Try to get the 'local' provider first
+       const provider = ProviderManager.getProvider('local');
+       if (provider && provider instanceof OllamaProvider) {
+         return await provider.generateEmbedding(truncatedText);
+       }
+ 
+-      // Default to transformers.js pipeline
++      // 3. Default to transformers.js pipeline
+       const extractor = await EmbeddingPipeline.getInstance();
+       if (!extractor) throw new Error('Failed to initialize EmbeddingPipeline');
+       const output = await extractor(truncatedText, { pooling: 'mean', normalize: true });
+-      return Array.from(output.data) as number[];
++      const rawVector = Array.from(output.data) as number[];
++      if (rawVector.length !== 384) {
++        // Fallback or truncate/pad if model unexpectedly changed, but transformers all-MiniLM is strictly 384.
++        const fixed = new Array<number>(384).fill(0);
++        for(let i=0; i<Math.min(384, rawVector.length); i++) fixed[i] = rawVector[i];
++        return fixed;
++      }
++      return rawVector;
+ 
+     } catch (error: any) {
+       lastError = error;
+diff --git a/run-desktop.sh b/run-desktop.sh
+index 2267288..6fe417d 100755
+--- a/run-desktop.sh
++++ b/run-desktop.sh
+@@ -38,6 +38,32 @@ fuser -k -n tcp 9099 &>/dev/null || true
+ # Kill any old Mastra Studio on 4111
+ fuser -k -n tcp 4111 &>/dev/null || true
+ 
++# ---------------------------------------------------------------------------
++# 1.5. Start Ollama and ensure embedding model exists
++# ---------------------------------------------------------------------------
++echo ""
++echo "🦙 Checking Ollama service..."
++if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
++  echo "   Ollama is not running. Starting 'ollama serve' in background..."
++  ollama serve >/dev/null 2>&1 &
++  OLLAMA_SERVICE_PID=$!
++  # Wait for Ollama to bind to port 11434
++  for i in $(seq 1 10); do
++    if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
++      echo "   Ollama is online!"
++      break
++    fi
++    sleep 1
++  done
++else
++  echo "   Ollama is already running."
++fi
++
++# Ensure embedding models are pulled in the background
++echo "   Ensuring 'mxbai-embed-large:latest' and 'all-minilm:latest' models are pulled..."
++ollama pull mxbai-embed-large:latest > /dev/null 2>&1 &
++ollama pull all-minilm:latest > /dev/null 2>&1 &
++
+ # ---------------------------------------------------------------------------
+ # 2. Build the Mastra Tool Server (ensures dist/ is fresh before containers start)
+ # ---------------------------------------------------------------------------
+@@ -133,12 +159,18 @@ echo "     Key: sk-litellm-key"
+ echo "================================================="
+ 
+ # ---------------------------------------------------------------------------
+-# 7. Build workspace packages
++# 7. Build workspace packages and start re-indexing
+ # ---------------------------------------------------------------------------
+ echo ""
+ echo "📦 Building workspace packages..."
+ pnpm build
+ 
++echo ""
++echo "🔍 Starting codebase re-indexing in the background..."
++node --env-file=.env apps/api/dist/src/scripts/reindex-all.js &
++REINDEX_PID=$!
++echo "   Re-indexing PID: ${REINDEX_PID}"
++
+ # ---------------------------------------------------------------------------
+ # 8. Start Mastra Studio in background
+ # ---------------------------------------------------------------------------
+@@ -162,5 +194,7 @@ echo ""
+ echo "🛑 Desktop closed — stopping background services..."
+ kill $MASTRA_PID 2>/dev/null || true
+ kill $TOOLS_PID 2>/dev/null || true
++kill $REINDEX_PID 2>/dev/null || true
++kill $OLLAMA_SERVICE_PID 2>/dev/null || true
+ fuser -k 9099/tcp 2>/dev/null || true
+ echo "✅ Done."

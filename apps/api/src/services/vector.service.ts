@@ -5,8 +5,26 @@ export interface Vector {
   similarity?: number;
 }
 
-import { promises as fs } from 'fs';
-import { join } from 'path';
+import { promises as fs, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import axios from 'axios';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function findWorkspaceRoot(): string {
+  let current = __dirname;
+  while (current !== dirname(current)) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
+      return current;
+    }
+    current = dirname(current);
+  }
+  return join(__dirname, '../../../'); // fallback
+}
+
+const APPS_API_ROOT = join(findWorkspaceRoot(), 'apps/api');
 
 interface DbVectorResult {
   id: string;
@@ -18,7 +36,7 @@ interface DbVectorResult {
 
 export class PgVectorStore {
   private getStoragePath(): string {
-    return join(process.cwd(), 'apps/api/.evaix/vectorEmbeddings.json');
+    return join(APPS_API_ROOT, '.evaix/vectorEmbeddings.json');
   }
 
   private async readStore(): Promise<Record<string, any>> {
@@ -31,7 +49,7 @@ export class PgVectorStore {
   }
 
   private async writeStore(data: Record<string, any>): Promise<void> {
-    const dir = join(process.cwd(), 'apps/api/.evaix');
+    const dir = join(APPS_API_ROOT, '.evaix');
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(this.getStoragePath(), JSON.stringify(data, null, 2), 'utf-8');
   }
@@ -80,9 +98,13 @@ export class PgVectorStore {
 
   private cosineSimilarity(a: number[], b: number[]): number {
     if (!a.length || !b.length) return 0;
-    const dot = a.reduce((sum, value, index) => sum + value * (b[index] || 0), 0);
-    const normA = Math.sqrt(a.reduce((sum, value) => sum + value * value, 0));
-    const normB = Math.sqrt(b.reduce((sum, value) => sum + value * value, 0));
+    const maxLength = Math.max(a.length, b.length);
+    const vecA = a.length < maxLength ? [...a, ...new Array<number>(maxLength - a.length).fill(0)] : a;
+    const vecB = b.length < maxLength ? [...b, ...new Array<number>(maxLength - b.length).fill(0)] : b;
+
+    const dot = vecA.reduce((sum, value, index) => sum + value * (vecB[index] || 0), 0);
+    const normA = Math.sqrt(vecA.reduce((sum, value) => sum + value * value, 0));
+    const normB = Math.sqrt(vecB.reduce((sum, value) => sum + value * value, 0));
     if (!normA || !normB) return 0;
     return dot / (normA * normB);
   }
@@ -152,23 +174,30 @@ export const createEmbedding = async (text: string, retryCount = 5): Promise<num
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
     try {
+      // 2. Try ProviderManager providers (LiteLLM, OpenAI, etc.)
       const litellmProvider = ProviderManager.getProvider('litellm-router') || ProviderManager.getProvider('openai');
       if (litellmProvider && litellmProvider instanceof OpenAIProvider) {
         const configuredModel = process.env.LITELLM_EMBEDDING_MODEL || process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
         return await litellmProvider.generateEmbedding(truncatedText, configuredModel);
       }
 
-      // Try to get the 'local' provider first
       const provider = ProviderManager.getProvider('local');
       if (provider && provider instanceof OllamaProvider) {
         return await provider.generateEmbedding(truncatedText);
       }
 
-      // Default to transformers.js pipeline
+      // 3. Default to transformers.js pipeline
       const extractor = await EmbeddingPipeline.getInstance();
       if (!extractor) throw new Error('Failed to initialize EmbeddingPipeline');
       const output = await extractor(truncatedText, { pooling: 'mean', normalize: true });
-      return Array.from(output.data) as number[];
+      const rawVector = Array.from(output.data) as number[];
+      if (rawVector.length !== 384) {
+        // Fallback or truncate/pad if model unexpectedly changed, but transformers all-MiniLM is strictly 384.
+        const fixed = new Array<number>(384).fill(0);
+        for(let i=0; i<Math.min(384, rawVector.length); i++) fixed[i] = rawVector[i];
+        return fixed;
+      }
+      return rawVector;
 
     } catch (error: any) {
       lastError = error;

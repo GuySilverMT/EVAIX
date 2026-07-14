@@ -3,18 +3,25 @@
  * Replaces Prisma database calls with filesystem reads from .evaix/ and other data directories
  */
 
-import { promises as fs } from 'fs';
-import { join } from 'path';
+import { promises as fs, existsSync } from 'fs';
+import path, { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 const DATA_CACHE = new Map<string, any>();
 
-// Determine project root based on process.cwd()
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Determine project root relative to this file's physical location
 function getProjectRoot(): string {
-  const cwd = process.cwd();
-  if (cwd.endsWith('/apps/api') || cwd.endsWith('\\apps\\api')) {
-    return join(cwd, '../..');
+  let current = __dirname;
+  while (current !== "/" && current !== path.parse(current).root) {
+    if (existsSync(path.join(current, "pnpm-workspace.yaml"))) {
+      return current;
+    }
+    current = path.dirname(current);
   }
-  return cwd;
+  return path.join(__dirname, "../../../../");
 }
 
 function getCachePath(key: string): string {

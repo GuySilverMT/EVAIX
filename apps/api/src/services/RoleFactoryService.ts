@@ -3,7 +3,6 @@ import { identityArchitect, getIdentityFallback, IdentityConfig } from './Identi
 import { cortexArchitect, getCortexFallback, CortexConfig } from './CortexArchitect.js';
 import { contextArchitect, getContextFallback, ContextConfig } from './ContextArchitect.js';
 import { governanceArchitect, getGovernanceFallback, GovernanceConfig } from './GovernanceArchitect.js';
-import { executeJsonMode } from './architectHelpers.js';
 import { prisma } from '../db.js';
 import { ProviderManager } from './ProviderManager.js';
 import { type BaseLLMProvider } from '../utils/BaseLLMProvider.js';
@@ -40,6 +39,31 @@ export interface RoleIntent {
 }
 
 
+
+
+// Inline utility (previously in architectHelpers.ts — removed as dead standalone file)
+export async function executeJsonMode<T>(modelId: string, prompt: string, schemaName: string): Promise<T> {
+  const { ProviderManager } = await import('./ProviderManager.js');
+  const providerId = modelId.includes(':') ? modelId.split(':')[0] : 'openai';
+  const provider = ProviderManager.getProvider(providerId);
+  if (!provider) throw new Error(`[RoleFactory] Provider ${providerId} not found for model ${modelId}`);
+  const response = await provider.generateCompletion({
+    modelId,
+    systemPrompt: 'You are the Role Architect. Return ONLY valid JSON. No markdown.',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.2,
+    maxTokens: 2048,
+    responseFormat: { type: 'json_object' }
+  });
+  let jsonStr = response.text.trim()
+    .replace(/^```json\n/, '').replace(/\n```$/, '')
+    .replace(/^```\n/, '').replace(/\n```$/, '');
+  if (!jsonStr.startsWith('{') && !jsonStr.startsWith('[')) {
+    const s = jsonStr.indexOf('{'), e = jsonStr.lastIndexOf('}');
+    if (s !== -1 && e !== -1) jsonStr = jsonStr.substring(s, e + 1);
+  }
+  return JSON.parse(jsonStr) as T;
+}
 
 /**
  * RoleFactoryService (Factory 4.0 - Unlocked)
