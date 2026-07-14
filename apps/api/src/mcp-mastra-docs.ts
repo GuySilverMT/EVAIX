@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { vectorMemoryTool } from './tools/vectorMemoryTool.js';
+import { createEmbedding } from './services/vector.service.js';
 
 // 1. Create the Mastra Docs RAG Tool
 
@@ -31,11 +32,12 @@ export const ingestMastraDocsTool = createTool({
         const chunks = content.match(/.{1,1000}(?:\s|$)/g) || [content];
 
         for (const chunk of chunks) {
+          const emb = await createEmbedding(chunk);
           // Store it in the vector memory with a specific agentId indicating it's mastra-docs
           await vectorMemoryTool.storeMemory({
             agentId: 'mastra-docs',
             content: chunk,
-            embedding: new Array(384).fill(0) // Assuming embedding happens inside or this is a placeholder
+            embedding: emb
           });
         }
         ingestedCount++;

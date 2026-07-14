@@ -8,7 +8,7 @@ const llm = createOpenAI({
   apiKey: process.env.LITELLM_MASTER_KEY ?? 'sk-litellm-key',
 });
 
-const defaultModel = process.env.DEFAULT_AGENT_MODEL ?? 'cerebras/gemma-4-31b';
+const defaultModel = process.env.DEFAULT_AGENT_MODEL ?? 'xai/grok-3';
 
 export const julesOrchestrator: Agent = new Agent({
   name: 'jules-orchestrator',

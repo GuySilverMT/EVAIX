@@ -80,7 +80,7 @@ services:
     environment:
       LITELLM_API_BASE: "http://litellm:4000/v1"
       LITELLM_MASTER_KEY: "sk-litellm-key"
-      DEFAULT_AGENT_MODEL: "cerebras/gemma-4-31b"
+      DEFAULT_AGENT_MODEL: "xai/grok-3"
       EVAIX_TOOLS_PORT: "9099"
     command: ["node", "dist/src/mcp-server.js"]
     networks:

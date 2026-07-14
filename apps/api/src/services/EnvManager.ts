@@ -21,8 +21,7 @@ export class EnvManager {
         }
 
         const envPaths = [
-            path.join(root, '.env'),
-            path.join(root, '.env.local')
+            path.join(root, '.env')
         ];
 
         console.log(`[EnvManager] 📝 Syncing ${key} to environment files at ${root}...`);

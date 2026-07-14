@@ -76,45 +76,58 @@ async function getLiteLlmModels(): Promise<string[]> {
   ];
 }
 
+// Helper functions for provider formatting
+function formatModelId(modelId: string): string {
+  if (modelId.includes('/')) {
+    return modelId;
+  }
+  // Determine provider based on name
+  let provider = 'litellm';
+  const lower = modelId.toLowerCase();
+  if (lower.startsWith('gpt') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('dall')) {
+    provider = 'openai';
+  } else if (lower.startsWith('claude')) {
+    provider = 'anthropic';
+  } else if (lower.startsWith('gemini')) {
+    provider = 'google';
+  } else if (lower.startsWith('command')) {
+    provider = 'cohere';
+  } else if (lower.startsWith('llama')) {
+    provider = 'meta';
+  }
+  return `${provider}/${modelId}`;
+}
+
+function getOriginalModelId(modelId: string, litellmModels: string[]): string {
+  if (litellmModels.includes(modelId)) {
+    return modelId;
+  }
+  for (const rawModel of litellmModels) {
+    if (formatModelId(rawModel) === modelId) {
+      return rawModel;
+    }
+  }
+  if (modelId.includes('/')) {
+    const parts = modelId.split('/');
+    const candidate = parts.slice(1).join('/');
+    if (litellmModels.includes(candidate)) {
+      return candidate;
+    }
+  }
+  return modelId;
+}
+
 // 1. Expose Mastra Agents as "Models" to OpenWebUI
 openAiRouter.get('/v1/models', async (req, res) => {
   try {
-    const agentsMap = await getAvailableAgents();
     const litellmModels = await getLiteLlmModels();
     
-    const responseModels: any[] = [];
-
-    // 1. Expose raw agent/role IDs
-    for (const agentId of agentsMap.keys()) {
-      responseModels.push({
-        id: agentId,
-        object: 'model',
-        created: Math.floor(Date.now() / 1000),
-        owned_by: 'evaix-mastra-role'
-      });
-    }
-
-    // 2. Expose raw LiteLLM models
-    for (const modelId of litellmModels) {
-      responseModels.push({
-        id: modelId,
-        object: 'model',
-        created: Math.floor(Date.now() / 1000),
-        owned_by: 'evaix-litellm'
-      });
-    }
-
-    // 3. Expose combinations: role::model
-    for (const agentId of agentsMap.keys()) {
-      for (const modelId of litellmModels) {
-        responseModels.push({
-          id: `${agentId}::${modelId}`,
-          object: 'model',
-          created: Math.floor(Date.now() / 1000),
-          owned_by: 'evaix-hybrid'
-        });
-      }
-    }
+    const responseModels = litellmModels.map((modelId) => ({
+      id: formatModelId(modelId),
+      object: 'model',
+      created: Math.floor(Date.now() / 1000),
+      owned_by: 'evaix-litellm'
+    }));
 
     res.json({
       object: 'list',
@@ -126,31 +139,72 @@ openAiRouter.get('/v1/models', async (req, res) => {
   }
 });
 
+// Helper to write the last prompted model to a workspace file so external tools can dynamically run on the same LLM
+async function saveLastActiveModel(modelName: string) {
+  try {
+    const filePath = '/home/guy/EVAIX/.last_active_model.json';
+    const data = JSON.stringify({ model: modelName, timestamp: Date.now() });
+    await fs.writeFile(filePath, data, 'utf-8');
+  } catch (err: any) {
+    console.error('[OpenAI Router] Error saving last active model:', err.message);
+  }
+}
+
 // 2. Intercept Chat Completions and route to Mastra
 openAiRouter.post('/v1/chat/completions', async (req, res) => {
   try {
     const { model, messages, stream } = req.body;
+    if (model) {
+      void saveLastActiveModel(model);
+    }
     
     let targetAgentId = 'role-architect';
     let targetModelId = 'nvidia/meta/llama-3.3-70b-instruct'; // Default fallback model
     
-    // Parse the model selection
+    const agentsMap = await getAvailableAgents();
+    const litellmModels = await getLiteLlmModels();
+    const originalModel = getOriginalModelId(model, litellmModels);
+    
+    if (!model.includes('::') && !agentsMap.has(model)) {
+      // Proxy straight to LiteLLM to preserve tools and native capabilities
+      req.body.model = originalModel;
+      const litellmResponse = await fetch('http://localhost:8080/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.LITELLM_MASTER_KEY || 'sk-litellm-key'}`
+        },
+        body: JSON.stringify(req.body)
+      });
+      
+      res.status(litellmResponse.status);
+      litellmResponse.headers.forEach((val, key) => res.setHeader(key, val));
+      if (litellmResponse.body) {
+        // Node.js fetch body is a Web ReadableStream
+        const reader = litellmResponse.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      } else {
+        res.end();
+      }
+      return;
+    }
+
+    // Parse the model selection for Mastra agents
     if (model.includes('::')) {
       const parts = model.split('::');
       targetAgentId = parts[0];
-      targetModelId = parts.slice(1).join('::');
-    } else {
-      const agentsMap = await getAvailableAgents();
-      if (agentsMap.has(model)) {
-        targetAgentId = model;
-        targetModelId = ''; // Use default configured model for the agent
-      } else {
-        targetAgentId = 'default-assistant';
-        targetModelId = model;
-      }
+      const rawModelId = parts.slice(1).join('::');
+      targetModelId = getOriginalModelId(rawModelId, litellmModels);
+    } else if (agentsMap.has(model)) {
+      targetAgentId = model;
+      targetModelId = ''; // Use default configured model for the agent
     }
 
-    const agentsMap = await getAvailableAgents();
     let baseAgent = agentsMap.get(targetAgentId);
     
     if (!baseAgent) {

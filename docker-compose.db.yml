@@ -14,7 +14,7 @@ services:
 
   # 1. The Database for LiteLLM's UI (stores model configs, keys, teams, etc.)
   litellm-db:
-    image: postgres:15-alpine
+    image: docker.io/pgvector/pgvector:pg15
     container_name: evaix_litellm_db
     environment:
       POSTGRES_USER: litellm

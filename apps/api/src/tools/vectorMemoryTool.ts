@@ -8,12 +8,16 @@
 
 import postgres from 'postgres';
 import { z } from 'zod';
+import { createEmbedding } from '../services/vector.service.js';
 
-// Database connection configuration
-const connectionString = process.env.DATABASE_URL || 'postgresql://myuser:mypassword@127.0.0.1:5432/mydb';
-
-// Create a postgres connection
-const sql = postgres(connectionString);
+let sqlInstance: postgres.Sql | null = null;
+function getSql() {
+  if (!sqlInstance) {
+    const connectionString = process.env.DATABASE_URL || 'postgresql://litellm:mysecretpassword@127.0.0.1:5432/litellm';
+    sqlInstance = postgres(connectionString);
+  }
+  return sqlInstance;
+}
 
 /**
  * Schema for vector search query parameters
@@ -58,17 +62,18 @@ export class VectorMemoryTool {
       // For now, we'll use a placeholder approach
       const queryEmbedding = await this.generateEmbedding(query);
       
-      // Build the similarity search query
-      const results = await sql`
+      const dbSql = getSql();
+      const queryVectorStr = JSON.stringify(queryEmbedding);
+      const results = await dbSql`
         SELECT 
           id,
           agent_id,
           chunk_content,
-          1 - (embedding <=> ${queryEmbedding}::vector) as similarity
+          1 - (embedding <=> ${queryVectorStr}::vector) as similarity
         FROM agent_dna
-        WHERE ${agentId ? sql`agent_id = ${agentId}` : sql`1 = 1`}
-          AND 1 - (embedding <=> ${queryEmbedding}::vector) >= ${threshold}
-        ORDER BY embedding <=> ${queryEmbedding}::vector
+        WHERE ${agentId ? dbSql`agent_id = ${agentId}` : dbSql`1 = 1`}
+          AND 1 - (embedding <=> ${queryVectorStr}::vector) >= ${threshold}
+        ORDER BY embedding <=> ${queryVectorStr}::vector
         LIMIT ${limit}
       `;
       
@@ -103,9 +108,11 @@ export class VectorMemoryTool {
     const { agentId, content, embedding } = params;
     
     try {
-      const result = await sql`
+      const dbSql = getSql();
+      const vectorStr = JSON.stringify(embedding);
+      const result = await dbSql`
         INSERT INTO agent_dna (agent_id, chunk_content, embedding)
-        VALUES (${agentId}, ${content}, ${embedding}::vector)
+        VALUES (${agentId}, ${content}, ${vectorStr}::vector)
         RETURNING id
       `;
       
@@ -131,7 +138,8 @@ export class VectorMemoryTool {
    */
   async getAgentMemories(agentId: string, limit: number = 100) {
     try {
-      const results = await sql`
+      const dbSql = getSql();
+      const results = await dbSql`
         SELECT id, agent_id, chunk_content, created_at, updated_at
         FROM agent_dna
         WHERE agent_id = ${agentId}
@@ -169,7 +177,8 @@ export class VectorMemoryTool {
    */
   async deleteMemory(memoryId: string) {
     try {
-      await sql`DELETE FROM agent_dna WHERE id = ${memoryId}`;
+      const dbSql = getSql();
+      await dbSql`DELETE FROM agent_dna WHERE id = ${memoryId}`;
       return {
         success: true,
       };
@@ -190,17 +199,16 @@ export class VectorMemoryTool {
    * @returns 384-dimensional vector array
    */
   private async generateEmbedding(text: string): Promise<number[]> {
-    // TODO: Integrate with actual embedding service
-    // For now, return a zero vector as placeholder
-    console.warn('Embedding generation not implemented - using placeholder zero vector');
-    return new Array(384).fill(0);
+    return await createEmbedding(text);
   }
 
   /**
    * Clean up database connection
    */
   async cleanup() {
-    await sql.end();
+    if (sqlInstance) {
+      await sqlInstance.end();
+    }
   }
 }
 

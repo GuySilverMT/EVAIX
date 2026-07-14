@@ -120,18 +120,32 @@ class FileWatcherService {
     }
   }
 
-  /**
-   * Start watching the entire project root automatically
-   */
   async startAutomatedWatching() {
-    const apiDir = process.cwd();
-    this.projectRoot = path.resolve(apiDir, '../../');
+    let root = process.cwd();
+    // Search upwards for workspace root
+    try {
+      let current = root;
+      while (current !== '/' && current !== '.') {
+        const hasWorkspace = await fs.stat(path.join(current, 'pnpm-workspace.yaml')).then(() => true).catch(() => false);
+        if (hasWorkspace) {
+          root = current;
+          break;
+        }
+        const parent = path.dirname(current);
+        if (parent === current) break;
+        current = parent;
+      }
+    } catch (e) {
+      console.warn('[FileWatcher] Error finding project root, falling back to cwd:', e);
+    }
+    this.projectRoot = root;
     
     // Specifically watch high-value directories to avoid root-level noise
     const pathsToWatch = [
       path.join(this.projectRoot, 'apps'),
       path.join(this.projectRoot, 'packages'),
-      path.join(this.projectRoot, 'agents')
+      path.join(this.projectRoot, 'agents'),
+      path.join(this.projectRoot, 'apps/api/data/agents')
     ];
 
     console.log(`[FileWatcher] 🤖 Initializing automated watching for: ${pathsToWatch.join(', ')}`);
@@ -216,6 +230,19 @@ class FileWatcherService {
       changeType
     });
 
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    if (normalizedPath.includes('apps/api/data/agents/')) {
+      const fileName = path.basename(filePath);
+      const agentId = fileName.replace(/\.(md|json)$/, '').toLowerCase().replace(/[^a-z0-9-_]/g, '_');
+      console.log(`[FileWatcher] 🚀 Agent role configuration ${changeType}: ${fileName}. Emitting ROLE_CREATED for ${agentId}`);
+      try {
+        const { eventBus } = await import('../utils/events.js');
+        eventBus.emit('ROLE_CREATED', { agent_id: agentId });
+      } catch (err) {
+        console.error('[FileWatcher] Failed to emit ROLE_CREATED event:', err);
+      }
+    }
+
     // Add to queue and process
     this.indexQueue.add(filePath);
     void this.processQueue();
@@ -238,6 +265,19 @@ class FileWatcherService {
         file: path.basename(filePath),
         filePath
       });
+
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      if (normalizedPath.includes('apps/api/data/agents/')) {
+        const fileName = path.basename(filePath);
+        const agentId = fileName.replace(/\.(md|json)$/, '').toLowerCase().replace(/[^a-z0-9-_]/g, '_');
+        console.log(`[FileWatcher] 🗑️ Agent role configuration deleted: ${fileName}. Emitting ROLE_CREATED for ${agentId}`);
+        try {
+          const { eventBus } = await import('../utils/events.js');
+          eventBus.emit('ROLE_CREATED', { agent_id: agentId });
+        } catch (err) {
+          console.error('[FileWatcher] Failed to emit ROLE_CREATED event:', err);
+        }
+      }
     } catch (error) {
       console.error(`[FileWatcher] ❌ Error removing ${filePath} from index:`, error);
     }

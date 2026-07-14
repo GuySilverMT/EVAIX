@@ -1,8 +1,8 @@
 import { Mastra } from '@mastra/core';
-import { roleArchitect } from './agents/role-architect.js';
+import { deepResearchAnalyst } from './agents/deep-research-analyst.js';
 
 export const mastra = new Mastra({
   agents: {
-    roleArchitect,
+    deepResearchAnalyst,
   },
 });

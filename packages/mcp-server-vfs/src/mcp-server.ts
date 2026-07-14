@@ -52,7 +52,21 @@ const llm = createOpenAI({
   apiKey: process.env.LITELLM_MASTER_KEY ?? 'sk-litellm-key',
 });
 
-const defaultModel = process.env.DEFAULT_AGENT_MODEL ?? 'cerebras/gemma-4-31b';
+const defaultModel = process.env.DEFAULT_AGENT_MODEL ?? 'xai/grok-3';
+
+async function getDynamicModel(defaultFallback: string): Promise<string> {
+  try {
+    const filePath = '/home/guy/EVAIX/.last_active_model.json';
+    const content = await fs.readFile(filePath, 'utf-8');
+    const data = JSON.parse(content);
+    if (data && data.model && (Date.now() - data.timestamp < 300000)) {
+      return data.model;
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return defaultFallback;
+}
 
 // ─── Write-agent tool ─────────────────────────────────────────────────────────
 
@@ -258,7 +272,10 @@ for (const tool of TOOLS) {
 
     try {
       console.log(`[EVAIX Tools] ${tool.id} ← "${prompt.slice(0, 80)}..."`);
-      const result = await tool.agent.generate([{ role: 'user', content: prompt }]);
+      const resolvedModel = await getDynamicModel(defaultModel);
+      const agentToRun = (tool.agent as any).__fork();
+      (agentToRun as any).__updateModel({ model: llm(resolvedModel) });
+      const result = await agentToRun.generate([{ role: 'user', content: prompt }]);
       res.json({ response: result.text });
     } catch (err) {
       const message = (err as Error).message;
