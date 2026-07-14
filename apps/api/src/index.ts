@@ -166,6 +166,7 @@ async function startServer() {
 
   // Mount RESTful API routers
   app.use('/api', openAiRouter);
+  app.use('/api', (await import('./routers/openwebui-bridge.router.js')).bridgeRouter);
 
   // Global error handler for REST routes
   // This should be the last middleware added

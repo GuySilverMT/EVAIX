@@ -522,8 +522,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/index.ts",
-      "contentHash": "7eb05d1e51d1bd9ea174013a25d9f53094421e8ed380ee4f3f9e71abe9e6fe34",
-      "updatedAt": "2026-07-14T02:29:29.206Z"
+      "contentHash": "93c3d27988c9265b2b9ce747d98602d2206e6ff19d1fd48f1289560c5df43725",
+      "updatedAt": "2026-07-14T11:13:38.182Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/instrumentation.ts",
@@ -542,8 +542,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/mcp-server.ts",
-      "contentHash": "1f819053f7c77cebee9f6d1d73983ccf0b3a5925dbc6bfcfe8c91f1c57901c12",
-      "updatedAt": "2026-07-14T03:02:40.438Z"
+      "contentHash": "8cfe77061fd5400fdd371707637e36b0d37aabcab79f177f7261a46ad0c4bacc",
+      "updatedAt": "2026-07-14T11:20:41.204Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/prisma-types.ts",
@@ -1412,8 +1412,8 @@
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/routers/openai-compatible.router.ts",
-      "contentHash": "e0a87a93f7e9947e0afe4808bbded7d884d90ea1eaa085090991cf350634680e",
-      "updatedAt": "2026-07-14T03:02:09.774Z"
+      "contentHash": "92811b10bd037d9d204b30a97075cc6a1d3876a878a162ed4f13b5f854394735",
+      "updatedAt": "2026-07-14T09:57:35.644Z"
     },
     {
       "filePath": "/home/guy/EVAIX/apps/api/src/routers/openwebui.router.ts",
@@ -1999,6 +1999,21 @@
       "filePath": "/home/guy/EVAIX/apps/api/data/agents/jules-manager.md",
       "contentHash": "a5a46f4aebf31e61be8e1999c242e10af4a8a4878ee631fe0a01effedd9ea35e",
       "updatedAt": "2026-07-14T03:14:02.568Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/data/agents/planning-coordinator.md",
+      "contentHash": "952cb0ee1b5e9e26a65c7e378f293d2f2daebcc6c864592336f8dbcc251ab1ed",
+      "updatedAt": "2026-07-14T09:50:27.657Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/routers/openwebui-bridge.router.ts",
+      "contentHash": "eee90035444b408c5d77c39aaa84f465f6f789cbe024dfb275e534dcb38fc33f",
+      "updatedAt": "2026-07-14T11:13:22.355Z"
+    },
+    {
+      "filePath": "/home/guy/EVAIX/apps/api/src/services/PythonBridgeGenerator.ts",
+      "contentHash": "c56c2b19dbea746d5011e3f288f03244e91ff1f97762b92d677fe82ee4205081",
+      "updatedAt": "2026-07-14T11:46:22.913Z"
     }
   ]
 }

@@ -33,7 +33,7 @@ async function findWorkspaceRoot(): Promise<string> {
   return root;
 }
 
-const AVAILABLE_MASTRA_TOOLS: Record<string, any> = {
+export const AVAILABLE_MASTRA_TOOLS: Record<string, any> = {
   web_search: webSearchTool,
   web_scrape: webScrapeTool,
   read_file: readFileTool,
@@ -220,7 +220,25 @@ mcp.tool(
     }
   },
 );
+// ═════════════════════════════════════════════════════════════════════════════
+// PRIMITIVE TOOLS — Exposed to OpenWebUI for direct utilization and Custom Models
+// ═════════════════════════════════════════════════════════════════════════════
 
+Object.values(AVAILABLE_MASTRA_TOOLS).forEach((t: any) => {
+  mcp.tool(
+    t.id,
+    t.description,
+    t.inputSchema,
+    async (args: any) => {
+      try {
+        const result = await t.execute(args);
+        return { content: [{ type: "text" as const, text: typeof result === 'string' ? result : JSON.stringify(result) }] };
+      } catch (e: any) {
+        return { content: [{ type: "text" as const, text: `Error: ${e.message}` }] };
+      }
+    }
+  );
+});
 
   await loadDynamicAgentTools(mcpServer);
 
@@ -309,10 +327,14 @@ export async function startMcpServer(
       console.log(`[FileWatcher] Detected: ${event.filename} (${event.eventType})`);
       try {
         const newTool = await registerAgentTool(sharedServer, filePath);
-        if (newTool) {
+        if (newTool || event.eventType === 'rename') {
           // Notify all connected MCP clients to re-fetch the tools list
           await sharedServer.server.notification({ method: 'notifications/tools/list_changed' });
-          console.log(`[FileWatcher] ✅ '${newTool}' is now live in OpenWebUI — no reconnect needed.`);
+          console.log(`[FileWatcher] ✅ '${newTool || filePath}' is now live in OpenWebUI — no reconnect needed.`);
+          
+          // Also sync the Python bridge to ensure OpenWebUI native tools are up to date
+          const { syncOpenWebUIBridge } = await import('./services/PythonBridgeGenerator.js');
+          await syncOpenWebUIBridge();
         }
       } catch (err) {
         console.error(`[FileWatcher] Error registering tool from ${event.filename}:`, err);
@@ -350,6 +372,12 @@ export async function startMcpServer(
   return new Promise<ReturnType<typeof app.listen>>((resolve) => {
     const listener = app.listen(port, host, () => {
       console.log(`[MCP Server] ready at http://${host}:${port}/sse`);
+      
+      // Trigger initial Python Bridge sync
+      import('./services/PythonBridgeGenerator.js').then(({ syncOpenWebUIBridge }) => {
+        syncOpenWebUIBridge().catch(err => console.error('[MCP Server] Failed to trigger initial Python Bridge sync:', err));
+      });
+      
       resolve(listener);
     });
   });

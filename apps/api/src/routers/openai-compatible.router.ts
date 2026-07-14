@@ -48,6 +48,26 @@ async function getAvailableAgents(): Promise<Map<string, Agent>> {
     console.error('[OpenAI Router] Error dynamically importing agents:', e);
   }
 
+  // 3. Scan dynamic agents from data/agents/
+  try {
+    const dynamicAgentsDir = path.join(process.cwd(), 'apps/api/data/agents');
+    const dynamicFiles = await fs.readdir(dynamicAgentsDir);
+    for (const file of dynamicFiles) {
+      if (file.endsWith('.md') || file.endsWith('.json')) {
+        const id = file.replace('.md', '').replace('.json', '').toLowerCase().replace(/[^a-z0-9-_]/g, '_');
+        // Add a stub agent so the router knows this ID exists for @ mentions
+        agentsMap.set(id, new Agent({
+          id,
+          name: 'Dynamic Placeholder',
+          instructions: '',
+          model: 'xai/grok-3' as any
+        }));
+      }
+    }
+  } catch (e) {
+    // Ignore error if directory doesn't exist yet
+  }
+
   return agentsMap;
 }
 
@@ -121,13 +141,24 @@ function getOriginalModelId(modelId: string, litellmModels: string[]): string {
 openAiRouter.get('/v1/models', async (req, res) => {
   try {
     const litellmModels = await getLiteLlmModels();
+    const agentsMap = await getAvailableAgents();
     
-    const responseModels = litellmModels.map((modelId) => ({
+    const responseModels: any[] = litellmModels.map((modelId) => ({
       id: formatModelId(modelId),
       object: 'model',
       created: Math.floor(Date.now() / 1000),
       owned_by: 'evaix-litellm'
     }));
+
+    // Add standalone Agent models for @ mentions
+    for (const agentId of agentsMap.keys()) {
+      responseModels.push({
+        id: agentId,
+        object: 'model',
+        created: Math.floor(Date.now() / 1000),
+        owned_by: 'evaix-agent'
+      });
+    }
 
     res.json({
       object: 'list',
@@ -140,8 +171,9 @@ openAiRouter.get('/v1/models', async (req, res) => {
 });
 
 // Helper to write the last prompted model to a workspace file so external tools can dynamically run on the same LLM
-async function saveLastActiveModel(modelName: string) {
+async function saveLastActiveModel(modelName: string, agentsMap: Map<string, Agent>) {
   try {
+    if (agentsMap.has(modelName) || modelName.includes('::')) return;
     const filePath = '/home/guy/EVAIX/.last_active_model.json';
     const data = JSON.stringify({ model: modelName, timestamp: Date.now() });
     await fs.writeFile(filePath, data, 'utf-8');
@@ -150,18 +182,34 @@ async function saveLastActiveModel(modelName: string) {
   }
 }
 
+// Helper to retrieve the last active LLM for dynamic agent routing via @ mentions
+async function getLastActiveModel(fallback: string): Promise<string> {
+  try {
+    const filePath = '/home/guy/EVAIX/.last_active_model.json';
+    const content = await fs.readFile(filePath, 'utf-8');
+    const data = JSON.parse(content);
+    if (data && data.model && (Date.now() - data.timestamp < 300000)) {
+      return data.model;
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return fallback;
+}
+
 // 2. Intercept Chat Completions and route to Mastra
 openAiRouter.post('/v1/chat/completions', async (req, res) => {
   try {
     const { model, messages, stream } = req.body;
-    if (model) {
-      void saveLastActiveModel(model);
-    }
     
     let targetAgentId = 'role-architect';
     let targetModelId = 'nvidia/meta/llama-3.3-70b-instruct'; // Default fallback model
     
     const agentsMap = await getAvailableAgents();
+
+    if (model) {
+      void saveLastActiveModel(model, agentsMap);
+    }
     const litellmModels = await getLiteLlmModels();
     const originalModel = getOriginalModelId(model, litellmModels);
     
@@ -202,12 +250,57 @@ openAiRouter.post('/v1/chat/completions', async (req, res) => {
       targetModelId = getOriginalModelId(rawModelId, litellmModels);
     } else if (agentsMap.has(model)) {
       targetAgentId = model;
-      targetModelId = ''; // Use default configured model for the agent
+      targetModelId = await getLastActiveModel(''); // Inherit last active chat model
     }
 
     let baseAgent = agentsMap.get(targetAgentId);
     
-    if (!baseAgent) {
+    if (baseAgent?.name === 'Dynamic Placeholder') {
+      try {
+        const fs = require('node:fs/promises');
+        const path = require('node:path');
+        const yaml = require('js-yaml');
+        const agentsDir = path.join(process.cwd(), 'apps/api/data/agents');
+        const files = await fs.readdir(agentsDir);
+        const file = files.find(f => f.replace('.md', '').replace('.json', '').toLowerCase().replace(/[^a-z0-9-_]/g, '_') === targetAgentId);
+        
+        if (file) {
+          const content = await fs.readFile(path.join(agentsDir, file), "utf-8");
+          let instructions = '';
+          let name = targetAgentId;
+          
+          if (file.endsWith('.md')) {
+            const match = content.match(/^---\n([\s\S]*?)\n---/);
+            if (match) {
+              const frontmatter = yaml.load(match[1]) as any;
+              name = frontmatter.name || name;
+              instructions = frontmatter.instructions || content.replace(/^---\n[\s\S]*?\n---/, "").trim();
+            }
+          } else {
+            const parsed = JSON.parse(content);
+            name = parsed.name || name;
+            instructions = parsed.instructions || '';
+          }
+
+          const liteLlmProvider = createOpenAI({
+            baseURL: 'http://localhost:8080/v1',
+            apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+          });
+
+          baseAgent = new Agent({
+            id: targetAgentId,
+            name,
+            instructions,
+            model: liteLlmProvider(targetModelId || 'nvidia/meta/llama-3.3-70b-instruct')
+          });
+          targetModelId = ''; // Handled in constructor
+        }
+      } catch (e) {
+        console.error('Failed to load dynamic agent placeholder', e);
+      }
+    }
+
+    if (!baseAgent || baseAgent.name === 'Dynamic Placeholder') {
       const liteLlmProvider = createOpenAI({
         baseURL: 'http://localhost:8080/v1',
         apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',

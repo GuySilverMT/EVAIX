@@ -194,3 +194,35 @@ Then **rebuild and restart**:
 pnpm --filter api build
 fuser -k 9099/tcp && node apps/api/dist/src/mcp-server.js &
 ```
+
+---
+
+## 7. The OpenWebUI Python Bridge (Native Integration)
+
+Due to OpenWebUI's aggressive caching and its "One Tool Dump" behavior with standard MCP servers, EVAIX implements a **Python Bridge** to achieve seamless, granular tool execution.
+
+### How It Works
+Instead of relying strictly on OpenWebUI's MCP client, EVAIX dynamically generates native OpenWebUI Python tools and injects them directly into OpenWebUI's backend SQLite database (`webui.db`).
+
+1. **The Endpoint:** The Express API (`apps/api/src/routers/openwebui-bridge.router.ts`) listens on `/api/v1/bridge/invoke`. This endpoint securely handles the execution of any Mastra primitive tool or dynamically created agent role.
+2. **The Generator:** When the API starts or when the FileWatcher (`apps/api/src/services/FileWatcherService.ts`) detects a change in the `data/agents/` folder, it triggers `apps/api/src/services/PythonBridgeGenerator.ts`.
+3. **The Injection:** The generator translates the TypeScript schemas into OpenWebUI-compatible JSON `specs`, wraps them in a Python HTTP proxy script, and executes a SQLite transaction directly against the mounted Docker volume to update OpenWebUI's database instantly.
+
+### Files Involved
+- `apps/api/src/routers/openwebui-bridge.router.ts` (API execution endpoint)
+- `apps/api/src/services/PythonBridgeGenerator.ts` (Code generator and DB injector)
+- `apps/api/src/mcp-server.ts` (Contains the FileWatcher that triggers the sync)
+
+---
+
+## 8. Granular Tool Grouping & Database Sync
+
+We have fully implemented granular, individual tool mapping. Instead of grouping all tools into a single `evaix_bridge` integration block, they are now registered as separate tools in the `tool` table in SQLite.
+
+### How It Works:
+1. **Dynamic Splitting:** The `PythonBridgeGenerator.ts` processes each tool from `AVAILABLE_MASTRA_TOOLS` and each agent from `data/agents/` separately. It compiles an individual Python script string and a separate Zod-to-JSON `spec` signature for each.
+2. **Atomic Injections & Pruning:** During database sync, the generator:
+   - Deletes any old tools starting with `evaix_` (including the legacy `evaix_bridge`) that are no longer present in the active tools/agents registry.
+   - Inserts or updates the individual rows (e.g., `evaix_tool_web_search`, `evaix_agent_planning_coordinator`).
+3. **OpenWebUI Display:** OpenWebUI parses each row separately. When you open the `+ Tools` menu inside OpenWebUI, you will see each tool (like `EVAIX Tool: Web Search`, `EVAIX Tool: Terminal Execute`) and agent (like `EVAIX Agent: Planning Coordinator`) listed as independent, toggleable options.
+
