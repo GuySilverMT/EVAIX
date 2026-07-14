@@ -5,16 +5,15 @@ import {
   publicProcedure,
 } from "../trpc.js";
 import { TRPCError } from "@trpc/server";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { Agent } from "@mastra/core/agent";
 import fs from "fs/promises";
 import path from "path";
 import { fetchAllProviderModels } from "../utils/modelFetcher.js";
 
-// Live connection to the LiteLLM container proxy
-const liteLlmProvider = createOpenAI({
+const liteLlmProvider = createOpenAICompatible({
+  name: 'litellm',
   baseURL: process.env.LITELLM_API_BASE || "http://localhost:8080/v1",
-  apiKey: process.env.LITELLM_MASTER_KEY || "sk-litellm-key",
   headers: {
     "Authorization": `Bearer ${process.env.LITELLM_MASTER_KEY || "sk-litellm-key"}`
   }

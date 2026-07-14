@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { mastra } from '../mastra/index.js';
 import { Agent } from '@mastra/core/agent';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -282,9 +282,12 @@ openAiRouter.post('/v1/chat/completions', async (req, res) => {
             instructions = parsed.instructions || '';
           }
 
-          const liteLlmProvider = createOpenAI({
+          const liteLlmProvider = createOpenAICompatible({
+            name: 'litellm',
             baseURL: 'http://localhost:8080/v1',
-            apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+            headers: {
+              Authorization: `Bearer ${process.env.LITELLM_MASTER_KEY || 'sk-litellm-key'}`
+            }
           });
 
           baseAgent = new Agent({
@@ -301,9 +304,12 @@ openAiRouter.post('/v1/chat/completions', async (req, res) => {
     }
 
     if (!baseAgent || baseAgent.name === 'Dynamic Placeholder') {
-      const liteLlmProvider = createOpenAI({
+      const liteLlmProvider = createOpenAICompatible({
+        name: 'litellm',
         baseURL: 'http://localhost:8080/v1',
-        apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+        headers: {
+          Authorization: `Bearer ${process.env.LITELLM_MASTER_KEY || 'sk-litellm-key'}`
+        }
       });
       baseAgent = new Agent({
         id: targetAgentId,
@@ -318,9 +324,12 @@ openAiRouter.post('/v1/chat/completions', async (req, res) => {
 
     // If targetModelId is specified, override the agent's model dynamically using Mastra's internal fork mechanism
     if (targetModelId) {
-      const liteLlmProvider = createOpenAI({
+      const liteLlmProvider = createOpenAICompatible({
+        name: 'litellm',
         baseURL: 'http://localhost:8080/v1',
-        apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+        headers: {
+          Authorization: `Bearer ${process.env.LITELLM_MASTER_KEY || 'sk-litellm-key'}`
+        }
       });
       
       agentToRun = (baseAgent as any).__fork();

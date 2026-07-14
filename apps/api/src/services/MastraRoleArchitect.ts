@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { z } from 'zod';
 import { promises as fsPromises } from 'fs';
 import { existsSync } from 'fs';
@@ -26,9 +26,12 @@ const AGENTS_DIR = path.join(WORKSPACE_ROOT, 'apps/api/data/agents');
 // ─── LiteLLM Provider (model-agnostic routing) ───────────────────────────────
 // All agents in EVAIX are model-agnostic. The Role Architect uses grok-4-5
 // as a capable default but honours the DEFAULT_AGENT_MODEL env override.
-const liteLlmProvider = createOpenAI({
+const liteLlmProvider = createOpenAICompatible({
+  name: 'litellm',
   baseURL: process.env.LITELLM_API_BASE || 'http://localhost:8080/v1',
-  apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+  headers: {
+    Authorization: `Bearer ${process.env.LITELLM_MASTER_KEY || 'sk-litellm-key'}`
+  }
 });
 
 const ARCHITECT_MODEL =
@@ -283,7 +286,7 @@ You have access to these tools to do your job:
 - Do NOT hallucinate tool IDs — only use the exact IDs listed above.
 - The FileWatcher hot-registers your file; no server restart is needed.
 `,
-  model: liteLlmProvider.chat(ARCHITECT_MODEL),
+  model: liteLlmProvider(ARCHITECT_MODEL),
   tools: {
     filesystemList,
     filesystemRead,

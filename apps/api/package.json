@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.7",
+    "@ai-sdk/openai-compatible": "^3.0.10",
     "@automatalabs/mcp-server-playwright": "^1.2.1",
     "@cyanheads/filesystem-mcp-server": "^1.0.4",
     "@evaix/arbitrage": "workspace:*",

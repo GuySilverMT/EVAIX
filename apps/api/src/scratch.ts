@@ -1,13 +1,16 @@
 import { Agent } from '@mastra/core/agent';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { AVAILABLE_MASTRA_TOOLS } from './mcp-server.js';
 import fs from 'fs';
 import path from 'path';
 
 async function run() {
-  const liteLlmProvider = createOpenAI({
+  const liteLlmProvider = createOpenAICompatible({
+    name: 'litellm',
     baseURL: process.env.LITELLM_API_BASE || 'http://localhost:8080/v1',
-    apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+    headers: {
+      Authorization: `Bearer ${process.env.LITELLM_MASTER_KEY || 'sk-litellm-key'}`
+    }
   });
 
   const content = fs.readFileSync('/home/guy/EVAIX/apps/api/data/agents/planning-agent.md', 'utf-8');
@@ -17,7 +20,7 @@ async function run() {
     id: "planning_agent",
     name: "Planning Agent",
     instructions: instructions,
-    model: liteLlmProvider.chat("openrouter/minimax/minimax-m2.5"),
+    model: liteLlmProvider("openrouter/minimax/minimax-m2.5"),
     tools: {
       read_file: AVAILABLE_MASTRA_TOOLS.read_file,
       list_files: AVAILABLE_MASTRA_TOOLS.list_files,

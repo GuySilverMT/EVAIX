@@ -47,13 +47,13 @@ bridgeRouter.post('/v1/bridge/invoke', async (req, res) => {
         const agentToRun = (roleArchitectAgent as any).__fork();
         
         try {
-          (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(requestedModel) });
+          (agentToRun as any).__updateModel({ model: liteLlmProvider(requestedModel) });
           const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
           res.json({ result: response.text });
         } catch (primaryErr: any) {
           if (requestedModel !== fallbackModel) {
             console.warn(`[Architect] Requested model ${requestedModel} failed: ${primaryErr.message}. Falling back to ${fallbackModel}`);
-            (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(fallbackModel) });
+            (agentToRun as any).__updateModel({ model: liteLlmProvider(fallbackModel) });
             const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
             res.json({ result: response.text });
           } else {

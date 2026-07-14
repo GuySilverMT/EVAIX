@@ -9,7 +9,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import yaml from "js-yaml";
 import { Agent } from "@mastra/core/agent";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { webSearchTool, webScrapeTool } from "./mastra/tools/web.js";
 import {
   readFileTool,
@@ -60,9 +60,12 @@ export const MCP_TOOL_SCHEMAS: Record<string, any> = {
   typescript_interpreter: z.object({ code: z.string().describe('The TypeScript code to execute. Must end with console.log() to return data.'), timeout: z.number().optional().default(30000).describe('Optional timeout in milliseconds (max 60000)') }),
 };
 
-const liteLlmProvider = createOpenAI({
+const liteLlmProvider = createOpenAICompatible({
+  name: 'litellm',
   baseURL: process.env.LITELLM_API_BASE || 'http://localhost:8080/v1',
-  apiKey: process.env.LITELLM_MASTER_KEY || 'sk-litellm-key',
+  headers: {
+    Authorization: `Bearer ${process.env.LITELLM_MASTER_KEY || 'sk-litellm-key'}`
+  }
 });
 
 async function getDynamicModel(defaultFallback: string): Promise<string> {
@@ -158,7 +161,7 @@ async function registerAgentTool(mcpServer: McpServer, filePath: string): Promis
             id: agentId,
             name: capturedName,
             instructions: capturedInstructions,
-            model: liteLlmProvider.chat(resolvedModel),
+            model: liteLlmProvider(resolvedModel),
             tools: toolsObject
           });
           
@@ -173,7 +176,7 @@ async function registerAgentTool(mcpServer: McpServer, filePath: string): Promis
                 id: agentId,
                 name: capturedName,
                 instructions: capturedInstructions,
-                model: liteLlmProvider.chat(fallbackModel),
+                model: liteLlmProvider(fallbackModel),
                 tools: toolsObject
               });
               
@@ -253,13 +256,13 @@ mcp.tool(
       const agentToRun = (roleArchitectAgent as any).__fork();
       
       try {
-        (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(resolvedModel) });
+        (agentToRun as any).__updateModel({ model: liteLlmProvider(resolvedModel) });
         const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
         return { content: [{ type: "text" as const, text: response.text || "Execution finished, but no text was returned." }] };
       } catch (primaryErr: any) {
         if (resolvedModel !== fallbackModel) {
           console.warn(`[MCP Server] ask_role_architect model ${resolvedModel} failed: ${primaryErr.message}. Retrying with fallback: ${fallbackModel}`);
-          (agentToRun as any).__updateModel({ model: liteLlmProvider.chat(fallbackModel) });
+          (agentToRun as any).__updateModel({ model: liteLlmProvider(fallbackModel) });
           const response = await agentToRun.generate(prompt, { maxSteps: 5 } as any);
           return { content: [{ type: "text" as const, text: response.text || "Execution finished with fallback, but no text was returned." }] };
         } else {
